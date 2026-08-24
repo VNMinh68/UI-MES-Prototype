@@ -347,17 +347,11 @@ a:hover{color:#4A7A0B}
 .yscroll::-webkit-scrollbar-track{background:transparent}
 input:focus,button:focus,select:focus{outline:none}
 @keyframes bfIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
-.turn-pick:hover>td{background:#f3f8ef!important}
-.turn-opt:hover{background:#f3f8ef!important}
-.cap-row .grip{opacity:0;transition:opacity .12s}
-.cap-row:hover .grip{opacity:.45}
-.cap-row.lift .grip{opacity:.85}
 .ps-bar{transition:top .3s cubic-bezier(.34,.69,.1,1),height .3s cubic-bezier(.34,.69,.1,1),box-shadow .2s cubic-bezier(.34,.69,.1,1)}
 .ps-bar:hover{box-shadow:0 2px 6px rgba(24,36,14,.16),0 6px 16px -4px rgba(24,36,14,.2)!important;z-index:7}
 .ps-fab{transition:transform .18s cubic-bezier(.34,.69,.1,1),background .18s}
 .ps-fab:hover{background:#4A7A0B!important;transform:scale(1.14)}
 .ps-fab:active{transform:scale(.94)}
-.ps-stub:hover{border-color:#7CB518!important;background:#f7fcea!important}
 .ps-ghost:hover{border-color:#7CB518!important;color:#4A7A0B!important;background:#f7fcea!important}
 
 /* ===== screen-specific rules + print ===== */

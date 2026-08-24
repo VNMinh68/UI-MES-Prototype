@@ -65,7 +65,7 @@
   function shell(v) {
     var h = React.createElement;
     return h('div', { 'data-kc-root': '', style: { display: 'flex', minHeight: '100vh', width: '100%' } },
-      v.sidebarEl, v.modalEl, v.addLineEl, v.confEl, v.qrModalEl, v.whModalEl,
+      v.sidebarEl, v.modalEl, v.addLineEl, v.confEl, v.qrModalEl,
       h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100vh' } },
         h('header', { style: { height: 60, flex: 'none', background: '#fff', borderBottom: '1px solid #e4e7de',
                                display: 'flex', alignItems: 'center', padding: '0 24px', gap: 14 } },
@@ -201,8 +201,6 @@ class Component extends DCLogic {
     {n:5,brand:'VUORI',style:'VW5159-M11',emb:'KHÔNG',line:'Line 6',cut:5940,iss:5100,turns:'C1–C16',po:'Multi (6)',days:[0,0,0,0,0,0]},
   ];
   CUTPLAN = [];
-  SHIFTS = (()=>{ const t=['07:30','08:30','09:30','10:30','11:30','12:30','13:30','14:30','15:30','16:30','17:30','18:30']; return t.slice(0,-1).map((x,i)=>x+' – '+t[i+1]); })();
-  LUNCH = 4;
   MACH = {A:['1','2'],B:['3','4'],C:['5','6'],T:['1','2','3','4','5','6']};
   CURWK = (()=>{ const t=new Date(), d=new Date(t.getFullYear(),t.getMonth(),t.getDate()), all=[];
     Object.values(this.MONTHS).forEach(ws=>ws.forEach(w=>all.push(w)));
@@ -240,11 +238,14 @@ class Component extends DCLogic {
     this.psSeedPlans();
     const weeks=this.seed();
     this.state = {
-      page:'gantt', cutTab:'capacity', gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
+      page:'gantt', cutTab:'capacity', dsoTab:'cfg', dsoSub:'line', lset:{}, lsEdit:null, dsoLine:null, dsoDone:{}, dsoDoneV:2, dsoHand:{}, dsoHandAsk:null, gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
       tab:'weekly', openMonth:this.CURWK.split(' · ')[0], week:this.CURWK, lang:'vi',
       weeks,
-      edit:null, bedit:null, bform:null, addLine:null, khcPlan:null, qrOpen:null, psDel:{}, psTrash:[], psExtra:{}, psOver:{}, psXL:{}, psXD:{}, conf:null, psAdd:null, psTrashOpen:false, sidebarOpen:false, navOpen:{'PRODUCTION PLAN':true,'DASHBOARD':true,'SEWING':true,'SPREADING / CUTTING':true,'WAREHOUSE':true}, dragOver:false, dayOpen:null, daily:{}, freq:{}, wsc:{}, whOpen:null, whQ:'', whErr:'',
-      bundle:this.initBundle((weeks[this.CURWK]||{rows:[]}).rows), wip:{},
+      edit:null, bedit:null, bform:null, addLine:null, khcPlan:null, qrOpen:null, ps:this.psClone(window.PSCHED), psTrash:[], recvLog:[], conf:null, psAdd:null, psTrashOpen:false, sidebarOpen:false, navOpen:{'PRODUCTION PLAN':true,'DASHBOARD':true,'SEWING':true}, dragOver:false, dayOpen:null, daily:{}, freq:{}, wsc:{}, whOpen:null, whQ:'', whErr:'',
+      bundle:this.initBundle((weeks[this.CURWK]||{rows:[]}).rows), bundleV:3, wip:{},
+      dsoAlerts:this.initAlerts(), dsoAlEdit:false, dsoAlHit:null,
+      dsoMtypeRows:null, dsoMtypeDet:{}, mtSel:null, mtEdit:null, mtMsg:'',
+      dsoDefects:this.initDefects(), dsoDefLog:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'',
       files:[{name:'KH cắt-199-PO10848-CHOT.xlsx',sheets:2},{name:'KH cắt-199-PO10502-HANAM.xlsx',sheets:2},{name:'KH cắt-VW5159-M2-BLK-PO4446+4841.xlsx',sheets:8},{name:'KH cắt-1003117-PO10130.xlsx',sheets:6},{name:'KH cắt-VW5159-M11-CHOT.xlsx',sheets:8}],
     };
     this.state.capTurns=this.allocTurns();
@@ -253,73 +254,167 @@ class Component extends DCLogic {
   }
 
   SKEY='yic.sewplan.v2';
-  PERSIST=['weeks','week','openMonth','tab','page','cutTab','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','wip','daily','files','psDel','psTrash','psExtra','psOver','psXL','psXD','navOpen','gz','gopen','khcPlan','freq','wsc'];
+  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','dsoDone','dsoDoneV','dsoHand','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog'];
   // Mọi thay đổi dữ liệu được lưu lại — refresh vẫn giữ nguyên
-  restore(){ try{ const raw=window.localStorage.getItem(this.SKEY); if(!raw) return; const o=JSON.parse(raw)||{};
-      this.PERSIST.forEach(k=>{ if(o[k]!==undefined&&o[k]!==null) this.state[k]=o[k]; }); }catch(e){} }
+  restore(){ const defPage=this.state.page; let saved=null;
+    try{ const raw=window.localStorage.getItem(this.SKEY); if(!raw) return; const o=JSON.parse(raw)||{}; saved=o;
+      this.PERSIST.forEach(k=>{ if(o[k]!==undefined&&o[k]!==null) this.state[k]=o[k]; }); }catch(e){}
+    // Doc version tu chinh ban luu, khong tu state -- state luon co mac dinh nen khong phan biet duoc
+    const sv=saved?(Number(saved.bundleV)||0):0;
+    // v<2: rule sinh san da bo -> xoa nhung o da duoc sinh va luu tu truoc
+    if(sv<2) this.state.bundle={};
+    // v<3: khoa theo r.id (khong co tuan) -> chuyen sang khoa tuan+chuyen+ma hang
+    if(sv<3) this.state.bundle=this.migrateBundle(this.state.bundle);
+    this.state.bundleV=3;
+    // Khoa dsoDone cu chua co doan NGAY -> gan vao hom nay, giu nguyen so luong.
+    // Doc version tu ban luu (giong bundleV) vi state luon co mac dinh.
+    if((saved?(Number(saved.dsoDoneV)||0):0)<2){ const dm=this.state.dsoDone||{}, dn={}, td=this.dsoToday();
+      Object.keys(dm).forEach(k=>{ dn[k.split('|').length===6?k:(td+'|'+k)]=dm[k]; });
+      this.state.dsoDone=dn; }
+    this.state.dsoDoneV=2;
+    // Bản lưu cũ giữ thay đổi kế hoạch dạng overlay -> bỏ, lấy lại hạt giống từ data/psched.js
+    if(!this.state.ps||!this.state.ps.groups) this.state.ps=this.psClone(window.PSCHED);
+    // Ban luu cu co the dang o trang da bo khoi menu -> ve trang dau tien con trong menu
+    const pgs=this.navPages();
+    if(pgs.length&&pgs.indexOf(this.state.page)<0) this.state.page=(pgs.indexOf(defPage)>=0?defPage:pgs[0]); }
   persist(){ try{ const o={}; this.PERSIST.forEach(k=>{ o[k]=this.state[k]; }); window.localStorage.setItem(this.SKEY,JSON.stringify(o)); }catch(e){} }
   queuePersist(){ clearTimeout(this._pt); this._pt=setTimeout(()=>this.persist(),250); }
-  resetSaved(){ if(!window.confirm(this.t('resetAsk'))) return; try{ window.localStorage.removeItem(this.SKEY); }catch(e){} window.location.reload(); }
+  resetSaved(){ if(!window.confirm(this.t('resetAsk'))) return; try{ window.localStorage.removeItem(this.SKEY); }catch(e){}
+    // xoa luon file am thanh trong IndexedDB, khong thi con blob mo coi
+    const go=()=>window.location.reload();
+    Promise.all([this.sndClear(),this.mlvClear()]).then(go,go); }
 
   SALIAS = {'VW5159':'VW5159-M11','1000199':'FG-1000199','1003117':'FG-1003117'};
   sKey(style){ return this.SALIAS[style]||style; }
   cutColors(style){ return this.CUTCOLORS[this.sKey(style)]||['Black','Navy','Grey']; }
   parseMarker(m){ const o={}; String(m).split('+').forEach(tok=>{ const p=tok.split('/'); const name=(p[0]||'').trim(); if(!name) return; o[name]=(o[name]||0)+(p[1]?(parseInt(p[1],10)||1):1); }); return o; }
   turnSizes(t){ const r=this.parseMarker(t.marker); const o={}; Object.keys(r).forEach(s=>o[s]=r[s]*t.layers); return o; }
-  gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ [a,b]=[b,a%b]; } return a||1; }
-  sizeStep(style,ids,s){ const cat=this.cutTurns(style); let g=0; (ids||[]).forEach(id=>{ const t=cat.find(x=>x.id===id); if(!t) return; const r=this.parseMarker(t.marker)[s]||0; if(r>0) g=g?this.gcd(g,t.layers):t.layers; }); return g||1; }
   cutTurns(style,po){ const kt=this.khcTurns(style,po); if(kt) return kt; style=this.sKey(style); if(this.CUTTURNS[style]) return this.CUTTURNS[style]; this._gt=this._gt||{}; if(!this._gt[style]) this._gt[style]=this.buildTurns(style); return this._gt[style]; }
   buildTurns(style){ const sz=this.sizesFor(style); const combos=[sz.slice(1,4),sz.slice(2,5),sz.slice(0,3),sz.slice(3),[sz[Math.floor(sz.length/2)]]].filter(c=>c&&c.length); const lay=[120,118,104,72,40]; return combos.map((cs,i)=>({id:'C'+(i+1),marker:cs.map((s,k)=>k===1?s+'/3':(k===2?s+'/2':s)).join('+'),layers:lay[i]||30})); }
   sumTurns(ids,style){ const cat=this.cutTurns(style); const m={}; (ids||[]).forEach(id=>{ const t=cat.find(x=>x.id===id); if(t){ const ts=this.turnSizes(t); Object.keys(ts).forEach(s=>m[s]=(m[s]||0)+ts[s]); } }); return m; }
   cellFrom(style,ids,sizes,qty){ const ss=this.SORDER.filter(s=>sizes.includes(s)); return {turns:[...ids],sizes:ss,qty:{...qty},turn:ids.join(', '),size:ss.join(', '),supply:ss.map(s=>String(qty[s]||0)).join(', ')}; }
-  turnsForSizes(style,sizes){ const cat=this.cutTurns(style); if(!sizes||!sizes.length) return []; const set=new Set(sizes); return cat.filter(t=>{ const ts=this.turnSizes(t); return Object.keys(ts).some(s=>set.has(s)); }); }
-  guessQty(style,sz,planQty){ const d=this.demandTarget(style); const tot=Object.values(d).reduce((a,x)=>a+x,0)||1; return Math.max(0,Math.round((planQty||0)*(d[sz]||0)/tot)); }
   demandTarget(style){ const d=this.DEMAND[this.sKey(style)]; if(d) return {...d}; const sz=this.sizesFor(style); const w=[1,4,7,7,4,2,1]; const t={}; sz.forEach((s,i)=>t[s]=(w[i]||1)*180); return t; }
-  suggestTurns(style,sizes,qty){ const cat=this.turnsForSizes(style,sizes); if(!cat.length) return [];
-    const need={}; (sizes||[]).forEach(s=>need[s]=Number(qty[s])||0); const req=(sizes||[]).filter(s=>need[s]>0);
-    if(!req.length) return []; const cur={}; const chosen=[]; let guard=0;
-    const belowYellow=()=>req.filter(s=>((cur[s]||0)/need[s])<0.5);
-    while(guard++<cat.length){ if(!belowYellow().length) break; let best=null,bestScore=-Infinity;
-      cat.forEach(t=>{ if(chosen.includes(t.id)) return; const ts=this.turnSizes(t); let gain=0,waste=0;
-        Object.keys(ts).forEach(s=>{ const add=ts[s];
-          if(need[s]>0){ const before=cur[s]||0, after=before+add; const bc=Math.min(before/need[s],1), ac=Math.min(after/need[s],1); const w=(before/need[s]<0.5)?3:1; gain+=(ac-bc)*need[s]*w; if(after>need[s]) waste+=Math.min(add,after-need[s])*0.25; }
-          else waste+=add; });
-        const score=gain-waste; if(score>bestScore){ bestScore=score; best=t; } });
-      if(!best||bestScore<=0) break; chosen.push(best.id); const ts=this.turnSizes(best); Object.keys(ts).forEach(s=>cur[s]=(cur[s]||0)+ts[s]); }
-    return chosen; }
-  genBundle(style,i,planQty){ const cat=this.cutTurns(style); if(!cat.length) return {turns:[],sizes:[],qty:{},turn:'',size:'',supply:''}; const t=cat[i%cat.length]; const ts=this.turnSizes(t); const sizes=this.SORDER.filter(s=>ts[s]); const tot=sizes.reduce((a,s)=>a+ts[s],0)||1; const pq=planQty||tot; const qty={}; sizes.forEach(s=>qty[s]=Math.round(pq*ts[s]/tot)); return this.cellFrom(style,[t.id],sizes,this.effQty(sizes,qty,pq)); }
-  initBundle(rows){ const map={}; (rows||[]).slice(0,5).forEach((r,ri)=>{ const cols=this.cutColors(r.style); const col=cols[ri%cols.length]; const days={}; this.DAYS.forEach((d,i)=>{ if(r.days[d]!=null) days[d]=this.genBundle(r.style,i,Number(r.days[d])||0); }); map[r.id]={color:col,days}; }); return map; }
+  // Bo rule sinh san du lieu tuan -- moi o ngay bat dau trong, nhap tay.
+  initBundle(rows){ return {}; }
+  // 3 cot dau van tu dong: chuyen + ma hang tu Ke hoach may, mau cat theo tac nghiep cat
+  autoColor(r,ri){ const cols=this.cutColors(r.style); return cols[ri%cols.length]||''; }
+  // Bundle khoa theo danh tinh on dinh: tuan + chuyen + ma hang.
+  // Truoc day khoa theo r.id, ma psPlanRows cap lai r1..rN cho tung tuan
+  // -> o cua tuan nay hien sang tuan khac, va deo sang ca ma hang khac.
+  bKey(r){ return r?(this.state.week+'|'+this.normName(r.line)+'|'+String(r.style||'')):''; }
+  bKeyOf(id){ return this.bKey(this.getWeek().rows.find(r=>r.id===id)); }
+  bAt(id){ const k=this.bKeyOf(id); return k?this.state.bundle[k]:null; }
+  // Ban luu cu khong co tuan trong khoa -> gan vao dung tuan dang chon, la tuan nguoi dung
+  // dang xem cac o do. Cac ban sao ao o tuan khac bien mat.
+  migrateBundle(old){ if(!old||!Object.keys(old).length) return {};
+    const wk=(this.state.weeks||{})[this.state.week]; const rows=(wk&&wk.rows)||[];
+    const out={}; rows.forEach(r=>{ const v=old[r.id]; if(v) out[this.bKey(r)]=v; }); return out; }
+  bundleColor(r,ri){ const b=this.state.bundle[this.bKey(r)]; return (b&&b.color)||this.autoColor(r,ri); }
+  // 1 bang luot cat cho moi ma hang + mau cat. Cac dong cung scope dung chung 1 bo luot,
+  // moi luot chi duoc cap 1 lan -> quet ca tuan xem luot nao da bi o khac giu.
+  turnScope(style,color){ return this.sKey(style)+'|'+String(color||'').toLowerCase().trim(); }
+
+  // ==== Chon theo TUNG VI TRI SIZE tren so do cat (khong con chon ca luot) ====
+  // key = '<luot>|<size>|<so thu tu>'. 1 lenh cap co the lay vi tri cua nhieu luot khac nhau.
+  posKey(tid,s,k){ return tid+'|'+s+'|'+k; }
+  turnPos(t){ const r=this.parseMarker(t.marker), out=[], ly=Number(t.layers)||0;
+    this.SORDER.forEach(s=>{ const n=Number(r[s])||0;
+      for(let k=1;k<=n;k++) out.push({tid:t.id,s:s,k:k,ly:ly,key:this.posKey(t.id,s,k)}); });
+    return out; }
+  posTq(style,pos){ const cat=this.cutTurns(style), tq={};
+    (pos||[]).forEach(pk=>{ const a=String(pk).split('|'); const t=cat.find(x=>x.id===a[0]); if(!t) return;
+      tq[t.id]=tq[t.id]||{}; tq[t.id][a[1]]=(tq[t.id][a[1]]||0)+(Number(t.layers)||0); });
+    return tq; }
+  posTurns(style,pos){ const tq=this.posTq(style,pos); return this.cutTurns(style).filter(t=>tq[t.id]).map(t=>t.id); }
+  // Ban luu cu chi co 'turns' -> coi nhu o do giu toan bo vi tri cua cac luot da chon
+  cellPos(style,c){ if(!c) return [];
+    if(c.pos) return c.pos;
+    const cat=this.cutTurns(style), out=[];
+    (c.turns||[]).forEach(tid=>{ const t=cat.find(x=>x.id===tid); if(t) this.turnPos(t).forEach(p=>out.push(p.key)); });
+    return out; }
+  usedPos(style,color,skipId,skipDay){ const key=this.turnScope(style,color), used={};
+    this.getWeek().rows.forEach((r,i)=>{ if(this.turnScope(r.style,this.bundleColor(r,i))!==key) return;
+      const b=this.state.bundle[this.bKey(r)]; if(!b||!b.days) return;
+      this.DAYS.forEach(d=>{ if(r.id===skipId&&d===skipDay) return;
+        this.cellPos(style,b.days[d]).forEach(pk=>{ if(!used[pk]) used[pk]={line:this.normName(r.line),day:d}; }); }); });
+    return used; }
+  bformUsedPos(){ const f=this.state.bform; if(!f) return {};
+    const rows=this.getWeek().rows, i=rows.findIndex(r=>r.id===f.id); if(i<0) return {};
+    return this.usedPos(rows[i].style,this.bundleColor(rows[i],i),f.id,f.day); }
+  togglePos(pk){ const f=this.state.bform; if(!f) return;
+    if(!(f.pos||[]).includes(pk)&&this.bformUsedPos()[pk]) return;   // vi tri da cap o o khac
+    this.setState(st=>{ const p=[...((st.bform||{}).pos||[])]; const i=p.indexOf(pk);
+      if(i>=0) p.splice(i,1); else p.push(pk);
+      return {bform:{...st.bform,pos:p}}; }); }
+  // Checkbox tren dong luot cat: chon het vi tri con trong, hoac bo het vi tri cua luot do
+  toggleTurnAll(tid){ const f=this.state.bform; if(!f) return;
+    const r=this.getWeek().rows.find(x=>x.id===f.id); if(!r) return;
+    const t=this.cutTurns(r.style).find(x=>x.id===tid); if(!t) return;
+    const used=this.bformUsedPos();
+    const free=this.turnPos(t).filter(p=>!used[p.key]).map(p=>p.key);
+    const cur=f.pos||[], allOn=free.length>0&&free.every(k=>cur.includes(k));
+    this.setState(st=>{ let p=[...((st.bform||{}).pos||[])];
+      if(allOn) p=p.filter(k=>free.indexOf(k)<0);
+      else free.forEach(k=>{ if(p.indexOf(k)<0) p.push(k); });
+      return {bform:{...st.bform,pos:p}}; }); }
   pickColor(id,color){ const row=this.getWeek().rows.find(r=>r.id===id); if(!row) return;
-    this.setState(s=>{ const prev=s.bundle[id]; const days=(prev&&prev.color)?prev.days:{}; return {bundle:{...s.bundle,[id]:{color,days}}}; }); }
-  setBundleField(id,day,field,val){ this.setState(s=>{ const bundle={...s.bundle}; const b={...(bundle[id]||{color:'',days:{}})}; const days={...b.days}; const cell={...(days[day]||{turn:'',size:'',supply:''})}; cell[field]=val; days[day]=cell; b.days=days; bundle[id]=b; return {bundle}; }); }
-  bundleTotal(id){ const b=this.state.bundle[id]; if(!b||!b.color) return null; let t=0; Object.values(b.days).forEach(c=>{ (String(c.supply||'').match(/\d+/g)||[]).forEach(n=>t+=Number(n)); }); return t; }
-  startBEdit(id,day,field){ this.setState({bedit:{id,day,field},edit:null}); }
+    const k=this.bKeyOf(id); if(!k) return;
+    this.setState(s=>{ const prev=s.bundle[k]; const days=(prev&&prev.color)?prev.days:{}; return {bundle:{...s.bundle,[k]:{color,days}}}; }); }
+  bundleTotal(id){ const b=this.bAt(id); if(!b||!b.days||!Object.keys(b.days).length) return null; let t=0; Object.values(b.days).forEach(c=>{ (String(c.supply||'').match(/\d+/g)||[]).forEach(n=>t+=Number(n)); }); return t; }
   sizesFor(style){ return this.SIZES[this.sKey(style)]||this.SIZES._def; }
-  effQty(sizes,qty,planQty){ const ss=this.SORDER.filter(s=>(sizes||[]).includes(s)); const out={}; if(!ss.length) return out; let sum=0; for(let i=0;i<ss.length-1;i++){ const q=Math.max(0,Number(qty[ss[i]])||0); out[ss[i]]=q; sum+=q; } out[ss[ss.length-1]]=Math.max(0,(planQty||0)-sum); return out; }
-  pruneSizes(sizes,qty,planQty){ let ss=this.SORDER.filter(s=>(sizes||[]).includes(s)); let guard=0; while(guard++<ss.length+1){ const eff=this.effQty(ss,qty,planQty); const keep=ss.filter(s=>(eff[s]||0)>0); if(keep.length===ss.length) break; ss=keep; } return ss; }
-  sizeStatus(prod,need,isSel){ if(!isSel) return {fg:'#9aa093',bg:'transparent'}; if((need||0)<=0) return {fg:'#2f7d32',bg:'#e6f2e2'}; const r=(prod||0)/need; if(r>=1) return {fg:'#2f7d32',bg:'#e6f2e2'}; if(r>=0.5) return {fg:'#946200',bg:'#fbf1d5'}; return {fg:'#c0392b',bg:'#fae7e4'}; }
-  openBForm(id,day){ const row=this.getWeek().rows.find(r=>r.id===id); const b=this.state.bundle[id]; if(!row||!b||!b.color) return;
-    const cell=(b.days&&b.days[day])||{}; let tq, turns;
-    if(cell.tq){ tq=JSON.parse(JSON.stringify(cell.tq)); turns=cell.turns?[...cell.turns]:Object.keys(tq); }
-    else if(cell.turns&&cell.turns.length&&cell.qty){ turns=[...cell.turns]; tq={}; turns.forEach(tid=>tq[tid]={});
-      (cell.sizes||[]).forEach(s=>{ let remain=Number(cell.qty[s])||0; turns.forEach(tid=>{ const {cap,step}=this.turnCap(row.style,tid,s); if(cap<=0||remain<=0) return; const capM=Math.floor(cap/step)*step; let take=Math.round(Math.min(remain,capM)/step)*step; if(take>0){ tq[tid][s]=take; remain-=take; } }); }); }
-    else { tq={}; turns=cell.turns?[...cell.turns]:[]; }
-    this.setState({bform:{id,day,tq,turns},bedit:null,edit:null}); }
-  availFromTurns(style,turns){ return this.sumTurns(turns||[],style); }
+  openBForm(id,day){ const row=this.getWeek().rows.find(r=>r.id===id); if(!row) return;
+    const b=this.bAt(id)||{days:{}};
+    // chot luon khoa luu tai thoi diem mo -> doi tuan giua luc dang mo cung khong ghi lech o
+    this.setState({bform:{id,day,bk:this.bKeyOf(id),pos:this.cellPos(row.style,(b.days&&b.days[day])||null)},bedit:null,edit:null}); }
   turnCap(style,tid,sz){ const t=this.cutTurns(style).find(x=>x.id===tid); if(!t) return {cap:0,step:1}; const r=this.parseMarker(t.marker)[sz]||0; return {cap:r*t.layers,step:t.layers||1}; }
   tqTotals(tq){ const o={}; Object.keys(tq||{}).forEach(tid=>{ const m=tq[tid]||{}; Object.keys(m).forEach(s=>o[s]=(o[s]||0)+(Number(m[s])||0)); }); return o; }
-  toggleTurn(tid){ this.setState(s=>{ const f={...s.bform}; const row=this.getWeek().rows.find(r=>r.id===f.id); const turns=[...(f.turns||[])]; const tq={...(f.tq||{})}; const i=turns.indexOf(tid);
-    if(i>=0){ turns.splice(i,1); delete tq[tid]; }
-    else { turns.push(tid); const t=row?this.cutTurns(row.style).find(x=>x.id===tid):null; const m={};
-      if(t){ const ts=this.turnSizes(t); Object.keys(ts).forEach(sz=>{ const v=Number(ts[sz])||0; if(v>0) m[sz]=v; }); }
-      tq[tid]=m; }
-    return {bform:{...f,turns,tq}}; }); }
   togglePickSize(tid,sz){ this.setState(s=>{ const f={...s.bform}; const row=this.getWeek().rows.find(r=>r.id===f.id); const tq={...(f.tq||{})}; const m={...(tq[tid]||{})}; if(Object.prototype.hasOwnProperty.call(m,sz)) delete m[sz]; else { const {step}=this.turnCap(row.style,tid,sz); m[sz]=step; } tq[tid]=m; return {bform:{...f,tq}}; }); }
   setSizeQty(tid,sz,v){ this.setState(s=>{ const f={...s.bform}; const row=this.getWeek().rows.find(r=>r.id===f.id); const {cap,step}=this.turnCap(row.style,tid,sz); let val=Math.max(0,parseInt(v,10)||0); val=Math.round(val/step)*step; val=Math.min(val,Math.floor(cap/step)*step); const tq={...(f.tq||{})}; tq[tid]={...(tq[tid]||{}),[sz]:val}; return {bform:{...f,tq}}; }); }
   adjSize(tid,sz,dir){ this.setState(s=>{ const f={...s.bform}; const row=this.getWeek().rows.find(r=>r.id===f.id); const {cap,step}=this.turnCap(row.style,tid,sz); const capM=Math.floor(cap/step)*step; const tq={...(f.tq||{})}; const cur=Number((tq[tid]||{})[sz])||0; let val=Math.max(0,Math.min(cur+dir*step,capM)); tq[tid]={...(tq[tid]||{}),[sz]:val}; return {bform:{...f,tq}}; }); }
-  saveBForm(){ const f=this.state.bform; const row=this.getWeek().rows.find(r=>r.id===f.id); const tot=this.tqTotals(f.tq); const sizes=this.SORDER.filter(s=>(tot[s]||0)>0); const cell=this.cellFrom(row.style,f.turns||[],sizes,tot); cell.tq=JSON.parse(JSON.stringify(f.tq||{}));
-    this.setState(s=>{ const bundle={...s.bundle}; const bb={...(bundle[f.id]||{color:'',days:{}})}; const days={...bb.days}; days[f.day]=cell; bb.days=days; bundle[f.id]=bb; return {bundle,bform:null}; }); }
-  clearBForm(){ const f=this.state.bform; this.setState(s=>{ const bundle={...s.bundle}; const bb={...(bundle[f.id]||{days:{}})}; const days={...bb.days}; delete days[f.day]; bb.days=days; bundle[f.id]=bb; return {bundle,bform:null}; }); }
+  // Trang thai cap BTP cua 1 o: ban luu cu khong co truong status -> coi la 'waiting'
+  cellStatus(cell){ const v=cell&&cell.status;
+    return this.STORDER.indexOf(v)>=0?v:'waiting'; }
+  bcellAt(id,day){ const b=this.bAt(id); return (b&&b.days&&b.days[day])||null; }
+  // Nut Received trong modal: luu luon phan dang sua roi doi trang thai (bam lai -> tra ve Waiting)
+  // So sanh theo tap hop -- doi thu tu chon lai cung 1 bo luot cat thi khong tinh la doi
+  turnsKey(a){ return [...(a||[])].sort().join(','); }
+  // Trang thai se duoc luu neu bam Cap nhat ngay bay gio.
+  // Tao moi HOAC doi luot cat -> ve DAU chu ky = 'requested' (STORDER[0]), khong phai
+  // 'waiting'; nhay thang sang waiting la bo mat trang thai dau va lam 1 request vua
+  // tao ra da trong nhu da qua mot buoc xu ly.
+  bformStatus(){ const NEW=this.STORDER[0];
+    const f=this.state.bform; if(!f) return NEW;
+    const prev=this.bcellAt(f.id,f.day); if(!prev) return NEW;
+    const row=this.getWeek().rows.find(r=>r.id===f.id); if(!row) return NEW;
+    if(this.turnsKey(this.cellPos(row.style,prev))!==this.turnsKey(f.pos)) return NEW;
+    return this.cellStatus(prev); }
+  receiveBForm(){ const f=this.state.bform; if(!f) return;
+    const next=this.bformStatus()==='received'?'waiting':'received';
+    this.logReceive(f,next==='waiting');
+    this.saveBForm(next); }
+  // Moi lan bam Received deu ghi 1 dong. undo=true la lan bam tra ve Waiting.
+  logReceive(f,undo){ const rows=this.getWeek().rows; const idx=rows.findIndex(x=>x.id===f.id);
+    const r=rows[idx]; if(!r) return;
+    const tq=this.posTq(r.style,f.pos);
+    const turns=Object.keys(tq).map(t=>({id:t,
+      qty:Object.keys(tq[t]||{}).reduce((a,s)=>a+(Number((tq[t]||{})[s])||0),0)}));
+    const e={ts:Date.now(),line:this.normName(r.line),style:r.style||'\u2014',
+      color:this.bundleColor(r,idx)||'\u2014',turns,undo:!!undo};
+    this.setState(s=>({recvLog:[...(s.recvLog||[]),e]})); }
+  recvTime(ts){ const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+    return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(-2)+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+  recvTurnText(e){ return (e.turns||[]).map(t=>t.id+' - '+this.fmt(t.qty)).join(', ')||'\u2014'; }
+  saveBForm(status){ const f=this.state.bform; const row=this.getWeek().rows.find(r=>r.id===f.id);
+    const tq=this.posTq(row.style,f.pos); const tot=this.tqTotals(tq);
+    const sizes=this.SORDER.filter(s=>(tot[s]||0)>0);
+    const cell=this.cellFrom(row.style,this.posTurns(row.style,f.pos),sizes,tot);
+    cell.tq=tq; cell.pos=[...(f.pos||[])];
+    // tao moi / doi luot cat -> Requested; con lai giu nguyen. Nut Received truyen thang status vao day
+    cell.status=status||this.bformStatus();
+    const k=f.bk||this.bKeyOf(f.id); if(!k){ this.set({bform:null}); return; }
+    this.setState(s=>{ const bundle={...s.bundle}; const bb={...(bundle[k]||{color:'',days:{}})}; const days={...bb.days}; days[f.day]=cell; bb.days=days; bundle[k]=bb; return {bundle,bform:null}; }); }
+  clearBForm(){ const f=this.state.bform; const k=f.bk||this.bKeyOf(f.id); if(!k){ this.set({bform:null}); return; }
+    this.setState(s=>{ const bundle={...s.bundle}; const bb={...(bundle[k]||{days:{}})}; const days={...bb.days}; delete days[f.day]; bb.days=days; bundle[k]=bb; return {bundle,bform:null}; }); }
 
   seed(){
     const D=(vals)=>{ const o={}; this.DAYS.forEach((d,i)=>o[d]=(vals[i]!=null?vals[i]:null)); return o; };
@@ -382,9 +477,6 @@ class Component extends DCLogic {
   weekTotal(key){ return this.grand(this.getWeek(key).rows); }
   parseNums(name){ return (String(name).match(/\d+/g)||[]).map(Number); }
   normName(s){ const nums=(String(s||'').match(/\d+/g)||[]); if(!nums.length) return String(s||'').toUpperCase().replace(/\s+/g,' ').trim(); return 'LINE '+nums.join('+'); }
-  nextFreeLine(){ const used=new Set(); this.getWeek().rows.forEach(r=>this.parseNums(r.line).forEach(n=>used.add(n)));
-    const nums=this.planLineNums(); for(let i=0;i<nums.length;i++) if(!used.has(nums[i])) return nums[i];
-    return null; }
 
   // Ngày của tuần — dùng chung psWeekRange để mọi màn khớp nhau
   weekDates(key){
@@ -398,7 +490,7 @@ class Component extends DCLogic {
 
   // 3 cot dau cua bang Ke hoach may tuan do Ke hoach san xuat quyet dinh (psPlanRows).
   // Sua tay o day se lech voi plan, nen khoa lai -- chi SL theo ngay la nhap tay.
-  PLANCOLS = ['line','brand','style'];
+  PLANCOLS = ['line','brand','style','wa'];   // 'wa' = cot A (TOTAL ORDER CUT) o bang Nhu Cau BTP
   startEdit(id,col){ if(this.PLANCOLS.includes(col)&&this.planColLocked(id,col)) return;
     this._chainBrand=null;
     const empty=(this.getWeek().rows||[]).filter(r=>r.id!==id&&!r.brand&&!r.style&&!this.rowHasData(r)).map(r=>r.id);
@@ -407,7 +499,7 @@ class Component extends DCLogic {
   planColLocked(id,col){ const rows=this.getWeek().rows; const r=rows.find(x=>x.id===id); if(!r) return true;
     return this.PLANCOLS.includes(col); }
   rowHasData(r){ return this.DAYS.some(d=>r.days[d]!=null); }
-  clearRowLinks(id){ this.setState(s=>{ const bundle={...s.bundle}; delete bundle[id]; const wip={...s.wip}; Object.keys(wip).forEach(k=>{ if(k.endsWith('|'+id)) delete wip[k]; }); return {bundle,wip}; }); }
+  clearRowLinks(id){ const bk=this.bKeyOf(id); this.setState(s=>{ const bundle={...s.bundle}; if(bk) delete bundle[bk]; const wip={...s.wip}; Object.keys(wip).forEach(k=>{ if(k.endsWith('|'+id)) delete wip[k]; }); return {bundle,wip}; }); }
   dayTaken(r,d){ const ln=this.normName(r.line); const o=this.getWeek().rows.find(x=>x.id!==r.id&&this.normName(x.line)===ln&&x.days[d]!=null); return o||null; }
   stopEdit(){
     if(this._chainBrand){ const id=this._chainBrand; this._chainBrand=null; this.setState({edit:{id,col:'brand'},bedit:null}); return; }
@@ -415,7 +507,6 @@ class Component extends DCLogic {
     if(empty.length) this.mutateRows(rows=>rows.filter(r=>!empty.includes(r.id)));
     this.setState({edit:null,bedit:null}); }
   mutateRows(fn){ this.setState(s=>{ const weeks={...s.weeks}; const key=s.week; const wk={...(weeks[key]||{rows:[]})}; wk.rows=this.sortPlan(fn(wk.rows)); delete wk.demo; delete wk.auto; weeks[key]=wk; return {weeks}; }); }
-  updateRow(id,patch){ this.mutateRows(rows=>rows.map(r=>r.id===id?{...r,...patch}:r)); }
   setDay(id,day,val){ const v=(val===''||val==null)?null:(Number(val)||0); const r=this.getWeek().rows.find(x=>x.id===id); const ln=r&&this.normName(r.line);
     this.mutateRows(rows=>rows.map(x=>{ if(x.id===id) return {...x,days:{...x.days,[day]:v}};
       if(v!=null&&this.normName(x.line)===ln&&x.days[day]!=null) return {...x,days:{...x.days,[day]:null}};
@@ -432,11 +523,6 @@ class Component extends DCLogic {
     this._psLines=out; return out; }
   planLineNums(){ const s=new Set(); this.psLines().forEach(n=>this.parseNums(n).forEach(x=>s.add(x)));
     const a=Array.from(s).sort((x,y)=>x-y); return a.length?a:Array.from({length:this.MAXL},(_,i)=>i+1); }
-  maxLine(){ const a=this.planLineNums(); return a[a.length-1]; }
-  lineCount(){ const s=new Set(); this.getWeek().rows.forEach(r=>this.parseNums(r.line).forEach(n=>s.add(n))); return s.size; }
-  addRow(){ const nl=this.nextFreeLine(); if(nl==null) return; const line='Line '+nl; const days={}; this.DAYS.forEach(d=>days[d]=null);
-    const id='r'+Date.now(); this.mutateRows(rows=>[...rows,{id,line,brand:'',style:'',days}]); this.setState({edit:{id,col:'line'},bedit:null}); }
-  removeRow(id){ this.mutateRows(rows=>rows.filter(r=>r.id!==id)); }
   addRowSame(line){ const id='r'+Date.now(); const days={}; this.DAYS.forEach(d=>days[d]=null);
     this.mutateRows(rows=>[...rows,{id,line,brand:'',style:'',days}]); this.setState({edit:{id,col:'brand'},bedit:null}); }
   capDays(r){ const key=this.bdKey(r.line,r.brand,r.style); const out=this.DAYS.map(()=>0); let hit=false;
@@ -461,78 +547,73 @@ class Component extends DCLogic {
       i=lend+1; } return info; }
   copyLastWeek(){ const prev=this.prevWeekKey(); if(!prev) return; const src=this.getWeek(prev);
     this.setState(s=>{ const weeks={...s.weeks}; weeks[s.week]={rows:JSON.parse(JSON.stringify(src.rows)).map((r,i)=>({...r,id:'r'+Date.now()+'_'+i}))}; return {weeks}; }); }
-  addFiles(list){ const arr=Array.from(list||[]).map(f=>({name:f.name,size:(Math.max(1,Math.round(f.size/1024)))+' KB'})); if(!arr.length) return; this.setState(s=>({files:[...s.files,...arr],page:'cutting',cutTab:'khc'})); }
   // Tải file ngay tại panel tác nghiệp cắt — không nhảy sang trang khác
   addFilesHere(list){ const arr=Array.from(list||[]).map(f=>({name:f.name,size:(Math.max(1,Math.round(f.size/1024)))+' KB'})); if(!arr.length) return; this.setState(s=>({files:[...s.files,...arr]})); }
-  removeFile(i){ this.setState(s=>({files:s.files.filter((_,idx)=>idx!==i)})); }
   selectWeek(w){ this.setState({week:w,edit:null,bedit:null},()=>{ setTimeout(()=>{ const sc=this.scrollRef.current, el=this.panelRef.current; if(sc&&el){ const top=el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 16; sc.scrollTo({top,behavior:'smooth'}); } },60); }); }
 
   L = {
     vi:{ bcRoot:'Kế hoạch', bcPage:'Kế hoạch may', upload:'Tải tác nghiệp cắt', mes:'Hệ thống điều hành sản xuất',
       pageTitle:'Kế Hoạch May / Lắp Ráp', help:'Trợ giúp',
-      cutBcPage:'Kế hoạch trải/cắt', cutPageTitle:'Kế Hoạch Trải / Cắt',
-      ctab1:'Đơn Đặt Năng Lực Cắt Tuần', ctab2:'Kế Hoạch Cắt Tuần', ctab3:'Tác Nghiệp Cắt',
-      kcTb:'LƯỢT CẮT', kcLy:'SỐ LỚP', kcMarker:'SƠ ĐỒ SIZE — SL / LÁ', kcPcs:'TỔNG PCS', kcTagN:'TEM', kcAux:'VẢI PHỤ — LÓT · MEX · BÔNG · DỰNG', kcAuxN:'VẢI PHỤ',
+      dsoBc:'Sản lượng may hàng ngày', dsoTitle:'Sản Lượng May Hàng Ngày', dsoSoon:'Bảng sẽ được thiết kế ở bước sau — đang chờ spec chi tiết.',
+      dsoOvw:'Tổng hợp theo ngày · chuyền', dsoOvwSub:'Sản lượng hoàn thành và số đã giao sang hoàn thiện',
+      dsoOvwDone:'HOÀN THÀNH', dsoOvwHanded:'ĐÃ GIAO', dsoOvwLeft:'CHƯA GIAO',
+      dsoLines:'Chuyền may', dsoLinesSub:'Bấm 1 chuyền để đếm sản lượng theo size',
+      dsoHist:'Lịch sử hoàn thành theo ngày', dsoHistSub:'Tổng hợp số hàng đã hoàn thành mỗi ngày', dsoHistEmpty:'Chưa ghi sản lượng nào — bấm vào card size ở trên để đếm.',
+      dsoColDay:'NGÀY', dsoColPo:'PO', dsoColColor:'MÀU', dsoColQty:'SỐ LƯỢNG HOÀN THÀNH',
+      dsoAskPh:'Xác nhận tạm — form chuẩn sẽ thay sau', dsoAskOk:'Xác nhận giao',
+      dsoHandOver:'Giao sang hoàn thiện', dsoHanded:'Đã giao', dsoUndoHand:'Bỏ đánh dấu đã giao',
+      dsoOpenLine:'Bấm để xem chi tiết theo size', dsoBack:'← Danh sách chuyền', dsoDoneNeed:'ĐÃ LÀM / CẦN LÀM',
+      dsoTapAdd:'Bấm để ghi kết quả kiểm (ĐẠT / LỖI)', dsoTapSub:'Trủ 1 (bấm nhầm)', dsoNoCut:'Chuyền này chưa có tác nghiệp cắt',
+      dsoTapTitle:'Ghi Kết Quả Kiểm', dsoTapTip:'Bấm ĐẠT để +1 thành phẩm, hoặc LỖI để chọn lý do',
+      dsoPass:'ĐẠT', dsoPassSub:'+1 sản phẩm đã làm', dsoFail:'LỖI', dsoFailSub:'Chọn lý do lỗi',
+      dsoPick:'Chọn Lý Do Lỗi', dsoPickSub:'Bấm 1 dòng để ghi hàng lỗi cho size này', dsoPickBack:'← Quay lại',
+      dsoDefEmpty:'Thư viện lỗi đang trống — vào Cài Đặt · Thư Viện Lỗi để thêm.',
+      dsoDefLogged:'lỗi đã ghi', dsoClose:'Đóng',
+      dfPanel:'Thư Viện Lỗi', dfSub:'Danh mục lỗi dùng khi ghi hàng lỗi ở chuyền may',
+      dfCode:'Mã lỗi', dfName:'Tên lỗi', dfCat:'Nhóm lỗi', dfSev:'Mức độ', dfLoc:'Vị trí lỗi', dfCause:'Nguyên nhân gốc',
+      dfAdd:'Thêm lỗi', dfEmpty:'Chưa có lỗi nào — bấm Thêm lỗi hoặc nhập từ Excel.',
+      dfSearch:'Tìm mã lỗi, tên lỗi, nhóm, vị trí…', dfNoHit:'Không có dòng nào khớp từ khóa',
+      dfImportTip:'Nhập .xlsx/.xls/.csv — cột: Mã lỗi · Tên lỗi · Nhóm lỗi · Mức độ · Vị trí lỗi · Nguyên nhân gốc',
+      dfCount:'lỗi trong thư viện',
+      lsCol1:'CHUYỀN', lsCol2:'STYLE', lsCol3:'CÔNG NHÂN', lsCol4:'GIỜ LÀM', lsCol5:'NGÀY (DD/MM/YYYY)', lsCol6:'SMV', lsCol7:'LOẠI', lsCol8:'%TARGET', lsCol9:'FILE M-LEVEL ĐÃ NHẬP', lsCol10:'HÀNH ĐỘNG',
+      lsEdit:'Sửa', lsDone:'Xong', lsImport:'Nhập file', lsImportTip:'Chọn file M-level (.xlsx/.csv) — lưu trong IndexedDB', lsFileDel:'Xóa file', lsFileErr:'Không lưu được file vào IndexedDB', lsPctTip:'Số nguyên 0–100, không âm, không thập phân', lsTypeTip:'Tự động theo SMV — không sửa tay: SMV > 100 → loại 1, 60 < SMV ≤ 100 → loại 2, SMV ≤ 60 → loại 3',
+      dsotab1:'Cài Đặt', dsotab2:'Sản Xuất', dsotab3:'Cảnh Báo', dsotab4:'M-level', dsosub1:'Cấu Hình Chuyền', dsosub2:'Cấu Hình Loại M-level', dsosub3:'Thư Viện Lỗi',
+      dsoLinePanel:'Cấu Hình Chuyền', dsoLineSub:'Danh sách chuyền may — nhóm chuyền, định mức, ca làm việc',
+      mtPanel:'Loại M-level', mtSub:'Danh mục loại — bấm 1 dòng để xem chi tiết',
+      mtdPanel:'Chi Tiết Loại M-level', mtdSub:'Định mức và thu nhập theo từng bậc',
+      mtName:'Tên', mtDesc:'Mô tả', mtAct:'Hành động', mtNo:'No', mtTgt:'%Target',
+      mtInc:'Thu nhập / 1 người (9.5h)(VND)',
+      mtAdd:'Thêm', mtDel:'Xóa', mtImport:'Nhập file', mtImportTip:'Nhập .xlsx/.xls/.csv — thêm vào cuối danh sách chi tiết',
+      mtImportOk:'Đã nhập', mtImportRows:'dòng', mtImportNone:'Không tìm thấy dòng nào có tên hợp lệ.',
+      mtImportErr:'Không đọc được file.', mtNoXlsx:'Thư viện Excel chưa tải xong — thử lại sau vài giây.',
+      mtEmpty:'Chưa có loại M-level nào', mtdEmpty:'Loại này chưa có dòng chi tiết nào',
+      mtPickType:'Chọn một loại M-level ở bảng bên trái',
+      alEdit:'Sửa', alDone:'Xong', alAdd:'Thêm cảnh báo', alDel:'Xóa cảnh báo', alName:'Tên cảnh báo',
+      alPick:'Chọn âm thanh', alPlay:'Nghe thử', alClrSnd:'Bỏ âm thanh', alHasSnd:'Có âm thanh', alNoSnd:'Chưa có âm thanh',
+      alEmpty:'Chưa có cảnh báo nào — bấm Sửa để thêm', alSndBig:'File âm thanh quá lớn (tối đa 20 MB).', alSndErr:'Không lưu được file âm thanh.',
+      dsoProdPanel:'Sản Lượng May Theo Ngày', dsoProdSub:'Sản lượng thực tế theo chuyền — nhập / theo giờ', dsoAlertPanel:'Cảnh Báo Sản Lượng', dsoAlertSub:'Bấm để phát cảnh báo — âm thanh lưu trên máy này', dsoMlvPanel:'Theo Dõi M-level', dsoMlvSub:'Sản lượng theo loại M-level',
+      kcTb:'LƯỢT CẮT', kcLy:'SỐ LỚP',  kcPcs:'TỔNG PCS', kcTagN:'TEM', kcAux:'VẢI PHỤ — LÓT · MEX · BÔNG · DỰNG', kcAuxN:'VẢI PHỤ',
       kcGb:'GB — ghép bàn (cắt chung vải khác)', kcModal:'TEM QR — LƯỢT', kcPrint:'IN TEM', kcClose:'ĐÓNG', kcLop:'LỚP', kcTem:'TEM',
       kcSrcL:'NGUỒN', kcSrcGen:'DỮ LIỆU MẪU', kcSrcFile:'FILE UPLOAD',
       kcBuyer:'KHÁCH', kcStyleL:'MÃ HÀNG', kcTotal:'TỔNG SL', kcTables:'SỐ LƯỢT CẮT', kcTags:'TEM QR', kcGbS:'GHÉP BÀN',
-      kcHint:'Bấm vào 1 lượt cắt (bàn) để xem & in tem QR theo từng lớp size — VD bàn có M/3 sẽ ra tem M1 · M2 · M3.',
-      capTitle:'Đơn Đặt Năng Lực Cắt Hàng Tuần', capSub:'Weekly Cutting Capacity',
-      capK1:'SẢN LƯỢNG CẮT CẦN', capK1s:'pcs phải cắt trong tuần', capK2:'LƯỢT CẮT ĐẶT', capK2s:'bàn cắt đặt cho xưởng cắt',
-      capK3:'WIP TỒN Ở CẮT', capK3s:'pcs đang nằm tại cắt', capK4:'TỔNG MAY CẦN', capK4s:'pcs BTP các chuyền cần',
-      capLead:'Hàng không in thêu cắt trước 3 ngày · hàng in thêu cắt trước 6 ngày.',
-      capX3:'KHÔNG → WIP 1 ngày ×', capX7:'THÊU → WIP 1 ngày ×', capX7tip:'Số ngày cắt trước — sửa trực tiếp', cStt:'STT', cEmb2:'IN THÊU',
-      gInfo:'ĐƠN HÀNG', gLine2:'CHUYỀN', gWip:'TÌNH TRẠNG WIP CUTTING', gCalc:'TÍNH SẢN LƯỢNG CẮT', gOrder:'ĐẶT NĂNG LỰC CẮT', gPlan:'KẾ HOẠCH MAY TUẦN (nguồn)',
-      cEmb:'THÊU / KHÔNG IN THÊU', cCut:'WIP ĐÃ CẮT', cIss:'ĐÃ CẤP CHUYỀN', cRem:'WIP TỒN CUỐI TUẦN',
-      cWip1:'WIP 1 NGÀY', cAhead:'WIP CẦN CẮT TRƯỚC', cSew:'TỔNG MAY CẦN', cOut:'SẢN LƯỢNG CẮT', cTurns:'LƯỢT CẮT', cPo:'PO',
-      tCut:'Nhập tay — tổng WIP đã cắt', tIss:'Nhập tay — tổng đã cấp cho chuyền', tRem:'WIP tồn = Tổng WIP đã cắt − Tổng đã cấp cho chuyền',
-      tWip1:'SUMIFS ← Nhu Cầu BTP Tuần, cột D “1 NGÀY WIP” · khớp Thương hiệu + Mã hàng + Chuyền',
-      tNoBd:'Chưa có dòng khớp bên Nhu Cầu BTP Tuần — đang dùng số gốc của file',
-      tAhead:'WIP 1 ngày × số ngày cắt trước (đặt ở thanh ngay trên bảng: KHÔNG / THÊU)',
-      tSew:'SUMIFS ← Nhu Cầu BTP Tuần, cột “SỐ LƯỢNG CẦN CẤP” = IF(E+F > A−B; A−B; E+F) · khớp Thương hiệu + Mã hàng + Chuyền',
-      tOut:'Sản lượng cắt = Tổng may cần + Tổng WIP cần cắt trước − WIP tồn',
-      tTurns:'Lấy từ tác nghiệp cắt. Mã bàn cố định theo dòng — kéo đổi thứ tự không đánh số lại (tránh lệnh cấp BTP trỏ sai bàn).',
-      tStt:'Ấn giữ dòng để nhấc lên, kéo lên/xuống để đổi thứ tự cắt — mã bàn giữ nguyên theo dòng', dragHint:'Ấn giữ dòng rồi kéo để đổi thứ tự cắt',
-      renumber:'Xếp lại lượt cắt', renumberTip:'Chạy lại thuật toán: lấy lượt cắt từ trên xuống, mỗi chuyền lấy đủ lượt để phủ Sản lượng cắt rồi mới sang chuyền tiếp theo.',
-      tCover:'Tổng sản lượng của các lượt cắt (lấy từ tác nghiệp cắt) phải ≥ Sản lượng cắt của dòng.',
-      tPo:'Lấy từ tác nghiệp cắt — theo lượt cắt của dòng', tDay:'SUMIFS ← Kế Hoạch May tuần này · khớp Thương hiệu + Mã hàng + Chuyền',
-      tEmb:'Bật/tắt THÊU — tính lại số ngày cắt trước', tTotTurns:'Đếm mã bàn cắt trong cột LƯỢT CẮT, bỏ ô trống và "Out of order"',
-      capOoo:'Ngừng cắt', capAddTurn:'+ lượt cắt',
-      lgMan:'Nhập tay', lgPull:'Lấy từ Nhu Cầu BTP / Kế Hoạch May', lgCalc:'Tự tính',
-      cutPlanTitle:'Kế Hoạch Cắt Tuần', cutPlanSub:'Weekly Cutting Schedule',
-      cpStyle:'Mã hàng', cpTurn:'Lượt cắt', cpQty:'SL cắt', cpSummary:'TỔNG TUẦN',
-      cpR1:'Style', cpR2:'PO', cpR3:'Cutting turn', cpR4:'Total quantity',
-      cpOrdered:'LƯỢT ĐÃ ĐẶT', cpSched:'LƯỢT ĐÃ XẾP LỊCH', cpLeftHint:'Lượt đã đặt lấy từ cột LƯỢT CẮT ở tab Đơn Đặt Năng Lực Cắt; phần chưa xếp lịch sẽ được xếp ngày ở bước sau.',
-      capExportTip:'Xuất 1 file .xlsx gồm 2 sheet',
-      dpTitle:'Kế Hoạch Cắt Ngày', dpSub:'Daily Cutting Plan', dpHeadHint:'Bấm vào cột ngày để mở kế hoạch cắt của ngày đó',
-      dpMc:'MÁY CẮT', dpTb:'BÀN TRẢI', dpSeq:'TT CẮT', dpStylePo:'MÃ HÀNG & PO', dpFab:'FABRIC ITEM', dpLay:'LƯỢT CẮT',
-      dpAdd:'Xếp lịch cắt', dpJobs:'LỆNH CẮT', dpMach:'MÁY SỬ DỤNG',
-      dpDup:'Trùng thứ tự cắt trên cùng máy / bàn', dpDupShort:'Trùng!',
-      dpPick:'Chọn mã hàng — PO…', dpPickTurn:'Chọn lượt…', dpHand:'Cắt tay',
-      dpMap:'Máy A → Bàn 1·2 · Máy B → Bàn 3·4 · Máy C → Bàn 5·6 · Cắt tay → mọi bàn',
-      dpSeqTip:'Nhập tay — thứ tự cắt, không được trùng trên cùng máy/bàn',
-      dpFabTip:'Tự điền từ tác nghiệp cắt — ô Tổng của mã hàng', dpLayTip:'Chọn lượt cắt của mã hàng — lấy từ tác nghiệp cắt', dpTot:'Tổng',
-      dpDel:'Xóa lệnh cắt', dpClose:'Đóng', dpMcOpt:'Máy', dpTbOpt:'Bàn',
-      dpNote:'TT CẮT nhập tay · MÃ HÀNG & PO + LƯỢT CẮT chọn từ tác nghiệp cắt · FABRIC ITEM tự điền theo mã hàng',
-      cpNoJobs:'Chưa có lượt cắt trong ngày này', cpTurnU:'lượt',
-      cpThis:'TUẦN NÀY', cpNext:'TUẦN TỚI', cpPast:'ĐÃ QUA', cpLines:'CHUYỀN ĐANG HOẠT ĐỘNG', cpTbU:'bàn', cpStyleU:'mã',
+       lgPull:'Lấy từ Nhu Cầu BTP / Kế Hoạch May',
+        dpMcOpt:'Máy', dpTbOpt:'Bàn',
+       cpTurnU:'lượt',
       psBc:'Kế hoạch sản xuất', psTitle:'Kế Hoạch Sản Xuất',
-      psK1:'ĐƠN HÀNG', psK1s:'đơn trong kế hoạch', psK2:'TỔNG SẢN LƯỢNG', psK2s:'pcs theo kế hoạch',
-      psK3:'CHUYỀN CÓ ĐƠN', psK3s:'nội bộ + gia công ngoài', psK4:'KHOẢNG THỜI GIAN', psK4s:'theo file kế hoạch',
+      psK1:'ĐƠN HÀNG',  psK2:'TỔNG SẢN LƯỢNG',
+      psK3:'CHUYỀN CÓ ĐƠN',  psK4:'KHOẢNG THỜI GIAN',
       psLine:'CHUYỀN', psIn:'NỘI BỘ', psSub:'GIA CÔNG NGOÀI', psOrdU:'đơn', psToday:'HÔM NAY', psGoToday:'Về hôm nay',
-      psZa:'Gọn', psZb:'Vừa', psZc:'Rộng', psLegIn:'Có tác nghiệp cắt',
+      psZa:'Gọn', psZb:'Vừa', psZc:'Rộng',
       psLanes:'làn',
       planFromPs:'Chuyền & mã hàng đồng bộ từ Kế hoạch sản xuất. Cần thêm dòng cho chuyền (đơn giao nhau / làm trùng) thì bấm dấu + ở ô chuyền.',
       kcPiece:'VỊ TRÍ CẮT (PIECE)',
-      psHint:'Bấm vào một đơn hàng trên biểu đồ để mở tác nghiệp cắt của đơn đó.',
-      psCut:'TỶ LỆ CẮT VẢI THEO MẪU THIẾT KẾ', psUpload:'Tải tác nghiệp cắt cho đơn này', psClose:'Đóng',
+       psUpload:'Tải tác nghiệp cắt cho đơn này', psClose:'Đóng',
       psMaster:'ĐƠN GỐC — MASTER ORDER', psOrderL:'ĐƠN HÀNG', psRatioL:'TỶ LỆ CẮT THEO MÃ', psMatL:'DANH MỤC VẢI', psStartL:'BẮT ĐẦU', psEndL:'KẾT THÚC', psDateHint:'Sửa được — thanh Gantt chạy theo',
       psDelOrd:'Xóa đơn', psRestore:'Đã xóa — bấm để hoàn tác', psTrash:'Thùng rác', psUndoTip:'Xóa đơn — hoàn tác bằng Ctrl+Z hoặc thùng rác', psUndo:'Hoàn tác',
       psUpPlan:'Tải kế hoạch sản xuất', psAddLine:'Chuyền', psAddLineTip:'Thêm chuyền vào kế hoạch sản xuất', psDelLineTip:'Xóa chuyền trống này', psAddTip:'Thêm đơn / tác nghiệp cắt cho chuyền này', psAddTitle:'Thêm tác nghiệp cắt',
       psFStyle:'MÃ HÀNG', psFBrand:'THƯƠNG HIỆU', psFPo:'PO', psFQty:'SỐ LƯỢNG (pcs)', psFStart:'NGÀY BẮT ĐẦU', psFEnd:'NGÀY KẾT THÚC', psFFile:'FILE TÁC NGHIỆP CẮT (.xlsx)',
       psPick:'Chọn file…', psSave:'Lưu đơn', psCancel:'Hủy', psQty:'SẢN LƯỢNG', psCutD:'NGÀY CẮT', psEx:'NGÀY XUẤT (EX)',
       psModeFile:'Chọn file', psModeMan:'Nhập tay',
-      psManHint:'Nhập bàn cắt như trong tác nghiệp cắt — mã bàn, số lớp, số lá theo từng size. Số lượng của đơn tính từ bảng này.',
       psManSz:'CHỌN SIZE', psManAdd:'+ Thêm bàn', psManDel:'Xóa bàn', psManTitle:'TÁC NGHIỆP CẮT — NHẬP TAY', psManTot:'TỔNG',
       psManCp:'MÃ MÀU / PO', psManAddCp:'+ mã màu', psManDelCp:'Xóa mã màu', psManColorPh:'mã màu', psManPoPh:'PO',
       psManCpHint:'Mỗi lượt cắt phải có mã màu — 1 lượt có thể ghép tối đa 2 mã màu, mỗi mã màu 1 PO riêng.',
@@ -541,27 +622,9 @@ class Component extends DCLogic {
       cfFrom:'Đã cập nhật theo file kế hoạch',
       resetSaved:'Đặt lại', resetTip:'Xóa dữ liệu đã lưu trên máy này và tải lại trang', resetAsk:'Xóa toàn bộ thay đổi đã lưu và tải lại trang?',
       kcSumCut:'Σ ĐÃ XẾP', kcNeedRow:'NHU CẦU',
-      psNoCut:'Đơn gia công ngoài — tác nghiệp cắt do nhà máy gia công lập, không có bàn cắt nội bộ.',
-      psRaw:'DÒNG GỐC TRONG FILE', psSrc:'Nguồn dữ liệu', psCombine:'GHÉP',
-      psSum:'BẢNG TỔNG THEO MÀU', psSumC:'MÀU / VẢI', psSumPo:'PO', psSumSt:'MÃ HÀNG', psSumQ:'SỐ LƯỢNG', psSumT:'LƯỢT CẮT', psSumTot:'TỔNG',
+      psRaw:'DÒNG GỐC TRONG FILE',  psCombine:'GHÉP',
+      psSum:'BẢNG TỔNG THEO MÀU', psSumC:'MÀU / VẢI',   psSumQ:'SỐ LƯỢNG', psSumT:'LƯỢT CẮT', psSumTot:'TỔNG',
       psNoPlan:'Chưa có tác nghiệp cắt cho đơn này — tải file KH cắt (.xlsx) để nạp bàn cắt & tem QR.',
-      frBc:'Kế hoạch cấp vải tuần', frTitle:'Kế Hoạch Cấp Vải Tuần', frPanel:'Lệnh Cấp Vải Theo Ngày',
-      frSub:'Lấy từ kế hoạch cắt — một ngày có thể cấp cho nhiều lượt cắt',
-      frCut:'NGÀY CẮT', frTurn:'LƯỢT CẮT', frStyle:'MÃ HÀNG', frPo:'PO', frColor:'MÀU VẢI', frItem:'ITEM VẢI', frTypeC:'LOẠI VẢI', frNeed:'SỐ YARD CẦN CẤP', frSt:'TRẠNG THÁI',
-      frHand:'nhập tay', frAuto:'tự điền', frAdd:'Thêm lượt cấp', frPick:'— Chọn lượt cắt —', frSched:'ĐÃ XẾP LỊCH CẮT', frOrd:'ĐÃ ĐẶT — CHƯA XẾP LỊCH',
-      frEmpty:'Chưa có lượt cấp vải trong ngày này', frDel:'Xóa dòng cấp vải', frWait:'CHỜ CẤP', frDone:'ĐỦ',
-      frNote:'LƯỢT CẮT sổ xuống chọn từ kế hoạch cắt · MÃ HÀNG · PO · MÀU · ITEM · LOẠI VẢI tự điền theo lượt cắt · SỐ YARD CẦN CẤP điền tay · TRẠNG THÁI lấy từ Kế Hoạch Làm Việc Kho',
-      frK1:'LƯỢT CẤP VẢI', frK1s:'lượt cắt trong tuần', frK2:'TỔNG CẦN CẤP', frK2s:'yard', frK3:'ĐÃ CẤP', frK3s:'yard đã quét', frK4:'CÒN THIẾU', frK4s:'yard',
-      whBc:'Kế hoạch làm việc kho', whTitle:'Kế Hoạch Làm Việc Kho', whPanel:'Cấp Vải Theo Cây — Quét QR',
-      whSub:'Lấy từ Kế Hoạch Cấp Vải Tuần — 3 cột cuối sinh ra từ quét tem QR trên cây vải',
-      whReal:'SỐ YARD THỰC CẤP', whLotC:'LOT VẢI', whRollC:'SỐ CÂY', whScan:'QUÉT QR', whScanS:'Quét',
-      whStockB:'XEM KHO VẢI', whStockT:'KHO VẢI', whNeedL:'CẦN CẤP', whGotL:'ĐÃ QUÉT', whShortL:'CÒN THIẾU', whOverL:'CẤP THÊM',
-      whRollU:'cây', whLotU:'lot', whAvail:'CÒN', whOut:'ĐÃ XUẤT', whMine:'ĐÃ QUÉT', whRollN:'CÂY', whBin:'VỊ TRÍ',
-      whAutoB:'Quét tự động đến khi đủ', whInput:'Quét tem QR trên cây vải…', whErrM:'Không tìm thấy cây vải, hoặc cây đã xuất',
-      whHint:'Bấm vào cây vải để quét — mỗi cây một tem QR có đủ số Y và số Lot',
-      whEmpty:'Chưa có dòng nào từ Kế Hoạch Cấp Vải Tuần', whTotR:'TỔNG TUẦN',
-      whNote:'SỐ YARD THỰC CẤP · LOT VẢI · SỐ CÂY sinh ra từ quét QR — mỗi cây rút ra là một dòng bên dưới',
-      whK1:'DÒNG CẤP VẢI', whK1s:'dòng trong tuần', whK2:'Y CẦN CẤP', whK2s:'yard', whK3:'Y THỰC CẤP', whK3s:'yard đã quét', whK4:'SỐ CÂY ĐÃ RÚT', whK4s:'cây vải',
       dashBc:'Dashboard sản xuất', dashTitle:'Dashboard Sản Xuất',
       dashK1:'KH MAY TUẦN', dashK1s:'pcs kế hoạch tuần', dashK2:'SL CẮT CẦN', dashK2s:'pcs phải cắt tuần',
       dashK3:'LƯỢT CẮT', dashK3s:'đã xếp / đã đặt', dashK4:'HOÀN THÀNH MAY', dashK4s:'% so với kế hoạch tuần',
@@ -572,94 +635,93 @@ class Component extends DCLogic {
       activeRows:'Dòng có dữ liệu', rowsN:'Số dòng', linesN:'Số chuyền', totalQty:'Tổng SL',
       planEmpty:'Tuần này chưa có dòng nào. Chép tuần trước hoặc thêm chuyền bên dưới.', addLine:'Thêm chuyền',
       colLine:'CHUYỀN', colBrand:'THƯƠNG HIỆU', colStyle:'MÃ HÀNG', colTotal:'TỔNG',
-      addBrand:'+ Thương hiệu', addStyle:'+ Mã hàng', addLineCell:'+ Chuyền',
+      addBrand:'+ Thương hiệu', addStyle:'+ Mã hàng',
       tipLine:'Bấm để sửa / xóa chuyền', tipPlanCol:'Lấy từ Kế hoạch sản xuất — sửa ở trang Kế hoạch sản xuất', tipBrand:'Chọn thương hiệu', tipStyle:'Chọn mã hàng', tipDay:'Bấm để nhập số', tipDelLine:'Xóa chuyền',
       phLine:'Chuyền…', phBrand:'Thương hiệu…', phStyle:'Mã hàng…', phStyleFirst:'Chọn thương hiệu trước',
       confirmDel:'Chuyền này đang có dữ liệu — xóa toàn bộ dòng của chuyền?',
       maxLines:'Chuyền này không có trong Kế hoạch sản xuất', dayConflict:'Ngày này đang có mã khác chạy — nhập vào đây sẽ xóa số của mã kia (1 chuyền 1 mã/ngày)',
       tipRepick:'Chọn lại — số liệu ngày của dòng này sẽ bị xóa',
-      addStyleRow:'Thêm mã thứ 2 cho chuyền này trong tuần — không cần tạo lại chuyền', addStyleRowS:'+ Mã',
+      addStyleRow:'Thêm mã thứ 2 cho chuyền này trong tuần — không cần tạo lại chuyền',
       lineMergeErr:'Chỉ được gộp 2 chuyền liền kề — VD Line 1+2. Không gộp chuyền cách nhau (Line 1+3) hoặc 3 chuyền trở lên.',
       lineDupErr:'Không gộp được: chuyền này đang có dòng riêng trong bảng — xóa hoặc đổi tên dòng đó trước.',
       demandTitle:'Nhu Cầu Sản Lượng Cắt Hàng Tuần', demandSub:'Weekly Cutting Bundle Demand', factory:'NHÀ MÁY',
       grpWip:'TÌNH TRẠNG WIP', grpNext:'NHU CẦU TUẦN TIẾP THEO',
-      dA:'TỔNG CẮT CỦA ĐƠN', dB:'TỔNG WIP ĐÃ CẤP', dC:'OUTPUT RA CHUYỀN', dBC:'WIP TỒN CUỐI TUẦN', dD:'1 NGÀY WIP', dE:'WIP CẦN GỐI', dF:'SL DỰ KIẾN TUẦN SAU', dNeed:'SỐ LƯỢNG CẦN CẤP', remark:'GHI CHÚ', addNote:'+ ghi chú',
-      tipA:'Tổng yêu cầu cắt — lấy từ tác nghiệp cắt (khớp thương hiệu + mã hàng)', tipB:'Tổng WIP đã cấp — nhập tay', tipC:'Tổng output ra chuyền — nhập tay', tipD:'Sản lượng 1 ngày WIP — nhập tay',
+      dA:'TỔNG CẮT CỦA ĐƠN', dB:'TỔNG WIP ĐÃ CẤP', dC:'OUTPUT RA CHUYỀN', dBC:'WIP TỒN CUỐI TUẦN', dD:'1 NGÀY WIP', dE:'WIP CẦN GỐI', dF:'SL DỰ KIẾN TUẦN SAU', dNeed:'SỐ LƯỢNG CẦN CẤP', remark:'GHI CHÚ',
+      tipA:'Tổng yêu cầu cắt — lấy từ tác nghiệp cắt (khớp thương hiệu + mã hàng), không sửa ở đây', tipB:'Tổng WIP đã cấp — nhập tay', tipC:'Tổng output ra chuyền — nhập tay', tipD:'Sản lượng 1 ngày WIP — nhập tay',
       tipManual:'Nhập tay — bấm để sửa', tipBC:'B − C', tipE:'E = MAX(0, D − B + C). Nếu tồn > 1 ngày WIP thì không cần cấp gối.',
-      tipF:'SUMIFS từ Kế Hoạch May tuần này — khớp chuyền + thương hiệu + mã hàng', tipFEst:'Kế Hoạch May chưa có dòng khớp chuyền + thương hiệu + mã hàng', tipNeed:'IF(E+F > A−B, A−B, E+F)', tipNote:'Bấm để ghi chú',
+      tipF:'SUMIFS từ Kế Hoạch May tuần này — khớp chuyền + thương hiệu + mã hàng', tipFEst:'Kế Hoạch May chưa có dòng khớp chuyền + thương hiệu + mã hàng', tipNeed:'IF(E+F > A−B, A−B, E+F)',
       demandEmpty:'Tuần này chưa có chuyền nào trong Kế Hoạch May.',
-      reqSub:'Lệnh Cấp BTP Cắt Theo Tuần', reqNote:'Chuyền & mã hàng đồng bộ từ Kế Hoạch May. Chọn màu (từ tác nghiệp cắt) để mở các ô của dòng.',
-      colColor:'MÀU CẮT', pickColor:'Chọn màu…', pickColorFirst:'chọn màu trước', issue:'Cấp BTP', planShort:'KH ', tipIssue:'Cấp BTP cho ô này', tipIssueEdit:'Sửa cấp BTP',
+      reqSub:'Lệnh Cấp BTP Cắt Theo Tuần',
+      colColor:'MÀU CẮT', recvTitle:'Lịch sử nhận bán thành phẩm', recvSub:'Mọi lần bấm Received đều được ghi lại', recvEmpty:'Chưa có lượt nhận nào', recvDT:'THỜI ĐIỂM', recvTurn:'LƯỢT CẮT', recvRows:'lượt', recvUndo:'Hủy nhận', colReqPlan:'ĐÃ CẤP / DEMAND', tipReqPlan:'Số lượng đã lên đơn yêu cầu / Số lượng demand trên kế hoạch', tipAutoCol:'Tự động theo tác nghiệp cắt — không sửa ở đây', pickColor:'Chọn màu…', pickColorFirst:'chọn màu trước', issue:'Cấp BTP', planShort:'KH ', tipIssue:'Cấp BTP cho ô này', tipIssueEdit:'Sửa cấp BTP',
       mTitle:'Cấp BTP theo bàn', mColor:'MÀU CẮT', mPlan:'KẾ HOẠCH (pcs)',
-      mStep1:'Chọn lượt cắt (bàn)', mStep1Hint:'có thể chọn nhiều', mStep2:'Chọn size & số lượng cần', mStep2Hint:'mỗi bước = 1 lớp lá · tối đa = số mẫu × lớp',
-      mTurn:'LƯỢT CẮT / BÀN', mCuttable:'TỔNG CẮT ĐƯỢC', mBySize:'TỔNG THEO SIZE', mNeeded:'Cần cấp', mCuttable2:'Cắt được',
-      mNoTurn:'Chọn ít nhất một lượt cắt ở bước 1 để nhập số lượng theo size.',
-      mClear:'Xóa ô', mCancel:'Hủy', mSave:'Lưu cấp BTP', mUpdate:'Cập nhật', mIssue:'Cấp', mNoTurnSel:'Chưa chọn lượt cắt', mTurns:'lượt', mSizes:'size', ply:'lá', plies:'lớp lá', left:'còn ' },
+       cCutTurn:'Lượt cắt:', mIssueRow:'ĐANG CẤP', mPickPos:'Bấm để chọn / bỏ cỡ này',   mBySize:'TỔNG THEO SIZE', mNeeded:'Cần cấp', mCuttable2:'Cắt được',
+      mClear:'Xóa ô', mCancel:'Hủy', mSave:'Lưu cấp BTP', mUpdate:'Cập nhật', mIssue:'Cấp', mNoTurnSel:'Chưa chọn lượt cắt', mTurns:'lượt', mSizes:'size',  plies:'lớp lá', left:'còn ',
+      stRequested:'Đã yêu cầu', stWaiting:'Chờ nhận', stReceived:'Đã nhận', stCycleTip:'Bấm để đổi trạng thái: Đã yêu cầu → Chờ nhận → Đã nhận', mReceived:'Đã nhận',
+      mTurnPool:'Bảng lượt cắt dùng chung cho mã hàng + màu cắt này — mỗi lượt chỉ cấp được 1 lần trong tuần',
+      mTakenTip:'Lượt này đã cấp ở ô khác — bỏ ở đó trước nếu muốn dùng lại',
+      tipReceive:'Lưu ô này và đánh dấu đã nhận BTP', tipUnreceive:'Đã nhận — bấm để trả về Chờ nhận' },
     en:{ bcRoot:'Planning', bcPage:'Sewing Schedule', upload:'Upload cutting order', mes:'Manufacturing Execution System',
       pageTitle:'Sewing / Assemble Schedule', help:'Help',
-      cutBcPage:'Spreading / Cutting Schedule', cutPageTitle:'Spreading / Cutting Schedule',
-      ctab1:'Weekly Cutting Capacity', ctab2:'Weekly Cutting Schedule', ctab3:'Cutting Plan',
-      kcTb:'CUT TURN', kcLy:'LAYERS', kcMarker:'SIZE MARKER — QTY / PLY', kcPcs:'TOTAL PCS', kcTagN:'TAGS', kcAux:'AUX MATERIALS — LINING · MEX · QUILT · FUSIBLE', kcAuxN:'AUX CUTS',
+      dsoBc:'Daily Sewing Output', dsoTitle:'Daily Sewing Output', dsoSoon:'Table to be designed next — spec pending.',
+      dsoOvw:'Summary by day · line', dsoOvwSub:'Completed output and how much was handed over to finishing',
+      dsoOvwDone:'COMPLETED', dsoOvwHanded:'HANDED OVER', dsoOvwLeft:'NOT HANDED',
+      dsoLines:'Sewing lines', dsoLinesSub:'Tap a line to count output by size',
+      dsoHist:'Daily completion history', dsoHistSub:'Completed pieces aggregated per day', dsoHistEmpty:'No output recorded yet — tap a size card above to count.',
+      dsoColDay:'DATE', dsoColPo:'PO', dsoColColor:'COLOUR', dsoColQty:'COMPLETED QTY',
+      dsoAskPh:'Placeholder confirm — the real form comes later', dsoAskOk:'Confirm hand-over',
+      dsoHandOver:'Hand over to finishing', dsoHanded:'Handed over', dsoUndoHand:'Undo hand-over',
+      dsoOpenLine:'Open size detail', dsoBack:'← All lines', dsoDoneNeed:'DONE / REQUIRED',
+      dsoTapAdd:'Tap to record inspection (PASS / FAIL)', dsoTapSub:'Subtract 1 (mis-tap)', dsoNoCut:'No cutting plan for this line yet',
+      dsoTapTitle:'Record Inspection', dsoTapTip:'Tap PASS to add 1 finished piece, or FAIL to pick a reason',
+      dsoPass:'PASS', dsoPassSub:'+1 piece done', dsoFail:'FAIL', dsoFailSub:'Pick a defect reason',
+      dsoPick:'Select Defect Reason', dsoPickSub:'Tap a row to log the failed piece for this size', dsoPickBack:'← Back',
+      dsoDefEmpty:'Defect library is empty — add rows in Settings · Defect Library.',
+      dsoDefLogged:'defects logged', dsoClose:'Close',
+      dfPanel:'Defect Library', dfSub:'Defect master used when logging failed pieces on the sewing line',
+      dfCode:'Defect Code', dfName:'Defect Name', dfCat:'Category', dfSev:'Severity', dfLoc:'Defect Location', dfCause:'Root Cause',
+      dfAdd:'Add defect', dfEmpty:'No defect yet — add one or import from Excel.',
+      dfSearch:'Search code, name, category, location…', dfNoHit:'No row matches the search',
+      dfImportTip:'Import .xlsx/.xls/.csv — columns: Defect Code · Defect Name · Category · Severity · Defect Location · Root Cause',
+      dfCount:'defects in library',
+      lsCol1:'LINE', lsCol2:'STYLE', lsCol3:'WORKERS', lsCol4:'WORK HOURS', lsCol5:'DATE (DD/MM/YYYY)', lsCol6:'SMV', lsCol7:'TYPE', lsCol8:'%TARGET', lsCol9:'M-LEVEL FILE IMPORTED', lsCol10:'ACTIONS',
+      lsEdit:'Edit', lsDone:'Done', lsImport:'Import file', lsImportTip:'Pick an M-level file (.xlsx/.csv) — stored in IndexedDB', lsFileDel:'Remove file', lsFileErr:'Could not store the file in IndexedDB', lsPctTip:'Whole number 0–100, no negatives, no decimals', lsTypeTip:'Derived from SMV — not editable: SMV > 100 → type 1, 60 < SMV ≤ 100 → type 2, SMV ≤ 60 → type 3',
+      dsotab1:'Settings', dsotab2:'Production', dsotab3:'Alerts', dsotab4:'M-level', dsosub1:'Line Setting', dsosub2:'M-level Type Setting', dsosub3:'Defect Library',
+      dsoLinePanel:'Line Setting', dsoLineSub:'Sewing line master — line group, target, shift',
+      mtPanel:'M-level Type', mtSub:'Type master — click a row to see its detail',
+      mtdPanel:'M-level Type Detail', mtdSub:'Target and income per step',
+      mtName:'Name', mtDesc:'Description', mtAct:'Action', mtNo:'No', mtTgt:'%Target',
+      mtInc:'Income / person (9.5h)(VND)',
+      mtAdd:'Add', mtDel:'Delete', mtImport:'Import', mtImportTip:'Import .xlsx/.xls/.csv — appended to the detail list',
+      mtImportOk:'Imported', mtImportRows:'rows', mtImportNone:'No row with a usable name was found.',
+      mtImportErr:'Could not read the file.', mtNoXlsx:'Excel library still loading — try again in a moment.',
+      mtEmpty:'No M-level type yet', mtdEmpty:'This type has no detail rows yet',
+      mtPickType:'Pick an M-level type on the left',
+      alEdit:'Edit', alDone:'Done', alAdd:'Add alert', alDel:'Delete alert', alName:'Alert name',
+      alPick:'Pick sound', alPlay:'Preview', alClrSnd:'Remove sound', alHasSnd:'Sound set', alNoSnd:'No sound yet',
+      alEmpty:'No alerts yet — press Edit to add', alSndBig:'Sound file too large (20 MB max).', alSndErr:'Could not save the sound file.',
+      dsoProdPanel:'Daily Sewing Output', dsoProdSub:'Actual output by line — entry / hourly', dsoAlertPanel:'Output Alerts', dsoAlertSub:'Tap to sound an alert — audio stored on this machine', dsoMlvPanel:'M-level Tracking', dsoMlvSub:'Output by M-level type',
+      kcTb:'CUT TURN', kcLy:'LAYERS',  kcPcs:'TOTAL PCS', kcTagN:'TAGS', kcAux:'AUX MATERIALS — LINING · MEX · QUILT · FUSIBLE', kcAuxN:'AUX CUTS',
       kcGb:'GB — combined table (plied with another fabric)', kcModal:'QR TAGS — TURN', kcPrint:'PRINT TAGS', kcClose:'CLOSE', kcLop:'LAYERS', kcTem:'TAGS',
       kcSrcL:'SOURCE', kcSrcGen:'SEEDED', kcSrcFile:'UPLOADED',
       kcBuyer:'BUYER', kcStyleL:'STYLE', kcTotal:'TOTAL QTY', kcTables:'CUT TURNS', kcTags:'QR TAGS', kcGbS:'COMBINED',
-      kcHint:'Click a cut turn (table) to view & print per-size QR tags — e.g. M/3 yields tags M1 · M2 · M3.',
-      capTitle:'Weekly Cutting Capacity', capSub:'Đơn Đặt Năng Lực Cắt Hàng Tuần',
-      capK1:'CUTTING OUTPUT NEEDED', capK1s:'pcs to cut this week', capK2:'CUT TURNS ORDERED', capK2s:'cutting tables ordered',
-      capK3:'WIP HELD AT CUTTING', capK3s:'pcs sitting in cutting', capK4:'TOTAL SEWING NEED', capK4s:'pcs of bundles lines need',
-      capLead:'Plain styles are cut 3 days ahead · embroidered styles 6 days ahead.',
-      capX3:'PLAIN → 1-day WIP ×', capX7:'EMBROIDERED → 1-day WIP ×', capX7tip:'Cut-ahead days — editable', cStt:'#', cEmb2:'EMB.',
-      gInfo:'ORDER', gLine2:'LINE', gWip:'CUTTING WIP STATUS', gCalc:'CUTTING OUTPUT CALC', gOrder:'CAPACITY ORDER', gPlan:'WEEKLY SEWING SCHEDULE (source)',
-      cEmb:'EMBROIDERY / PLAIN', cCut:'WIP CUT', cIss:'ISSUED TO LINE', cRem:'WIP LEFT AT WEEK END',
-      cWip1:'1 DAY WIP', cAhead:'WIP TO CUT AHEAD', cSew:'SEWING NEED', cOut:'CUTTING OUTPUT', cTurns:'CUT TURNS', cPo:'PO',
-      tCut:'Manual — total WIP already cut', tIss:'Manual — total already issued to the line', tRem:'WIP left = Total WIP cut − Total issued to line',
-      tWip1:'SUMIFS ← Weekly Cutting Bundle Demand, column D “1 DAY WIP” · match Brand + Style + Line',
-      tNoBd:'No matching row in Weekly Cutting Bundle Demand — showing the file\'s original figure',
-      tAhead:'1-day WIP × cut-ahead days (set on the bar just above the table: PLAIN / EMBROIDERED)',
-      tSew:'SUMIFS ← Weekly Cutting Bundle Demand, “QTY TO SUPPLY” = IF(E+F > A−B, A−B, E+F) · match Brand + Style + Line',
-      tOut:'Cutting output = Total sewing need + WIP to cut ahead − WIP left',
-      tTurns:'Taken from the cutting operation list. Board codes stay with their row — dragging never renumbers (so bundle requests keep pointing at the right board).',
-      tStt:'Press and hold a row to lift it, drag up/down to change the cutting order — board codes stay with the row', dragHint:'Press and hold a row, then drag to reorder',
-      renumber:'Re-allocate turns', renumberTip:'Re-run the allocation: take cut turns top to bottom, filling each line until its cutting output is covered before moving to the next.',
-      tCover:'The turns assigned (quantities from the cutting operation) must add up to at least the row cutting output.',
-      tPo:'From the cutting operation — by the row\'s cut turns', tDay:'SUMIFS ← this week Sewing Schedule · match Brand + Style + Line',
-      tEmb:'Toggle EMBROIDERED — recalculates the cut-ahead days', tTotTurns:'Counts cut table codes in CUT TURNS, skipping blanks and "Out of order"',
-      capOoo:'Out of order', capAddTurn:'+ cut turn',
-      lgMan:'Manual entry', lgPull:'Pulled from Bundle Demand / Sewing Schedule', lgCalc:'Auto-calculated',
-      cutPlanTitle:'Weekly Cutting Schedule', cutPlanSub:'Kế Hoạch Cắt Tuần',
-      cpStyle:'Style', cpTurn:'Turn', cpQty:'Qty', cpSummary:'WEEK TOTAL',
-      cpR1:'Style', cpR2:'PO', cpR3:'Cutting turn', cpR4:'Total quantity',
-      cpOrdered:'TURNS ORDERED', cpSched:'TURNS SCHEDULED', cpLeftHint:'Turns ordered comes from the CUT TURNS column on the Capacity Order tab; the remaining turns get their day assigned in a later step.',
-      capExportTip:'Exports one .xlsx with 2 sheets',
-      dpTitle:'Daily Cutting Plan', dpSub:'Kế Hoạch Cắt Ngày', dpHeadHint:'Click a day column to open that day\'s cutting plan',
-      dpMc:'CUTTING MACHINE', dpTb:'SPREADING TABLE', dpSeq:'SEQ', dpStylePo:'STYLE & PO', dpFab:'FABRIC ITEM', dpLay:'CUT TURN',
-      dpAdd:'Schedule a cut', dpJobs:'CUT JOBS', dpMach:'MACHINES USED',
-      dpDup:'Duplicate cutting sequence on the same machine / table', dpDupShort:'Dup!',
-      dpPick:'Pick style — PO…', dpPickTurn:'Pick turn…', dpHand:'Hand cut',
-      dpMap:'Machine A → Table 1·2 · Machine B → Table 3·4 · Machine C → Table 5·6 · Hand cut → any table',
-      dpSeqTip:'Manual — cutting sequence, must be unique per machine/table',
-      dpFabTip:'Auto-filled from the cutting order — the style\'s “Tổng” cell', dpLayTip:'Pick the style\'s cut turn — from the cutting order', dpTot:'Total',
-      dpDel:'Remove cut job', dpClose:'Close', dpMcOpt:'Mach.', dpTbOpt:'Table',
-      dpNote:'SEQ typed manually · STYLE & PO + CUT TURN picked from the cutting order · FABRIC ITEM auto-fills from the style',
-      cpNoJobs:'No cut turns this day', cpTurnU:'turns',
-      cpThis:'THIS WEEK', cpNext:'NEXT WEEK', cpPast:'PAST', cpLines:'ACTIVE LINES', cpTbU:'tables', cpStyleU:'styles',
+       lgPull:'Pulled from Bundle Demand / Sewing Schedule',
+        dpMcOpt:'Mach.', dpTbOpt:'Table',
+       cpTurnU:'turns',
       psBc:'Production Plan', psTitle:'Production Plan',
-      psK1:'ORDERS', psK1s:'orders in the plan', psK2:'TOTAL OUTPUT', psK2s:'pcs planned',
-      psK3:'ACTIVE LINES', psK3s:'in-house + subcontract', psK4:'PLAN WINDOW', psK4s:'from schedule file',
+      psK1:'ORDERS',  psK2:'TOTAL OUTPUT',
+      psK3:'ACTIVE LINES',  psK4:'PLAN WINDOW',
       psLine:'LINE', psIn:'IN-HOUSE', psSub:'SUBCONTRACT', psOrdU:'orders', psToday:'TODAY', psGoToday:'Jump to today',
-      psZa:'Compact', psZb:'Medium', psZc:'Wide', psLegIn:'In-house — has cutting plan',
+      psZa:'Compact', psZb:'Medium', psZc:'Wide',
       psLanes:'lanes',
       planFromPs:'Lines & styles sync from the Production Plan. Need an extra row for a line (overlapping / duplicated orders)? Use the + on the line cell.',
       kcPiece:'CUT PIECE',
-      psHint:'Click an order bar to open its cutting plan.',
-      psCut:'STYLE CUTTING RATIO', psUpload:'Upload cutting plan for this order', psClose:'Close',
+       psUpload:'Upload cutting plan for this order', psClose:'Close',
       psMaster:'MASTER ORDER', psOrderL:'ORDER', psRatioL:'STYLE CUTTING RATIO', psMatL:'MATERIAL LIST', psStartL:'START', psEndL:'END', psDateHint:'Editable — the Gantt bar follows',
       psDelOrd:'Delete order', psRestore:'Deleted — click to restore', psTrash:'Trash', psUndoTip:'Delete order — undo with Ctrl+Z or the trash', psUndo:'Restore',
       psUpPlan:'Upload production plan', psAddLine:'Line', psAddLineTip:'Add a line to the production plan', psDelLineTip:'Remove this empty line', psAddTip:'Add an order / cutting plan for this line', psAddTitle:'Add cutting plan',
       psFStyle:'STYLE', psFBrand:'BRAND', psFPo:'PO', psFQty:'QUANTITY (pcs)', psFStart:'START DATE', psFEnd:'END DATE', psFFile:'CUTTING PLAN FILE (.xlsx)',
       psPick:'Choose file…', psSave:'Save order', psCancel:'Cancel', psQty:'QUANTITY', psCutD:'CUT DATE', psEx:'EX DATE',
       psModeFile:'Pick a file', psModeMan:'Type it in',
-      psManHint:'Enter cut turns just like the cutting plan — table code, layers, plies per size. The order quantity comes from this table.',
       psManSz:'PICK SIZES', psManAdd:'+ Add turn', psManDel:'Remove turn', psManTitle:'CUTTING PLAN — ENTERED BY HAND', psManTot:'TOTAL',
       psManCp:'COLOUR / PO', psManAddCp:'+ colour', psManDelCp:'Remove colour', psManColorPh:'colour code', psManPoPh:'PO',
       psManCpHint:'Every cut turn needs a colour code — a turn may combine up to 2 colour codes, each with its own PO.',
@@ -668,66 +730,49 @@ class Component extends DCLogic {
       cfFrom:'Updated from the uploaded plan',
       resetSaved:'Reset', resetTip:'Clear data saved on this machine and reload', resetAsk:'Clear all saved changes and reload the page?',
       kcSumCut:'Σ PLANNED', kcNeedRow:'DEMAND',
-      psNoCut:'Subcontracted order — the cutting plan is issued by the subcontractor, no in-house cut tables.',
-      psRaw:'SOURCE ROW IN FILE', psSrc:'Data source', psCombine:'COMB',
-      psSum:'SUMMARY BY COLOUR', psSumC:'COLOUR / FABRIC', psSumPo:'PO', psSumSt:'STYLE', psSumQ:'QUANTITY', psSumT:'CUT TURNS', psSumTot:'TOTAL',
+      psRaw:'SOURCE ROW IN FILE',  psCombine:'COMB',
+      psSum:'SUMMARY BY COLOUR', psSumC:'COLOUR / FABRIC',   psSumQ:'QUANTITY', psSumT:'CUT TURNS', psSumTot:'TOTAL',
       psNoPlan:'No cutting plan for this order yet — upload the KH cắt (.xlsx) file to load cut tables & QR tags.',
-      frBc:'Weekly Fabric Request', frTitle:'Weekly Fabric Request', frPanel:'Fabric Issue Orders By Day',
-      frSub:'Pulled from the cutting plan — one day can serve several cut turns',
-      frCut:'CUT DATE', frTurn:'CUT TURN', frStyle:'STYLE', frPo:'PO', frColor:'FABRIC COLOUR', frItem:'FABRIC ITEM', frTypeC:'FABRIC TYPE', frNeed:'YARDS REQUIRED', frSt:'STATUS',
-      frHand:'typed in', frAuto:'auto', frAdd:'Add request line', frPick:'— Pick a cut turn —', frSched:'SCHEDULED FOR CUTTING', frOrd:'ORDERED — NOT SCHEDULED',
-      frEmpty:'No fabric request on this day', frDel:'Remove request line', frWait:'PENDING', frDone:'COVERED',
-      frNote:'CUT TURN picked from the cutting plan · STYLE · PO · COLOUR · ITEM · TYPE auto-fill from the turn · YARDS REQUIRED typed in · STATUS comes from Weekly Working Warehouse',
-      frK1:'REQUEST LINES', frK1s:'cut turns this week', frK2:'TOTAL REQUIRED', frK2s:'yards', frK3:'ISSUED', frK3s:'yards scanned', frK4:'SHORT', frK4s:'yards',
-      whBc:'Weekly Working Warehouse', whTitle:'Weekly Working Warehouse', whPanel:'Roll-Level Issuing — QR Scan',
-      whSub:'Pulled from Weekly Fabric Request — the last 3 columns come from scanning roll QR tags',
-      whReal:'YARDS ISSUED', whLotC:'FABRIC LOT', whRollC:'ROLLS', whScan:'SCAN QR', whScanS:'Scan',
-      whStockB:'FABRIC WAREHOUSE', whStockT:'FABRIC WAREHOUSE', whNeedL:'REQUIRED', whGotL:'SCANNED', whShortL:'SHORT', whOverL:'OVER',
-      whRollU:'rolls', whLotU:'lots', whAvail:'IN STOCK', whOut:'ISSUED', whMine:'SCANNED', whRollN:'ROLL', whBin:'BIN',
-      whAutoB:'Auto-scan until covered', whInput:'Scan the roll QR tag…', whErrM:'Roll not found, or already issued',
-      whHint:'Click a roll to scan it — each roll carries one QR tag with its yardage and lot',
-      whEmpty:'Nothing pulled from Weekly Fabric Request yet', whTotR:'WEEK TOTAL',
-      whNote:'YARDS ISSUED · FABRIC LOT · ROLLS are produced by QR scanning — every roll pulled is one line below',
-      whK1:'ISSUE LINES', whK1s:'lines this week', whK2:'YARDS REQUIRED', whK2s:'yards', whK3:'YARDS ISSUED', whK3s:'yards scanned', whK4:'ROLLS PULLED', whK4s:'fabric rolls',
       dashBc:'Production Dashboard', dashTitle:'Production Dashboard',
       dashK1:'SEWING PLAN', dashK1s:'pcs planned this week', dashK2:'CUTTING NEEDED', dashK2s:'pcs to cut this week',
       dashK3:'CUT TURNS', dashK3s:'scheduled / ordered', dashK4:'SEWING DONE', dashK4s:'% of weekly plan',
       dashSew:'SEWING PROGRESS BY LINE', dashCut:'CUTTING PROGRESS BY LINE — SCHEDULED / ORDERED', dashTb:'CUTTING TABLE LOAD',
-      kpiPlan:'SEWING PLAN', kpiPlanSub:'pcs planned this week', kpiDemand:'BUNDLE DEMAND', kpiDemandSub:'pcs to supply next week', kpiReq:'BUNDLE REQUEST', kpiReqSub:'pcs bundles issued',
+      kpiPlan:'SEWING PLAN', kpiPlanSub:'pcs planned this week', kpiDemand:'BUNDLE DEMAND', kpiDemandSub:'pcs to supply next week', kpiReq:'BUNDLE REQUEST', kpiReqSub:'pcs bundles requested',
       tab1:'Weekly Sewing Schedule', tab2:'Weekly Bundle Demand', tab3:'Weekly Bundle Request', period:'PERIOD',
       copyWeek:'Copy Last Week', downloadTpl:'Download Template', exportXls:'Export Excel', exportTip:'Exports one .xlsx with 3 sheets',
       activeRows:'Active Rows', rowsN:'Rows', linesN:'Lines', totalQty:'Total Qty',
       planEmpty:'No rows yet for this week. Copy last week or add a line below.', addLine:'Add Line',
       colLine:'LINE #', colBrand:'BRAND', colStyle:'STYLE #', colTotal:'TOTAL',
-      addBrand:'+ Brand', addStyle:'+ Style', addLineCell:'+ Line',
+      addBrand:'+ Brand', addStyle:'+ Style',
       tipLine:'Click to rename / delete line', tipPlanCol:'From the Production Plan — edit it on the Production Plan screen', tipBrand:'Pick a brand', tipStyle:'Pick a style', tipDay:'Click to enter a number', tipDelLine:'Delete line',
       maxLines:'This line is not in the Production Plan', dayConflict:'Another style runs this day — entering a number here clears that one (1 line, 1 style per day)',
       tipRepick:'Re-pick — this row\u2019s day numbers will be cleared',
-      addStyleRow:'Add a 2nd style for this line this week — no need to re-create the line', addStyleRowS:'+ Style',
+      addStyleRow:'Add a 2nd style for this line this week — no need to re-create the line',
       lineMergeErr:'Only two adjacent lines can be merged — e.g. Line 1+2. Not gapped lines (Line 1+3) or 3+ lines.',
       lineDupErr:'Cannot merge: that line still has its own row(s) — delete or rename them first.',
       phLine:'Line…', phBrand:'Brand…', phStyle:'Style…', phStyleFirst:'Pick a brand first',
       confirmDel:'This line has data — delete all of its rows?',
       demandTitle:'Weekly Cutting Bundle Demand', demandSub:'Nhu Cầu Sản Lượng Cắt Hàng Tuần', factory:'FACTORY',
       grpWip:'WIP STATUS', grpNext:'NEXT WEEK DEMAND',
-      dA:'TOTAL ORDER CUT', dB:'TOTAL WIP SUPPLIED', dC:'OUTPUT TO LINE', dBC:'WIP LEFT AT WEEK END', dD:'1 DAY WIP', dE:'WIP BUFFER NEEDED', dF:'NEXT WEEK OUTPUT', dNeed:'QTY TO SUPPLY', remark:'REMARK', addNote:'+ note',
-      tipA:'Total cut of the order (operation) — manual', tipB:'Total WIP already supplied — manual', tipC:'Total output to the line — manual', tipD:'One day of WIP output — manual',
+      dA:'TOTAL ORDER CUT', dB:'TOTAL WIP SUPPLIED', dC:'OUTPUT TO LINE', dBC:'WIP LEFT AT WEEK END', dD:'1 DAY WIP', dE:'WIP BUFFER NEEDED', dF:'NEXT WEEK OUTPUT', dNeed:'QTY TO SUPPLY', remark:'REMARK',
+      tipA:'Total cut of the order — from the cutting order (brand + style match), not editable here', tipB:'Total WIP already supplied — manual', tipC:'Total output to the line — manual', tipD:'One day of WIP output — manual',
       tipManual:'Manual entry — click to edit', tipBC:'B − C', tipE:'E = MAX(0, D − B + C). If WIP left exceeds one day, no buffer is needed.',
-      tipF:'SUMIFS over this week\'s Sewing Schedule — matching line + brand + style', tipFEst:'No matching line + brand + style in the Sewing Schedule', tipNeed:'IF(E+F > A−B, A−B, E+F)', tipNote:'Click to add a note',
+      tipF:'SUMIFS over this week\'s Sewing Schedule — matching line + brand + style', tipFEst:'No matching line + brand + style in the Sewing Schedule', tipNeed:'IF(E+F > A−B, A−B, E+F)',
       demandEmpty:'No line planned for this week in the Sewing Schedule.',
-      reqSub:'Weekly cut bundle issue order', reqNote:'Line & style sync from the Sewing Schedule. Pick a cut colour to open the row.',
-      colColor:'CUT COLOUR', pickColor:'Pick a colour…', pickColorFirst:'pick a colour first', issue:'Issue', planShort:'PLN ', tipIssue:'Issue bundles for this cell', tipIssueEdit:'Edit this issue',
+      reqSub:'Weekly cut bundle issue order',
+      colColor:'CUT COLOUR', recvTitle:'Bundle receiving history', recvSub:'Every Received click is logged', recvEmpty:'No receipts yet', recvDT:'DATE / TIME', recvTurn:'CUT TURN', recvRows:'entries', recvUndo:'Un-received', colReqPlan:'REQUESTED / DEMAND', tipReqPlan:'Quantity already requested / demand on the plan', tipAutoCol:'Automatic from the cutting plan — not editable here', pickColor:'Pick a colour…', pickColorFirst:'pick a colour first', issue:'Issue', planShort:'PLN ', tipIssue:'Issue bundles for this cell', tipIssueEdit:'Edit this issue',
       mTitle:'Issue bundles by cut turn', mColor:'CUT COLOUR', mPlan:'PLAN (pcs)',
-      mStep1:'Select cut turns', mStep1Hint:'multiple allowed', mStep2:'Select sizes & quantities', mStep2Hint:'each step = 1 ply · max = ratio × plies',
-      mTurn:'CUT TURN / TABLE', mCuttable:'TOTAL CUTTABLE', mBySize:'TOTAL BY SIZE', mNeeded:'To supply', mCuttable2:'Cuttable',
-      mNoTurn:'Pick at least one cut turn in step 1 to enter quantities by size.',
-      mClear:'Clear cell', mCancel:'Cancel', mSave:'Save issue', mUpdate:'Update', mIssue:'Issue', mNoTurnSel:'No cut turn selected', mTurns:'turns', mSizes:'sizes', ply:'ply', plies:'plies', left:'left ' }
+       cCutTurn:'Cut turn:', mIssueRow:'ISSUING', mPickPos:'Click to pick / drop this size',   mBySize:'TOTAL BY SIZE', mNeeded:'To supply', mCuttable2:'Cuttable',
+      mClear:'Clear cell', mCancel:'Cancel', mSave:'Save issue', mUpdate:'Update', mIssue:'Issue', mNoTurnSel:'No cut turn selected', mTurns:'turns', mSizes:'sizes',  plies:'plies', left:'left ',
+      stRequested:'Requested', stWaiting:'Waiting', stReceived:'Received', stCycleTip:'Click to change status: Requested → Waiting → Received', mReceived:'Received',
+      mTurnPool:'One cut-turn table shared by this style + cut colour — each turn can be issued once per week',
+      mTakenTip:'Already issued in another cell — release it there first to reuse',
+      tipReceive:'Save this cell and mark bundles received', tipUnreceive:'Received — click to set back to Waiting' }
   };
-  NAVVI = {'PRODUCTION PLAN':'KẾ HOẠCH SẢN XUẤT','DASHBOARD':'TỔNG QUAN','Production Dashboard':'Dashboard sản xuất','WAREHOUSE':'KHO','SPREADING / CUTTING':'TRẢI / CẮT','SEWING':'MAY','FINISHING / PACKING':'HOÀN THIỆN / ĐÓNG GÓI','GARMENT LOADING':'XUẤT HÀNG','QUALITY CONTROL':'KIỂM SOÁT CHẤT LƯỢNG','PLANNING':'KẾ HOẠCH',
-    'Weekly Fabric Request':'Kế hoạch cấp vải tuần','Weekly Working Warehouse':'Kế hoạch làm việc kho','Fabric':'Vải','Trim':'Phụ liệu','WH Location Map':'Sơ đồ kho','Material WH Shipment':'Xuất nhập NPL','Stock Adjustment':'Điều chỉnh tồn','Inventory & Reconciliation':'Kiểm kê & đối chiếu',
-    'Fabric In (W/H Out)':'Nhập vải (xuất kho)','Spreading':'Trải vải','Cutting':'Cắt','Cutting-Out':'Xuất cắt','Sewing Output':'Sản lượng may',
-    'Garment In':'Nhập thành phẩm','MFZ':'MFZ','Carton Packing':'Đóng thùng','Loading':'Xếp hàng','End-line Inspection':'Kiểm cuối chuyền','Final Inspection':'Kiểm final',
-    'Production Plan':'Kế hoạch sản xuất','Spreading/Cutting Schedule':'Kế hoạch trải/cắt','Sewing Schedule':'Kế hoạch may','Weekly Shipment Plan':'Kế hoạch xuất hàng tuần'};
+  NAVVI = {'PRODUCTION PLAN':'KẾ HOẠCH SẢN XUẤT','DASHBOARD':'TỔNG QUAN','Production Dashboard':'Dashboard sản xuất','SEWING':'MAY',
+    'Fabric':'Vải',
+    'Cutting':'Cắt','Sewing Output':'Sản lượng may',
+    'Production Plan':'Kế hoạch sản xuất','Sewing Schedule':'Kế hoạch may','Daily Sewing Output':'Sản lượng may hàng ngày',};
   t(k){ const d=this.L[this.state.lang]||this.L.vi; return d[k]!==undefined?d[k]:(this.L.en[k]||k); }
   tn(s){ return (this.state.lang==='vi'&&this.NAVVI[s])?this.NAVVI[s]:s; }
   dayLabel(d,i){ return this.state.lang==='vi'?['T2','T3','T4','T5','T6','T7'][i]:d.toUpperCase(); }
@@ -746,20 +791,22 @@ class Component extends DCLogic {
     this.dense = density==='Compact';
     return { noop:()=>{}, toggleSidebar:()=>this.set({sidebarOpen:!this.state.sidebarOpen}),
       sidebarEl:this.state.sidebarOpen?this.renderAside():null, langEl:this.renderLang(),
-      bcRoot:this.t('bcRoot'), bcPage:this.state.page==='gantt'?this.t('psBc'):this.state.page==='dash'?this.t('dashBc'):this.state.page==='cutting'?this.t('cutBcPage'):this.state.page==='fabreq'?this.t('frBc'):this.state.page==='whplan'?this.t('whBc'):this.t('bcPage'),
-      bodyEl:this.state.page==='gantt'?this.renderGanttBody():this.state.page==='dash'?this.renderDashBody():this.state.page==='cutting'?this.renderCutBody():this.state.page==='fabreq'?this.renderFabReqBody():this.state.page==='whplan'?this.renderWhBody():(this.state.tab==='weekly'?this.renderBody():(this.state.tab==='trim'?this.renderBundleBody():this.renderDemandBody())),
-      modalEl:this.renderBForm(), addLineEl:this.renderPsAdd(), confEl:this.renderConflict(), qrModalEl:this.renderQrModal(), whModalEl:this.renderWhModal() };
+      bcRoot:this.t('bcRoot'), bcPage:this.state.page==='gantt'?this.t('psBc'):this.state.page==='dash'?this.t('dashBc'):this.state.page==='dso'?this.t('dsoBc'):this.t('bcPage'),
+      bodyEl:this.state.page==='gantt'?this.renderGanttBody():this.state.page==='dash'?this.renderDashBody():this.state.page==='dso'?this.renderDsoBody():(this.state.tab==='weekly'?this.renderBody():(this.state.tab==='trim'?this.renderBundleBody():this.renderDemandBody())),
+      modalEl:this.renderBForm(), addLineEl:this.renderPsAdd(), confEl:this.renderConflict(), qrModalEl:this.renderQrModal() };
   }
+
+  // Nguon duy nhat cho sidebar + guard trang khi khoi dong. Bo 1 nhom o day la bo khoi menu.
+  NAVGROUPS=[
+    ['DASHBOARD',[['Production Dashboard',1,'dash']]],
+    ['PRODUCTION PLAN',[['Production Plan',1,'gantt']]],
+    ['SEWING',[['Sewing Schedule',1,'sewing'],['Daily Sewing Output',1,'dso']]],
+  ];
+  navPages(){ const out=[]; this.NAVGROUPS.forEach(([,items])=>items.forEach(([,,pg])=>{ if(pg) out.push(pg); })); return out; }
 
   renderSideNav(){
     const h=React.createElement, C=this.C;
-    const groups=[
-      ['DASHBOARD',[['Production Dashboard',1,'dash']]],
-      ['PRODUCTION PLAN',[['Production Plan',1,'gantt']]],
-      ['SEWING',[['Sewing Schedule',1,'sewing']]],
-      ['SPREADING / CUTTING',[['Spreading/Cutting Schedule',1,'cutting']]],
-      ['WAREHOUSE',[['Weekly Fabric Request',1,'fabreq'],['Weekly Working Warehouse',1,'whplan']]],
-    ];
+    const groups=this.NAVGROUPS;
     const icon=(active)=>h('span',{style:{width:7,height:7,flex:'none',borderRadius:99,background:active?C.primary:'#d3d8cb',display:'block',transition:'background .12s'}});
     const badge=()=>h('span',{style:{fontSize:9.5,fontWeight:600,color:C.primary,background:C.tint,padding:'2px 6px',borderRadius:4,letterSpacing:'.2px',flex:'none'}},'UI Proto');
     const navOpen=this.state.navOpen||{};
@@ -824,7 +871,8 @@ class Component extends DCLogic {
   renderKpis(){
     const h=React.createElement, C=this.C; const rows=this.getWeek().rows;
     const lineSet=new Set(); rows.forEach(r=>{ if(this.DAYS.some(d=>r.days[d]!=null)) this.parseNums(r.line).forEach(n=>lineSet.add(n)); });
-    let reqTotal=0; Object.keys(this.state.bundle||{}).forEach(id=>{ const t=this.bundleTotal(id); if(t) reqTotal+=t; });
+    // chi cong cac dong cua tuan dang xem -- bundle gio chua ca cac tuan khac
+    let reqTotal=0; this.getWeek().rows.forEach(r=>{ const t=this.bundleTotal(r.id); if(t) reqTotal+=t; });
     const cards=[
       [this.t('kpiPlan'),this.fmt(this.weekTotal()),this.t('kpiPlanSub')],
       [this.t('kpiDemand'),this.fmt(this.needTotal()),this.t('kpiDemandSub')],
@@ -838,29 +886,6 @@ class Component extends DCLogic {
         h('div',{style:{width:26,height:26,borderRadius:8,background:C.tint,color:C.dark,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}},icons[i]),
         h('div',{style:{flex:1,minWidth:0,fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:C.sub,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},label),
         h('div',{style:{fontSize:19,fontWeight:700,letterSpacing:'-.4px',lineHeight:1,fontVariantNumeric:'tabular-nums',flex:'none'}},val))));
-  }
-
-  renderDataSource(){
-    const h=React.createElement, C=this.C; const d=this.state.dragOver;
-    return h('div',{
-      onDragOver:e=>{e.preventDefault(); if(!this.state.dragOver) this.set({dragOver:true});},
-      onDragLeave:()=>this.set({dragOver:false}),
-      onDrop:e=>{e.preventDefault(); this.set({dragOver:false}); this.addFiles(e.dataTransfer.files);},
-      style:{display:'flex',alignItems:'center',gap:14,background:C.white,border:'1px solid '+(d?C.primary:C.border),borderRadius:10,padding:'12px 16px',marginBottom:20,transition:'border-color .15s'}},
-      h('div',{style:{width:36,height:36,borderRadius:9,background:C.tint,color:C.primary,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}},
-        h('svg',{width:19,height:19,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8},h('path',{d:'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1'}),h('path',{d:'M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'}))),
-      h('div',{style:{flex:1,minWidth:0}},
-        h('div',{style:{fontSize:13.5,fontWeight:600,color:C.ink,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}},'Production data syncs from ERP',
-          h('span',{style:{fontSize:10.5,fontWeight:600,color:'#b0791b',background:'#fbf3df',border:'1px solid #f0e3c0',padding:'2px 7px',borderRadius:5}},'ERP · pending')),
-        h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},'Each row is one line + brand + style; type a target into any day cell. Colour / size / cut-turn detail is captured in Daily Confirmation. Manual Excel import stays available while in UI Proto.')),
-      h('div',{style:{display:'flex',flexWrap:'wrap',gap:7,justifyContent:'flex-end',maxWidth:'40%'}},
-        this.state.files.length?null:h('span',{style:{fontSize:12,color:C.faint,fontStyle:'italic'}},'No file — upload a workbook'),
-        this.state.files.map((f,i)=>h('span',{key:i,style:{display:'inline-flex',alignItems:'center',gap:7,background:C.tint2,border:'1px solid '+C.border,borderRadius:16,padding:'4px 6px 4px 10px',fontSize:11.5}},
-          h('span',{style:{width:6,height:6,borderRadius:2,background:C.primary}}),h('span',{style:{fontWeight:500,color:C.ink}},f.name), f.sheets?h('span',{style:{color:C.faint}},f.sheets+' sheets'):null,
-          h('button',{title:'Remove file',onClick:e=>{e.stopPropagation(); this.removeFile(i);},style:{border:'none',background:'none',cursor:'pointer',color:C.faint,display:'flex',alignItems:'center',padding:2,borderRadius:8}},
-            h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2.2},h('path',{d:'M18 6 6 18M6 6l12 12'})))))),
-      h('label',{style:{...this.btn('ghost'),cursor:'pointer',flex:'none'}},this.ic('up'),'Upload Excel',
-        h('input',{type:'file',accept:'.xlsx,.csv',multiple:true,style:{display:'none'},onChange:e=>this.addFiles(e.target.files)})));
   }
 
   renderPeriodBar(noWeeks){
@@ -926,12 +951,6 @@ class Component extends DCLogic {
           h('td',{style:{padding:'12px 6px',textAlign:'center',fontSize:15,fontWeight:700,color:'#fff',background:C.dark}},this.fmt(this.grand(rows)))))));
   }
 
-  combo(orig,apply){ return {
-    onFocus:ev=>{ ev.target.value=''; },
-    onBlur:ev=>{ const v=ev.target.value.trim(); if(v) apply(v); this.stopEdit(); },
-    onKeyDown:ev=>{ if(ev.key==='Enter'){ const v=ev.target.value.trim(); if(v) apply(v); this.stopEdit(); } else if(ev.key==='Escape') this.stopEdit(); }
-  }; }
-
   renderRow(r,pad,mono,linfo,binfo,sinfo,stripe){
     linfo=linfo||{first:true,span:1,ids:[r.id]}; binfo=binfo||{first:true,span:1}; sinfo=sinfo||{first:true,span:1};
     const h=React.createElement, C=this.C; const e=this.state.edit; const ed=(col)=>e&&e.id===r.id&&e.col===col;
@@ -989,7 +1008,49 @@ class Component extends DCLogic {
             h('div',{style:{fontSize:16,fontWeight:700}},this.t('tab3')),
             h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('reqSub')+' · '+this.state.week)),
           h('button',{style:this.btn('ghost'),title:this.t('exportTip'),onClick:()=>this.exportExcel()},this.ic('grid'),this.t('exportXls'))),
-        h('div',{style:{padding:'16px 16px 8px'}}, this.getWeek().rows.length? this.renderBundleGrid() : h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('demandEmpty')))));
+        h('div',{style:{padding:'16px 16px 8px'}}, this.getWeek().rows.length? this.renderBundleGrid() : h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('demandEmpty')))),
+      this.renderRecvLog());
+  }
+
+  renderRecvLog(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const log=[...(this.state.recvLog||[])].reverse();
+    const th={padding:'10px 10px',fontSize:11,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+      color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,background:'#f8faf3',whiteSpace:'nowrap'};
+    const td={padding:'9px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,verticalAlign:'middle'};
+    const rows=log.map((e,i)=>{ const stripe=i%2===1; const bg=stripe?'#f7f9f3':C.white;
+      return h('tr',{key:e.ts+'-'+i},
+        h('td',{style:{...td,paddingLeft:22,background:bg,fontFamily:mono,fontWeight:600,color:e.undo?C.faint:C.ink}},
+          h('span',{style:{whiteSpace:'nowrap'}},this.recvTime(e.ts)),
+          e.undo?h('span',{style:{marginLeft:8,fontSize:10,fontWeight:700,color:'#946200',background:'#fbf1d5',
+            border:'1px solid #efdfb0',borderRadius:4,padding:'1px 5px',fontFamily:'inherit',whiteSpace:'nowrap'}},this.t('recvUndo')):null),
+        h('td',{style:{...td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},e.line),
+        h('td',{style:{...td,background:bg,fontFamily:mono,color:C.ink,wordBreak:'break-all'}},e.style),
+        h('td',{style:{...td,background:bg,color:C.ink}},
+          h('span',{style:{display:'inline-flex',alignItems:'center',gap:7}},
+            h('span',{style:{flex:'none',width:10,height:10,borderRadius:'50%',background:this.colorHex(e.color),border:'1px solid rgba(0,0,0,.18)'}}),
+            h('span',{style:{fontWeight:600,whiteSpace:'nowrap'}},e.color))),
+        h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:700,color:C.dark}},this.recvTurnText(e)));
+    });
+    return h('div',{style:{background:C.white,border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',boxShadow:C.shadow,marginTop:18}},
+      h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:12,padding:'16px 22px 14px',borderBottom:'1px solid '+C.line}},
+        h('div',{style:{marginRight:'auto'}},
+          h('div',{style:{fontSize:16,fontWeight:700}},this.t('recvTitle')),
+          h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('recvSub'))),
+        h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:C.dark,background:C.tint,borderRadius:999,padding:'5px 12px'}},
+          this.fmt(log.length)+' '+this.t('recvRows'))),
+      log.length
+        ? h('div',{className:'yscroll',style:{overflowX:'auto'}},
+            h('table',{style:{width:'100%',minWidth:'1000px',borderCollapse:'collapse',tableLayout:'fixed'}},
+              h('colgroup',null, ...Array.from({length:5},(_,i)=>h('col',{key:i,style:{width:'20%'}}))),
+              h('thead',null,h('tr',null,
+                h('th',{style:{...th,paddingLeft:22}},this.t('recvDT')),
+                h('th',{style:{...th}},this.t('colLine')),
+                h('th',{style:{...th}},this.t('colStyle')),
+                h('th',{style:{...th}},this.t('colColor')),
+                h('th',{style:{...th}},this.t('recvTurn')))),
+              h('tbody',null,rows)))
+        : h('div',{style:{padding:'44px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('recvEmpty')));
   }
 
   renderBundleGrid(){
@@ -1000,20 +1061,24 @@ class Component extends DCLogic {
     let grp=-1;
     const body=rows.map((r,idx)=>{ const linfo=spans[idx]; const sinfo=sstyle[idx];
       if(linfo.first) grp++; const stripe=grp%2===1;
-      const b=this.state.bundle[r.id]; const chosen=!!(b&&b.color);
+      const b=this.state.bundle[this.bKey(r)]; const color=this.bundleColor(r,idx); const chosen=!!color;
       const cells=[];
       if(linfo.first) cells.push(h('td',{key:'ln',rowSpan:linfo.span,style:{borderRight:'1px solid '+C.border,borderTop:'1px solid '+C.line,background:C.tint,verticalAlign:'middle',textAlign:'center',padding:'8px 4px',fontSize:12.5,fontWeight:700,color:C.primary,lineHeight:1.25}},this.normName(r.line)));
       if(sinfo.first) cells.push(h('td',{key:'st',rowSpan:sinfo.span,style:{borderRight:'1px solid '+C.line,borderTop:'1px solid '+C.line,verticalAlign:'middle',padding:'8px 9px',fontSize:11.5,fontFamily:mono,color:C.ink,wordBreak:'break-all',lineHeight:1.3,background:stripe?'#f7f9f3':C.white}},r.style));
-      cells.push(this.reqColorCell(r,b,chosen,stripe));
+      cells.push(this.reqColorCell(r,color,stripe));
       this.DAYS.forEach((d,i)=>cells.push(this.reqDayCell(r,d,b,chosen,stripe,i===5)));
-      const tot=this.bundleTotal(r.id);
-      cells.push(h('td',{key:'tot',style:{borderTop:'1px solid '+C.line,textAlign:'center',verticalAlign:'middle',fontSize:15.5,fontWeight:700,fontFamily:mono,color:tot!=null?C.ink:'#c3c8bf',background:C.tint2}}, tot!=null?this.fmt(tot):'—'));
+      // SL da len don yeu cau / SL demand theo Ke hoach may tuan cua chinh dong nay
+      const tot=this.bundleTotal(r.id), need=this.rowTotal(r), done=tot||0;
+      const dcol=!done?'#c3c8bf':(need>0&&done>=need?'#2f7d32':C.ink);
+      cells.push(h('td',{key:'tot',title:this.t('tipReqPlan'),style:{borderTop:'1px solid '+C.line,textAlign:'center',verticalAlign:'middle',background:C.tint2,padding:'6px 5px'}},
+        h('span',{style:{fontSize:14.5,fontWeight:700,fontFamily:mono,color:dcol}},this.fmt(done)),
+        h('span',{style:{fontSize:11.5,fontWeight:600,fontFamily:mono,color:C.faint}},' / '+this.fmt(need))));
       return h('tr',{key:r.id},cells);
     });
     return h('div',{style:{border:'1px solid '+C.border,borderRadius:12,overflow:'auto'}},
       h('table',{style:{width:'100%',minWidth:'1180px',borderCollapse:'collapse',tableLayout:'fixed'}},
         h('colgroup',null, h('col',{style:{width:'72px'}}), h('col',{style:{width:'98px'}}), h('col',{style:{width:'128px'}}),
-          ...this.DAYS.map((d,i)=>h('col',{key:i,style:{width:'152px'}})), h('col',{style:{width:'74px'}})),
+          ...this.DAYS.map((d,i)=>h('col',{key:i,style:{width:'152px'}})), h('col',{style:{width:'122px'}})),
         h('thead',null,h('tr',null,
           h('th',{style:{...th,textAlign:'left',paddingLeft:12}},this.t('colLine')),
           h('th',{style:{...th,textAlign:'left',paddingLeft:10}},this.t('colStyle')),
@@ -1021,7 +1086,7 @@ class Component extends DCLogic {
           ...this.DAYS.map((d,i)=>h('th',{key:d,style:{...th,background:'#fbfcfa'}},
             h('div',{style:{fontWeight:700,fontSize:13,color:C.ink}},this.dayLabel(d,i)),
             h('div',{style:{fontSize:10.5,color:C.faint,marginTop:2,fontFamily:mono,fontWeight:500}},dates[i]))),
-          h('th',{style:{...th,color:'#fff',background:C.dark,borderRight:'none',borderBottom:'2px solid '+C.dark}},this.t('colTotal')))),
+          h('th',{title:this.t('tipReqPlan'),style:{...th,color:'#fff',background:C.dark,borderRight:'none',borderBottom:'2px solid '+C.dark}},this.t('colReqPlan')))),
         h('tbody',null, body)));
   }
 
@@ -1033,18 +1098,38 @@ class Component extends DCLogic {
     if(map[k]) return map[k]; const has=w=>k.indexOf(w)>=0;
     if(has('white')) return '#f2f2ec'; if(has('black')) return '#23262b'; if(has('navy')) return '#243a63'; if(has('blue')) return '#3f6bb0'; if(has('grey')||has('gray')) return '#9aa0a8'; if(has('olive')) return '#5f6a3a'; if(has('green')||has('sage')) return '#5f7a4a'; if(has('red')||has('crimson')) return '#a02334'; if(has('sand')||has('tan')) return '#d8c39a'; return '#8a9099'; }
 
-  reqColorCell(r,b,chosen,stripe){
+  reqColorCell(r,color,stripe){
     const h=React.createElement, C=this.C;
-    return h('td',{key:'cl',style:{borderRight:'1px solid '+C.line,borderTop:'1px solid '+C.line,verticalAlign:'middle',padding:7,background:stripe?'#f7f9f3':C.white}},
-      h('div',{style:{position:'relative'}},
-        h('span',{style:{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',width:10,height:10,borderRadius:'50%',background:chosen?this.colorHex(b.color):'#dcb9b5',border:'1px solid rgba(0,0,0,.18)',pointerEvents:'none'}}),
-        h('input',{list:'dl-color-'+r.id,defaultValue:b?b.color:'',placeholder:this.t('pickColor'),
-          onFocus:ev=>{ ev.target.value=''; },
-          onChange:ev=>{ const v=ev.target.value; if(this.cutColors(r.style).includes(v)) this.pickColor(r.id,v); },
-          onBlur:ev=>{ const v=ev.target.value.trim(); if(v && (!b||b.color!==v)) this.pickColor(r.id,v); },
-          style:{width:'100%',border:'1px solid '+(chosen?C.border:'#e0bdb9'),borderRadius:7,padding:'8px 8px 8px 28px',fontSize:12,fontFamily:'inherit',fontWeight:600,color:chosen?C.ink:C.primary,background:chosen?C.white:'#fdf6f5'}}),
-        h('datalist',{id:'dl-color-'+r.id}, this.cutColors(r.style).map(c=>h('option',{key:c,value:c})))));
+    return h('td',{key:'cl',title:this.t('tipAutoCol'),style:{borderRight:'1px solid '+C.line,borderTop:'1px solid '+C.line,verticalAlign:'middle',padding:7,background:stripe?'#f7f9f3':C.white}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,padding:'4px 2px 4px 4px',opacity:.7,cursor:'default'}},
+        h('span',{style:{flex:'none',width:10,height:10,borderRadius:'50%',background:color?this.colorHex(color):'#dcb9b5',border:'1px solid rgba(0,0,0,.18)'}}),
+        h('span',{style:{fontSize:12,fontWeight:600,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},color||'—')));
   }
+
+  // Mau trang thai cap BTP -- Waiting = cam, Received = xanh la
+  STC={ requested:{fg:'#2f5d8a',bg:'#e9f1f8',bd:'#c4d7e9',dot:'#3f7cb0'},
+        waiting:{fg:'#a35a00',bg:'#fdf0e0',bd:'#f0d5ae',dot:'#e2891d'},
+        received:{fg:'#2f7d32',bg:'#e6f2e2',bd:'#c3ddbe',dot:'#3f9142'} };
+  // Bam tag de dao vong theo dung chieu: Requested -> Waiting -> Received -> Requested
+  STORDER=['requested','waiting','received'];
+  STKEY={requested:'stRequested',waiting:'stWaiting',received:'stReceived'};
+  nextStatus(st){ const i=this.STORDER.indexOf(st); return this.STORDER[(i<0?0:i+1)%this.STORDER.length]; }
+  // Dao trang thai ngay tren o, khong mo modal
+  cycleStatus(r,d,ev){ if(ev){ ev.stopPropagation(); ev.preventDefault(); }
+    const k=this.bKey(r); if(!k) return;
+    this.setState(st=>{ const bb=st.bundle[k]; if(!bb||!bb.days||!bb.days[d]) return null;
+      const days={...bb.days}; days[d]={...days[d],status:this.nextStatus(this.cellStatus(days[d]))};
+      return {bundle:{...st.bundle,[k]:{...bb,days:days}}}; }); }
+  statusTag(st,o){ const h=React.createElement; o=o||{}; const c=this.STC[st]||this.STC.waiting;
+    const style={display:'inline-flex',alignItems:'center',gap:o.sm?4:5,flex:'none',border:'1px solid '+c.bd,
+      background:c.bg,color:c.fg,borderRadius:99,padding:o.lg?'4px 11px':(o.sm?'2px 7px 2px 5px':'2px 8px 2px 6px'),
+      fontSize:o.lg?11.5:(o.sm?9:9.5),fontWeight:700,letterSpacing:o.sm?'0':'.3px',textTransform:'uppercase',
+      lineHeight:1.3,whiteSpace:'nowrap',fontFamily:'inherit'};
+    const kids=[h('span',{key:'d',style:{width:o.lg?7:(o.sm?5:6),height:o.lg?7:(o.sm?5:6),borderRadius:'50%',background:c.dot,flex:'none'}}),
+      this.t(this.STKEY[st]||'stWaiting')];
+    if(!o.onClick) return h('span',{style:style},kids);
+    return h('button',{onClick:o.onClick,title:this.t('stCycleTip'),
+      style:{...style,cursor:'pointer',transition:'background .12s,border-color .12s'}},kids); }
 
   reqDayCell(r,d,b,chosen,stripe,weekend){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
@@ -1054,7 +1139,7 @@ class Component extends DCLogic {
     if(!hasPlan) return h('td',{key:d,style:{...base,background:'#f2f3f0'}});
     if(!chosen) return h('td',{key:d,style:{...base,background:restBg}},
       h('div',{style:{padding:'16px 8px',textAlign:'center',fontSize:10.5,color:'#b7bcb2',fontStyle:'italic'}},this.t('pickColorFirst')));
-    const cell=b.days&&b.days[d];
+    const cell=b&&b.days&&b.days[d];
     const filled=cell&&cell.turns&&cell.turns.length&&(cell.sizes||[]).some(s=>(Number((cell.qty||{})[s])||0)>0);
     if(!filled) return h('td',{key:d,onClick:()=>this.openBForm(r.id,d),title:this.t('tipIssue'),style:{...base,cursor:'pointer',background:restBg}},
       h('div',{style:{margin:9,border:'1.5px dashed '+C.border,borderRadius:9,padding:'12px 6px',textAlign:'center',color:C.primary}},
@@ -1063,30 +1148,44 @@ class Component extends DCLogic {
         h('div',{style:{fontSize:9.5,color:C.faint,marginTop:2,fontFamily:mono}},this.t('planShort')+this.fmt(plan))));
     const sizes=(cell.sizes||[]).filter(s=>(Number((cell.qty||{})[s])||0)>0); const qty=cell.qty||{}; const turns=cell.turns||[];
     const tot=sizes.reduce((a,s)=>a+(Number(qty[s])||0),0);
-    const n=sizes.length||1; const cols='repeat('+n+',minmax(0,1fr))';
-    return h('td',{key:d,onClick:()=>this.openBForm(r.id,d),title:this.t('tipIssueEdit'),style:{...base,cursor:'pointer',background:restBg}},
-      h('div',{style:{padding:'9px 8px 10px'}},
-        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,marginBottom:8}},
-          h('div',{style:{display:'flex',flexWrap:'wrap',gap:4}},
-            turns.map(t=>h('span',{key:t,style:{fontSize:15,fontWeight:700,color:'#fff',background:C.primary,borderRadius:7,padding:'3px 11px',lineHeight:1.2}},t))),
-          h('span',{style:{fontSize:15,fontWeight:700,fontFamily:mono,color:C.ink,lineHeight:1.2,flex:'none'}},this.fmt(tot))),
-        h('div',{style:{border:'1px solid '+C.line,borderRadius:7,overflow:'hidden'}},
-          h('div',{style:{display:'grid',gridTemplateColumns:cols,background:'#eef3e7'}},
-            sizes.map((s,i)=>h('div',{key:s,style:{fontSize:9.5,fontWeight:700,letterSpacing:'.2px',color:C.sub,textAlign:'center',padding:'3px 1px',borderLeft:i?'1px solid #e0e6d8':'none',whiteSpace:'nowrap',overflow:'hidden'}},s))),
-          h('div',{style:{display:'grid',gridTemplateColumns:cols,borderTop:'1px solid '+C.line}},
-            sizes.map((s,i)=>h('div',{key:s,style:{fontSize:12,fontWeight:700,fontFamily:mono,color:C.ink,textAlign:'center',padding:'4px 1px',borderLeft:i?'1px solid '+C.line:'none',whiteSpace:'nowrap',overflow:'hidden'}},this.fmt(qty[s])))))));
+    // Card an het o (full-bleed): vien cua o lam ranh, ben trong chia 2 dai 55/45
+    // va can giua theo chieu doc de khong bi don cuc len tren.
+    return h('td',{key:d,onClick:()=>this.openBForm(r.id,d),title:this.t('tipIssueEdit'),
+      style:{...base,cursor:'pointer',background:C.white,height:1,verticalAlign:'top'}},
+      h('div',{style:{height:'100%',minHeight:74,boxSizing:'border-box',display:'flex',flexDirection:'column'}},
+        // dai 1 (55%): trang thai (bam de dao vong) + tong so luong
+        h('div',{style:{flex:'55 1 0',minHeight:0,display:'flex',alignItems:'center',justifyContent:'space-between',
+          gap:6,padding:'0 10px'}},
+          this.statusTag(this.cellStatus(cell),{sm:true,onClick:ev=>this.cycleStatus(r,d,ev)}),
+          h('span',{style:{fontSize:19,fontWeight:700,fontFamily:mono,color:C.ink,lineHeight:1,flex:'none',
+            letterSpacing:'-.4px'}},this.fmt(tot))),
+        // dai 2 (45%): Cut turn: C1 C2
+        h('div',{style:{flex:'45 1 0',minHeight:0,display:'flex',alignItems:'center',flexWrap:'wrap',gap:4,
+          padding:'0 10px',borderTop:'1px solid '+C.line,background:'#fbfcf8'}},
+          h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.3px',color:C.faint,flex:'none'}},this.t('cCutTurn')),
+          turns.map(t=>h('span',{key:t,style:{fontSize:11.5,fontWeight:700,color:'#fff',background:C.primary,
+            borderRadius:5,padding:'1px 7px',lineHeight:1.35,flex:'none'}},t)))));
   }
 
   renderBForm(){
     const f=this.state.bform; if(!f) return null;
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const row=this.getWeek().rows.find(r=>r.id===f.id); if(!row) return null;
-    const b=this.state.bundle[f.id]||{color:''};
+    const b=this.bAt(f.id)||{color:''};
     const dates=this.weekDates(); const di=this.DAYS.indexOf(f.day);
     const quantity=Number(row.days[f.day])||0; const style=row.style;
-    const tq=f.tq||{}; const selIds=f.turns||[];
+    const pos=f.pos||[]; const posSet={}; pos.forEach(k=>posSet[k]=1);
+    const tq=this.posTq(row.style,pos); const selIds=this.posTurns(row.style,pos);
     const cat=this.cutTurns(style);
     const tcols=this.SORDER.filter(s=> cat.some(t=>this.turnSizes(t)[s]));
+    // Cot size tach theo tung vi tri tren so do cat: size co ti le 2 -> 2 cot (S1, S2),
+    // moi cot hien SO LOP. VD 28 lop, S ti le 2 -> S1 28 + S2 28 = 56 pcs.
+    const ratMax={};
+    cat.forEach(t=>{ const r=this.parseMarker(t.marker);
+      this.SORDER.forEach(s=>{ const v=Number(r[s])||0; if(v>(ratMax[s]||0)) ratMax[s]=v; }); });
+    const scols=[]; this.SORDER.forEach(s=>{ const m=ratMax[s]||0;
+      for(let k=1;k<=m;k++) scols.push({s:s,k:k,label:m>1?(s+k):s}); });
+    const scolLy=(t,c)=>((Number(this.parseMarker(t.marker)[c.s])||0)>=c.k)?(Number(t.layers)||0):0;
     const avail=this.sumTurns(selIds,style);
     const grand=this.tqTotals(tq);
     const hasTurns=selIds.length>0;
@@ -1094,6 +1193,10 @@ class Component extends DCLogic {
     const availTotal=this.SORDER.reduce((a,s)=>a+(avail[s]||0),0);
     const sizeCount=this.SORDER.filter(s=>(grand[s]||0)>0).length;
     const canSave=hasTurns&&needTotal>0; const editing=!!(b.days&&b.days[f.day]);
+    const curSt=this.bformStatus(); const RC=this.STC.received; const WC=this.STC.waiting;
+    const used=this.bformUsedPos();
+    // Mau cat hieu luc (ke ca mau tu dong) -- no quyet dinh scope cua bang luot cat
+    const effColor=this.bundleColor(row,this.getWeek().rows.findIndex(r=>r.id===f.id));
     const check=(on,sz)=>h('span',{style:{width:(sz||16),height:(sz||16),borderRadius:5,flex:'none',border:'1.5px solid '+(on?C.primary:'#c7ccc2'),background:on?C.primary:C.white,display:'flex',alignItems:'center',justifyContent:'center'}}, on?h('svg',{width:(sz?sz-6:11),height:(sz?sz-6:11),viewBox:'0 0 24 24',fill:'none',stroke:'#fff',strokeWidth:3.5},h('path',{d:'M5 12l4 4 10-10'})):null);
     const info=(label,val,o)=>{ o=o||{}; return h('div',{style:{flex:o.hl?'1.15 1 0':'1 1 0',minWidth:0,border:'1px solid '+(o.hl?C.primary:C.border),borderRadius:10,padding:'9px 14px',background:o.hl?C.tint:C.white}},
       h('div',{style:{fontSize:10,fontWeight:700,letterSpacing:'.5px',color:o.hl?C.dark:C.faint,marginBottom:4}},label),
@@ -1105,25 +1208,71 @@ class Component extends DCLogic {
       hint?h('span',{style:{fontSize:12,color:C.faint}},'· '+hint):null);
     const tTh={padding:'9px 6px',textAlign:'center',fontSize:11.5,fontWeight:700,letterSpacing:'.3px',textTransform:'uppercase',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line};
     const tTd={padding:'9px 6px',textAlign:'center',fontSize:12.5,fontFamily:mono,borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line};
+    // Bang luot cat trinh bay giong panel tac nghiep cat: LUOT CAT / SO LOP / cac size / TONG PCS / TEM
+    const sgc='150px 70px repeat('+(scols.length||1)+',minmax(46px,1fr)) 92px 56px';
+    const turnHead=h('div',{style:{display:'grid',gridTemplateColumns:sgc,gap:8,padding:'9px 16px',
+      borderBottom:'1px solid '+C.line,borderLeft:'3px solid transparent',background:'#f8faf3',fontSize:10,fontWeight:700,letterSpacing:'.6px',color:C.faint,alignItems:'end'}},
+      h('div',null,this.t('kcTb')), h('div',null,this.t('kcLy')),
+      scols.map(c=>h('div',{key:c.s+'-'+c.k,style:{textAlign:'center',fontFamily:mono,fontSize:11,color:C.sub}},c.label)),
+      h('div',{style:{textAlign:'right'}},this.t('kcPcs')),
+      h('div',{style:{textAlign:'right'}},this.t('kcTagN')));
+    const turnRows=cat.map((t,ti)=>{
+      const tpos=this.turnPos(t);
+      const nOn=tpos.filter(p=>posSet[p.key]).length, on=nOn>0;
+      const held=tpos.filter(p=>used[p.key]);
+      // ca luot chi coi la het khi MOI vi tri da bi o khac giu
+      // held[] la cac VI TRI; chu (line/day) nam trong map used[] theo key vi tri
+      const tk=(!on&&tpos.length>0&&held.length===tpos.length)?used[held[0].key]:null;
+      const ts=this.turnSizes(t), rat=this.parseMarker(t.marker);
+      const tags=Object.keys(rat).reduce((a,s)=>a+(Number(rat[s])||0),0);
+      // TONG PCS / TEM tinh theo phan DANG CHON cua luot nay, chua chon thi hien ca luot
+      const pcs=on?nOn*(Number(t.layers)||0):this.SORDER.reduce((a,s)=>a+(Number(ts[s])||0),0);
+      const tagsShown=on?nOn:tags;
+      const dim=tk?'#c3c8bf':null;
+      return h('div',{key:t.id,className:tk?'':'turn-pick',title:tk?this.t('mTakenTip'):'',
+        onClick:tk?null:()=>this.toggleTurnAll(t.id),
+        style:{display:'grid',gridTemplateColumns:sgc,gap:8,alignItems:'center',padding:'10px 16px',
+          borderBottom:ti<cat.length-1?'1px solid '+C.line:'none',
+          borderLeft:'3px solid '+(on?C.primary:'transparent'),
+          background:on?C.tint:(tk?'#f6f7f4':C.white),
+          cursor:tk?'not-allowed':'pointer',transition:'background .1s'},
+        'style-hover':tk?{}:{background:on?C.tint:C.tint2}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:9,minWidth:0}},
+          tk? h('span',{style:{width:16,height:16,borderRadius:5,flex:'none',border:'1.5px dashed #cfd3c9',background:'#f1f2ef'}}) : check(on),
+          h('span',{style:{fontSize:15.5,fontWeight:700,fontFamily:mono,color:dim||(on?C.primary:C.dark)}},t.id),
+          tk? h('span',{style:{fontSize:9,fontWeight:700,letterSpacing:'.2px',color:WC.fg,background:WC.bg,
+            border:'1px solid '+WC.bd,borderRadius:99,padding:'1px 7px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},
+            String(tk.line||'')+' \u00b7 '+String(tk.day||'').toUpperCase()):null),
+        h('div',{style:{fontSize:14,fontFamily:mono,fontWeight:600,color:dim||C.ink}},t.layers),
+        scols.map(c=>{ const ly=scolLy(t,c);
+          if(!ly) return h('div',{key:c.s+'-'+c.k,style:{textAlign:'center',fontSize:13,fontFamily:mono,color:'#e0e4da'}},'\u00b7');
+          const pk=this.posKey(t.id,c.s,c.k), on=!!posSet[pk], hold=used[pk];
+          const bg=on?C.primary:(hold?'#f1f2ef':C.white);
+          return h('button',{key:c.s+'-'+c.k,
+            title:hold?(this.t('mTakenTip')+' \u2014 '+hold.line+' \u00b7 '+hold.day.toUpperCase()):this.t('mPickPos'),
+            onClick:ev=>{ ev.stopPropagation(); if(!hold) this.togglePos(pk); },
+            style:{width:'100%',padding:'6px 0',borderRadius:8,fontFamily:mono,fontSize:12.5,fontWeight:700,
+              border:'1px solid '+(on?C.primary:(hold?'#e2e5dd':C.border)),background:bg,
+              color:on?'#fff':(hold?'#b9bfb2':C.ink),cursor:hold?'not-allowed':'pointer',
+              transition:'background .12s,border-color .12s'}},
+            hold?'\u00d7':this.fmtn(ly)); }),
+        h('div',{style:{textAlign:'right',fontSize:14.5,fontFamily:mono,fontWeight:700,color:dim||C.dark}},this.fmtn(pcs)),
+        h('div',{style:{textAlign:'right',fontSize:13,fontFamily:mono,fontWeight:700,color:dim||C.primary}},tagsShown));
+    });
+    // Dong tong nam cuoi, thang cot size -- chi tinh cac luot dang chon
+    const turnSum=h('div',{style:{display:'grid',gridTemplateColumns:sgc,gap:8,padding:'10px 16px',
+      alignItems:'center',background:C.dark,borderTop:'1px solid '+C.line,borderLeft:'3px solid transparent'}},
+      h('div',{style:{fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:'#dcefad',whiteSpace:'nowrap'}},this.t('mIssueRow')),
+      h('div',null,''),
+      scols.map(c=>{ let v=0; cat.forEach(t2=>{ if(posSet[this.posKey(t2.id,c.s,c.k)]) v+=Number(t2.layers)||0; });
+        return h('div',{key:c.s+'-'+c.k,style:{textAlign:'center',fontSize:13,fontFamily:mono,fontWeight:700,
+          color:v?'#fff':'rgba(255,255,255,.35)'}},v?this.fmtn(v):'-'); }),
+      h('div',{style:{textAlign:'right',fontSize:14.5,fontFamily:mono,fontWeight:700,color:'#fff'}},this.fmtn(needTotal)),
+      h('div',null,''));
     const turnTable = h('div',{style:{border:'1px solid '+C.border,borderRadius:10,overflow:'hidden'}},
-      h('table',{style:{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}},
-        h('colgroup',null, h('col',{style:{width:'160px'}}), ...tcols.map((s,i)=>h('col',{key:i})), h('col',{style:{width:'60px'}})),
-        h('thead',null, h('tr',null,
-          h('th',{style:{...tTh,textAlign:'left',paddingLeft:14,color:C.sub,background:'#f8faf3'}},this.t('mTurn')),
-          tcols.map(s=>h('th',{key:s,style:{...tTh,color:C.dark,background:'#f8faf3'}},s)),
-          h('th',{style:{...tTh,color:'#fff',background:C.dark,borderRight:'none'}},'\u03a3'))),
-        h('tbody',null,
-          cat.map(t=>{ const on=selIds.includes(t.id); const ts=this.turnSizes(t); const tot=Object.values(ts).reduce((a,x)=>a+x,0);
-            return h('tr',{key:t.id,className:'turn-pick',onClick:()=>this.toggleTurn(t.id),style:{cursor:'pointer',background:on?C.tint:C.white}},
-              h('td',{style:{padding:'9px 12px',borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line,borderLeft:'3px solid '+(on?C.primary:'transparent'),display:'flex',alignItems:'center',gap:9}}, check(on),
-                h('span',{style:{fontSize:13.5,fontWeight:700,color:on?C.dark:C.ink}},t.id),
-                h('span',{style:{fontSize:10.5,fontFamily:mono,color:C.faint,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},t.layers+this.t('ply'))),
-              tcols.map(s=>h('td',{key:s,style:{...tTd,color:ts[s]?C.ink:'#d3d7cd',fontWeight:ts[s]&&on?700:500,background:on&&ts[s]?'#eef5e8':'transparent'}}, ts[s]?this.fmt(ts[s]):'·')),
-              h('td',{style:{...tTd,fontWeight:700,borderRight:'none',color:on?C.primary:C.faint}},this.fmt(tot))); }),
-          h('tr',{style:{background:'#f7f9f3'}},
-            h('td',{style:{padding:'9px 14px',borderTop:'2px solid '+C.border,borderRight:'1px solid '+C.line,fontSize:11,fontWeight:700,letterSpacing:'.2px',color:C.sub}},this.t('mCuttable')),
-            tcols.map(s=>h('td',{key:s,style:{padding:'9px 6px',textAlign:'center',fontSize:13,fontWeight:700,fontFamily:mono,borderTop:'2px solid '+C.border,borderRight:'1px solid '+C.line,color:avail[s]?C.dark:'#d3d7cd'}}, this.fmt(avail[s]||0))),
-            h('td',{style:{padding:'9px 6px',textAlign:'center',fontSize:13,fontWeight:700,fontFamily:mono,borderTop:'2px solid '+C.border,color:C.dark}},this.fmt(availTotal))))));
+      h('div',{style:{overflowX:'auto'}},
+        h('div',{style:{minWidth:(408+(scols.length*50))+'px'}},
+          turnHead, ...turnRows, turnSum)));
     const qtyUnit=(tid,sz)=>{ const {cap,step}=this.turnCap(style,tid,sz); const capM=Math.floor(cap/step)*step;
       const m=tq[tid]||{}; const picked=Object.prototype.hasOwnProperty.call(m,sz); const need=Number(m[sz])||0; const full=need>=capM&&capM>0; const ratio=capM>0?Math.min(1,need/capM):0;
       const stc= ratio>=1?C.primary : ratio>0?'#c99a1e':'#cfd3c9';
@@ -1169,16 +1318,20 @@ class Component extends DCLogic {
             gcols.map(s=>h('td',{key:s,style:{...tTd,color:avail[s]?C.sub:'#d3d7cd'}}, this.fmt(avail[s]||0))),
             h('td',{style:{...tTd,borderRight:'none',color:C.sub}},this.fmt(availTotal))))));
     return h('div',{onClick:()=>this.set({bform:null}),ref:el=>{ if(el&&window.anime&&el.dataset.a!=='1'){el.dataset.a='1';window.anime({targets:el,opacity:[0,1],duration:200,easing:'easeOutQuad'});} },style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:60,padding:24}},
-      h('div',{onClick:ev=>ev.stopPropagation(),ref:el=>{ if(el&&window.anime&&el.dataset.a!=='1'){el.dataset.a='1';window.anime({targets:el,opacity:[0,1],translateY:[16,0],scale:[.98,1],duration:340,easing:'easeOutCubic'});} },style:{width:'min(1060px,94vw)',height:'min(880px,90vh)',display:'flex',flexDirection:'column',overflow:'hidden',background:C.white,borderRadius:16,boxShadow:'0 30px 70px rgba(0,0,0,.32)'}},
+      h('div',{onClick:ev=>ev.stopPropagation(),ref:el=>{ if(el&&window.anime&&el.dataset.a!=='1'){el.dataset.a='1';window.anime({targets:el,opacity:[0,1],translateY:[16,0],scale:[.98,1],duration:340,easing:'easeOutCubic'});} },style:{width:'min(1480px,96vw)',height:'min(960px,93vh)',display:'flex',flexDirection:'column',overflow:'hidden',background:C.white,borderRadius:16,boxShadow:'0 30px 70px rgba(0,0,0,.32)'}},
         h('div',{style:{display:'flex',alignItems:'center',gap:13,padding:'17px 24px',borderBottom:'1px solid '+C.line,flex:'none'}},
           h('div',{style:{width:38,height:38,borderRadius:10,background:C.tint,color:C.primary,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}},
             h('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9},h('rect',{x:3,y:3,width:18,height:18,rx:2}),h('path',{d:'M3 9h18M9 21V9'}))),
           h('div',{style:{flex:1,minWidth:0}},h('div',{style:{fontSize:18,fontWeight:700}},this.t('mTitle')),
             h('div',{style:{fontSize:12.5,color:C.faint,marginTop:2}},this.normName(row.line)+' · '+f.day.toUpperCase()+' '+dates[di]+' · '+this.state.week)),
+          editing? this.statusTag(curSt,{lg:true}) : null,
           h('button',{onClick:()=>this.set({bform:null}),style:{border:'1px solid '+C.border,background:C.white,cursor:'pointer',color:C.sub,padding:8,borderRadius:9,display:'flex'}},h('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},h('path',{d:'M18 6 6 18M6 6l12 12'})))),
         h('div',{className:'yscroll',style:{flex:1,overflow:'auto',padding:'18px 24px 20px'}},
           h('div',{style:{display:'flex',gap:11,marginBottom:20}},
-            info(this.t('colBrand'),row.brand),info(this.t('colStyle'),row.style,{mono:true}),info(this.t('mColor'),b.color||'—',{dot:!!b.color}),info(this.t('mPlan'),this.fmt(quantity),{hl:true,mono:true})),
+            info(this.t('colBrand'),row.brand),info(this.t('colStyle'),row.style,{mono:true}),info(this.t('mColor'),effColor||'—',{dot:!!effColor}),info(this.t('mPlan'),this.fmt(quantity),{hl:true,mono:true})),
+          h('div',{style:{display:'flex',alignItems:'center',gap:7,margin:'0 0 9px',fontSize:11.5,color:C.faint}},
+            h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,style:{flex:'none'}},h('circle',{cx:12,cy:12,r:9}),h('path',{d:'M12 8h.01M11 12h1v4h1'})),
+            this.t('mTurnPool')),
           turnTable),
         h('div',{style:{display:'flex',alignItems:'center',gap:14,padding:'14px 24px',borderTop:'1px solid '+C.line,background:'#f8faf3',flex:'none'}},
           editing? h('button',{onClick:()=>this.clearBForm(),style:{...this.btn('ghost'),color:'#c0392b',borderColor:'#eccfca'}},this.t('mClear')):null,
@@ -1187,6 +1340,9 @@ class Component extends DCLogic {
             hasTurns? h('span',{style:{fontSize:11.5,color:C.faint}}, selIds.length+' '+this.t('mTurns')+' · '+sizeCount+' '+this.t('mSizes')):null),
           h('div',{style:{flex:1}}),
           h('button',{onClick:()=>this.set({bform:null}),style:this.btn('ghost')},this.t('mCancel')),
+          editing? h('button',{onClick:()=>this.receiveBForm(),disabled:!canSave,title:this.t(curSt==='received'?'tipUnreceive':'tipReceive'),
+            style:{...this.btn('ghost'),background:curSt==='received'?RC.bg:C.white,color:RC.fg,borderColor:curSt==='received'?RC.dot:RC.bd,opacity:canSave?1:.5,cursor:canSave?'pointer':'not-allowed'}},
+            h('span',{style:{width:7,height:7,borderRadius:'50%',background:RC.dot,flex:'none'}}), this.t('mReceived')):null,
           h('button',{onClick:()=>this.saveBForm(),disabled:!canSave,style:{...this.btn('primary'),opacity:canSave?1:.5,cursor:canSave?'pointer':'not-allowed'}}, editing?this.t('mUpdate'):this.t('mSave')))));
   }
 
@@ -1200,7 +1356,6 @@ class Component extends DCLogic {
     if(plans.length>1&&cap){ const pd=String(cap.po).replace(/\D/g,'');
       const hit=plans.find(p=>{ const q=p.qrPo.replace(/\D/g,''); return q&&pd&&(q===pd||pd.indexOf(q)>=0||q.indexOf(pd)>=0); }); if(hit) pl=hit; }
     return pl.sections.filter(s=>s.grp!=='aux').reduce((a,s)=>a+s.total,0); }
-  nextWeekKey(){ const all=[]; Object.values(this.MONTHS).forEach(ws=>ws.forEach(w=>all.push(w))); const i=all.indexOf(this.state.week); return (i>=0&&i<all.length-1)?all[i+1]:null; }
   planNext(r){
     // SUMIFS: tổng cột TOTAL của Kế Hoạch May tuần này, khớp LINE + BRAND + STYLE
     const ln=this.normName(r.line);
@@ -1250,7 +1405,7 @@ class Component extends DCLogic {
     add('Bundle Demand',a2,[12,12,16,15,14,14,15,12,13,15,15]);
 
     const a3=[['WEEKLY BUNDLE REQUEST'],fac,wkr,[],['LINE','STYLE #','MÀU CẮT',...dayHead,'TỔNG']];
-    rows.forEach(r=>{ const b=this.state.bundle[r.id]||{};
+    rows.forEach(r=>{ const b=this.state.bundle[this.bKey(r)]||{};
       a3.push([this.normName(r.line),r.style,b.color||'',
         ...this.DAYS.map(d=>{ const c=b.days&&b.days[d]; if(!c||!(c.sizes||[]).length) return ''; const q=c.qty||{};
           return (c.turns||[]).join('+')+' | '+c.sizes.map(s=>s+' '+(Number(q[s])||0)).join(' · '); }),
@@ -1301,6 +1456,8 @@ class Component extends DCLogic {
         return h('td',{key:field,onClick:()=>this.startEdit(r.id,col),title:this.t('tipManual'),
           style:{...cb,padding:pad,textAlign:'center',fontFamily:mono,fontSize:13,fontWeight:600,cursor:'pointer',color:warn?'#c0392b':C.ink,background:warn?'#fdeceb':rbg}},this.fmt(val)); };
       const calc=(k,val,title)=>h('td',{key:k,title:title,style:{...cb,padding:pad,textAlign:'center',fontFamily:mono,fontSize:12.5,fontWeight:val?600:400,color:val?C.sub:'#c3c8bf',background:calcBg}},this.fmt(val));
+      // Chi doc: gia tri lay tu tac nghiep cat / ke hoach, khong nhap tay
+      const lock=(k,val,title)=>h('td',{key:k,title:title,style:{...cb,padding:pad,textAlign:'center',fontFamily:mono,fontSize:13,fontWeight:600,cursor:'default',opacity:.7,color:C.ink,background:calcBg}},this.fmt(val));
       const cells=[];
       if(li.first) cells.push(ed(r.id,'line')
         ? h('td',{key:'ln',rowSpan:li.span,style:{...cb,padding:0,background:C.tint}},
@@ -1309,7 +1466,7 @@ class Component extends DCLogic {
         : h('td',{key:'ln',rowSpan:li.span,title:this.t('tipPlanCol'),style:{...cb,padding:'8px 4px',textAlign:'center',verticalAlign:'middle',fontSize:12,fontWeight:700,cursor:'default',opacity:.7,color:C.primary,background:C.tint,lineHeight:1.25}},this.normName(r.line)));
       cells.push(h('td',{key:'br',title:this.t('lgPull'),style:{...cb,padding:pad,paddingLeft:9,textAlign:'left',fontSize:11.5,fontWeight:600,color:r.brand?C.ink:'#c3c8bf',background:rbg}},r.brand||'—'));
       cells.push(h('td',{key:'st',title:this.t('lgPull'),style:{...cb,padding:pad,paddingLeft:9,textAlign:'left',fontSize:11,fontFamily:mono,color:r.style?C.ink:'#c3c8bf',background:rbg,wordBreak:'break-all',lineHeight:1.3}},r.style||'—'));
-      cells.push(man('a',v.a)); cells.push(man('b',v.b)); cells.push(man('c',v.c));
+      cells.push(lock('a',v.a,this.t('tipA'))); cells.push(man('b',v.b)); cells.push(man('c',v.c));
       cells.push(calc('wip',v.wip,this.t('tipBC')));
       cells.push(man('d',v.d,v.d===0));
       cells.push(calc('e',v.e,this.t('tipE')));
@@ -1349,19 +1506,6 @@ class Component extends DCLogic {
           h('td',{style:{padding:'11px 5px',textAlign:'center',fontFamily:mono,fontSize:15,fontWeight:700,color:'#fff',background:C.dark}},this.fmt(T('need')))))));
   }
 
-  renderOtherTab(){
-    const h=React.createElement, C=this.C;
-    const label=this.state.tab==='daily'?'Weekly Bundle Demand':'Weekly Bundle Request';
-    return h('div',{className:'yscroll',style:{flex:1,overflow:'auto',padding:'24px 30px'}},
-      this.renderTitle(), this.renderKpis(), this.renderTabs(),
-      h('div',{style:{background:C.white,border:'1px solid '+C.border,borderRadius:16,boxShadow:C.shadow,padding:'70px 24px',textAlign:'center'}},
-        h('div',{style:{width:56,height:56,borderRadius:14,background:C.tint,color:C.primary,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px'}},
-          h('svg',{width:26,height:26,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8},h('rect',{x:3,y:4,width:18,height:16,rx:2}),h('path',{d:'M3 9h18M8 4v16'}))),
-        h('div',{style:{fontSize:18,fontWeight:700}},label),
-        h('div',{style:{fontSize:13.5,color:C.faint,marginTop:6}},this.state.tab==='daily'?'UI Proto — chi tiết mỗi lượt cắt (bàn): target theo màu / size sẽ được bóc tách ở đây. Ở bảng tuần mỗi ô chỉ nhập một con số target.':'UI Proto — this tab is scaffolded. The Weekly Sewing Schedule is the active view.'),
-        h('button',{onClick:()=>this.set({tab:'weekly'}),style:{...this.btn('primary'),margin:'18px auto 0'}},'Back to Weekly Sewing Schedule')));
-  }
-
   // Dòng đặt năng lực cắt lấy trực tiếp từ Nhu Cầu BTP / Kế Hoạch May (chuyền + thương hiệu + mã hàng)
   capRows(){ const o=this.state.cap||{}; const seen={}, list=[];
     this.getWeek().rows.forEach(r=>{ if(!r.brand&&!r.style) return;
@@ -1377,57 +1521,7 @@ class Component extends DCLogic {
     list.forEach(r=>{ if(by[r.id]) out.push(r); });
     return out; }
   // PO lấy từ tác nghiệp cắt — khớp lượt cắt đã đặt cho dòng
-  capPo(r){ const plans=this.khcPlansFor(r.style); if(!plans.length) return '';
-    const codes=(((this.state&&this.state.capTurns)||{})[r.id]||[]).map(t=>t.c);
-    let best=plans[0];
-    if(codes.length){ let top=-1;
-      plans.forEach(p=>{ const set={}; (p.sections||[]).forEach(s=>(s.tables||[]).forEach(t=>{ set[t.tb]=1; }));
-        const n=codes.reduce((a,c)=>a+(set[c]?1:0),0); if(n>top){ top=n; best=p; } });
-      if(top<=0) return ''; }
-    return (best&&best.qrPo)||''; }
   multFor(emb){ const s=this.state||{}; const v=emb?s.multEmb:s.multPlain; return v==null?(emb?6:3):v; }
-  setMult(key,val){ const n=Math.max(0,Math.min(60,parseInt(String(val).replace(/[^0-9]/g,''),10)||0)); this.setState({[key]:n}); }
-  rowPress(ev,id,idx){
-    if(ev.button!=null&&ev.button!==0) return;
-    const tg=ev.target; if(tg&&tg.closest&&tg.closest('input,button,select,textarea')) return;
-    const rows=this.capRows(); this.rowEls=this.rowEls||{};
-    const rects=rows.map(r=>{ const el=this.rowEls[r.id]; return el?el.getBoundingClientRect():null; });
-    const self=rects[idx]; const rh=self?self.height:34; const y0=ev.clientY;
-    let live=false;
-    const lift=on=>{ const el=(this.rowEls||{})[id]; if(!el) return;
-      if(on){ el.classList.add('lift'); el.style.position='relative'; el.style.zIndex='9'; el.style.opacity='1';
-        el.style.transition='none'; el.style.transform='translateY(0px)'; el.style.cursor='grabbing';
-        el.style.boxShadow='0 14px 30px rgba(20,26,20,.24)'; }
-      else { el.classList.remove('lift'); el.style.position=''; el.style.zIndex=''; el.style.boxShadow=''; el.style.cursor=''; el.style.transform=''; el.style.transition=''; } };
-    const cleanup=()=>{ document.body.style.userSelect=''; lift(false);
-      window.removeEventListener('pointermove',move,true); window.removeEventListener('pointerup',up,true); window.removeEventListener('pointercancel',up,true); };
-    const move=e=>{
-      const dy=e.clientY-y0;
-      if(!live){ if(Math.abs(dy)>7){ clearTimeout(timer); cleanup(); } return; }
-      const center=(self?self.top+self.height/2:0)+dy;
-      let to=idx;
-      for(let j=0;j<rects.length;j++){ const rc=rects[j]; if(!rc||j===idx) continue; const c=rc.top+rc.height/2;
-        if(j<idx&&center<c) to=Math.min(to,j); else if(j>idx&&center>c) to=Math.max(to,j); }
-      this.setState(s=>s.dragRow?{dragRow:{...s.dragRow,dy:dy,to:to}}:null);
-    };
-    const up=()=>{ clearTimeout(timer); const d=this.state.dragRow; cleanup();
-      if(d){ this._noClick=true; setTimeout(()=>{ this._noClick=false; },250); this.commitRowMove(d.from,d.to); } };
-    const timer=setTimeout(()=>{ live=true; document.body.style.userSelect='none';
-      try{ if(navigator.vibrate) navigator.vibrate(8); }catch(err){}
-      lift(true);
-      this.setState(s=>({dragRow:{id:id,from:idx,to:idx,dy:0,h:rh},edit:null}),()=>this.forceUpdate());
-    },240);
-    window.addEventListener('pointermove',move,true);
-    window.addEventListener('pointerup',up,true);
-    window.addEventListener('pointercancel',up,true);
-  }
-  commitRowMove(from,to){ this.setState(s=>{
-    const ids=this.capRows().map(r=>r.id);
-    if(from!==to&&to>=0&&to<ids.length){ const mv=ids.splice(from,1)[0]; ids.splice(to,0,mv); }
-    return {capOrder:ids,dragRow:null}; }); }
-  // SL của 1 lượt theo mã lượt — dùng khi lượt đã xếp lịch không còn trong bảng phân bổ hiện tại
-  codeQty(style,code,po){ const t=(this.cutTurns(style,po)||[]).find(x=>x.id===code); if(!t) return 0;
-    const ts=this.turnSizes(t); return Object.keys(ts).reduce((a,s)=>a+ts[s],0); }
   isOoo(r){ return /^out of order$/i.test(String(r.turns||'').trim()); }
   turnQty(style,k,po){ const cat=this.cutTurns(style,po)||[]; if(!cat.length) return 400;
     const t=cat[k%cat.length]; const ts=this.turnSizes(t);
@@ -1441,11 +1535,6 @@ class Component extends DCLogic {
       else { while(sum<need && k<40){ const q=this.turnQty(r.style,k,r.po); arr.push({c:'C'+(n++),q:q}); sum+=q; k++; } }
       m[r.id]=arr; });
     return m; }
-  turnCatalog(){ const m=(this.state&&this.state.capTurns)||{}; const out=[];
-    this.capRows().forEach(r=>{ (m[r.id]||[]).forEach((t,i)=>out.push({code:t.c,qty:t.q,rowId:r.id,idx:i,line:r.line,brand:r.brand,style:r.style})); });
-    out.sort((a,b)=>(parseInt(a.code.slice(1),10)||0)-(parseInt(b.code.slice(1),10)||0)); return out; }
-  cloneTurns(s){ const m={}; Object.keys(s.capTurns||{}).forEach(k=>{ m[k]=s.capTurns[k].map(t=>({...t})); }); return m; }
-  renumberTurns(){ this.setState({capTurns:this.allocTurns(),dragRow:null}); }
   bdKey(line,brand,style){ const u=s=>String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
     return this.normName(line)+'|'+u(brand)+'|'+u(style); }
   bundleIndex(){
@@ -1469,10 +1558,6 @@ class Component extends DCLogic {
       wk:this.capDays(r).reduce((a,x)=>a+(Number(x)||0),0),
       list:ooo?[]:(((this.state&&this.state.capTurns)||{})[r.id]||[]), ooo};
   }
-  setCap(id,field,val){
-    const v=(field==='cut'||field==='iss')?Math.max(0,parseInt(String(val).replace(/[^0-9]/g,''),10)||0):String(val).trim();
-    this.setState(s=>({cap:{...(s.cap||{}),[id]:{...((s.cap||{})[id]||{}),[field]:v}}}));
-  }
   fmtn(n){ n=Number(n)||0; return n%1===0?n.toLocaleString('en-US'):n.toLocaleString('en-US',{maximumFractionDigits:1}); }
   capTotals(){ const T={cut:0,iss:0,rem:0,wip1:0,ahead:0,sew:0,out:0,tc:0,days:[0,0,0,0,0,0],wk:0};
     this.capRows().forEach(r=>{ const v=this.capVals(r);
@@ -1480,13 +1565,1072 @@ class Component extends DCLogic {
       T.ahead+=v.ahead; T.sew+=v.sew; T.out+=v.out; T.tc+=v.list.length; T.wk+=v.wk;
       this.capDays(r).forEach((x,i)=>{ T.days[i]+=Number(x)||0; }); });
     return T; }
-  schedTurns(){ const s=new Set(); this.CUTPLAN.forEach(b=>Object.keys(b.cells).forEach(d=>{ const c=b.cells[d]; if(c&&c.turn) s.add(c.turn); })); return s; }
 
-  renderCutBody(){
-    const h=React.createElement;
+  DSO_TABS=[['cfg','dsotab1'],['prod','dsotab2'],['alert','dsotab3'],['mlv','dsotab4']];
+  DSO_SUBS=[['line','dsosub1'],['mtype','dsosub2'],['defect','dsosub3']];
+  // Nhan KEY dich (khong nhan nhan da resolve) de nhan tu doi khi bam VI/EN.
+  // sub=true -> preset nhe hon, giong segmented control trong renderPeriodBar.
+  tabBar(items,cur,pick,sub){
+    const h=React.createElement, C=this.C;
+    const wrap=sub?{display:'inline-flex',gap:3,background:'#e9ece1',padding:3,borderRadius:10,marginBottom:16}
+                  :{display:'inline-flex',gap:3,background:'#e7eadf',padding:4,borderRadius:12,marginBottom:20};
+    return h('div',{style:wrap},
+      items.map(([id,key])=>{ const a=cur===id;
+        const st=sub?{border:'none',cursor:'pointer',padding:'5px 13px',fontSize:12.5,fontWeight:600,fontFamily:'inherit',color:a?C.dark:C.sub,background:a?'#fff':'transparent',borderRadius:8,boxShadow:a?'0 1px 2px rgba(24,36,14,.15)':'none',transition:'background .15s,color .15s'}
+                    :{border:'none',cursor:'pointer',padding:'8px 18px',fontSize:13.5,fontWeight:600,fontFamily:'inherit',color:a?C.dark:C.sub,background:a?'#fff':'transparent',borderRadius:9,boxShadow:a?'0 1px 3px rgba(24,36,14,.14)':'none',transition:'background .15s,color .15s'};
+        return h('button',{key:id,onClick:()=>pick(id),style:st},this.t(key)); }));
+  }
+  // ==== Cảnh báo (andon) của Daily Sewing Output ====
+  // Ten cua tung canh bao la DU LIEU nguoi dung sua duoc, nen khong dua vao bang dich.
+  DSO_ALERTS=['Máy hỏng','Mất điện nước','Lỗi kĩ thuật','Lỗi chất lượng','Cần cơ động','Đào tạo',
+              'Trợ giúp chất lượng','Quản lý','Kim gãy','Lỗi khác','Lỗi phụ liệu','Phôi lỗi'];
+  initAlerts(){ return this.DSO_ALERTS.map((n,i)=>({id:'a'+(i+1),name:n,snd:null})); }
+  SND_MAX=20*1024*1024;
+
+  // File am thanh nam trong IndexedDB (localStorage chi giu ten/kich co) -- blob am thanh
+  // vuot xa gioi han ~5MB cua localStorage.
+  IDB_NAME='yic.mes'; IDB_STORE='alertSound'; IDB_STORE2='mlvFile'; IDB_VER=2;
+  idb(){ if(this._idbP) return this._idbP;
+    this._idbP=new Promise((res,rej)=>{ const rq=window.indexedDB.open(this.IDB_NAME,this.IDB_VER);
+      rq.onupgradeneeded=()=>{ const db=rq.result;
+        if(!db.objectStoreNames.contains(this.IDB_STORE)) db.createObjectStore(this.IDB_STORE);
+        if(!db.objectStoreNames.contains(this.IDB_STORE2)) db.createObjectStore(this.IDB_STORE2); };
+      rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
+    return this._idbP; }
+  idbTx(mode,fn,store){ store=store||this.IDB_STORE;
+    return this.idb().then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction(store,mode); const rq=fn(tx.objectStore(store));
+    tx.oncomplete=()=>res(rq?rq.result:undefined); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error); })); }
+  sndPut(id,blob){ return this.idbTx('readwrite',st=>st.put(blob,id)); }
+  sndGet(id){ return this.idbTx('readonly',st=>st.get(id)); }
+  sndDel(id){ return this.idbTx('readwrite',st=>st.delete(id)); }
+  sndClear(){ return this.idbTx('readwrite',st=>st.clear()).catch(()=>{}); }
+  // File M-level: blob nam trong IndexedDB, localStorage chi giu ten/kich co
+  mlvPut(k,blob){ return this.idbTx('readwrite',st=>st.put(blob,k),this.IDB_STORE2); }
+  mlvDel(k){ return this.idbTx('readwrite',st=>st.delete(k),this.IDB_STORE2); }
+  mlvClear(){ return this.idbTx('readwrite',st=>st.clear(),this.IDB_STORE2).catch(()=>{}); }
+
+  alerts(){ return this.state.dsoAlerts||[]; }
+  setAlerts(fn){ this.setState(s=>({dsoAlerts:fn(s.dsoAlerts||[])})); }
+  // Bam 1 canh bao -> phat am thanh + nhay sang de biet da nhan
+  fireAlert(a){ this.playAlert(a);
+    clearTimeout(this._alT); this.set({dsoAlHit:a.id});
+    this._alT=setTimeout(()=>{ if(this._mounted) this.set({dsoAlHit:null}); },900); }
+  playAlert(a){ if(!a||!a.snd) return;
+    this.sndGet(a.id).then(blob=>{ if(!blob) return;
+      if(this._sndUrl) URL.revokeObjectURL(this._sndUrl);
+      this._sndUrl=URL.createObjectURL(blob);
+      this._snd=this._snd||new window.Audio();
+      this._snd.src=this._sndUrl; const p=this._snd.play(); if(p&&p.catch) p.catch(()=>{}); }).catch(()=>{}); }
+  pickAlertSound(id,file){ if(!file) return;
+    if(file.size>this.SND_MAX){ window.alert(this.t('alSndBig')); return; }
+    this.sndPut(id,file).then(()=>this.setAlerts(l=>l.map(a=>a.id===id?{...a,snd:{name:file.name,size:file.size,type:file.type||''}}:a)))
+      .catch(()=>window.alert(this.t('alSndErr'))); }
+  clearAlertSound(id){ this.sndDel(id).catch(()=>{});
+    this.setAlerts(l=>l.map(a=>a.id===id?{...a,snd:null}:a)); }
+  renameAlert(id,name){ this.setAlerts(l=>l.map(a=>a.id===id?{...a,name}:a)); }
+  delAlert(id){ this.sndDel(id).catch(()=>{}); this.setAlerts(l=>l.filter(a=>a.id!==id)); }
+  addAlert(){ const l=this.alerts();
+    let n=0; l.forEach(a=>{ const m=String(a.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
+    this.setAlerts(x=>[...x,{id:'a'+(n+1),name:'',snd:null}]); }
+  kb(n){ n=Number(n)||0; return n>=1048576?((n/1048576).toFixed(1)+' MB'):(Math.max(1,Math.round(n/1024))+' KB'); }
+  icSnd(on){ const h=React.createElement;
+    return h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,style:{flex:'none'}},
+      h('path',{d:'M11 5 6 9H3v6h3l5 4z'}),
+      on?h('path',{d:'M16 8a5 5 0 0 1 0 8'}):h('path',{d:'M22 9l-6 6M16 9l6 6'})); }
+
+  // Mot the trong dung chung cho ca 5 man -- sau nay chi truyen body that vao la xong
+  // opts.full = bo tran max-width; opts.action = phan tu ghim goc tren ben phai
+  dsoCard(titleKey,subKey,label,body,opts){
+    const h=React.createElement, C=this.C; opts=opts||{};
+    return h('div',{'data-screen-label':label,style:{background:C.white,border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',boxShadow:C.shadow}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'14px 22px 12px',borderBottom:'1px solid '+C.line}},
+        h('div',{style:{marginRight:'auto',minWidth:0}},
+          h('div',{style:{fontSize:16,fontWeight:700}},this.t(titleKey)),
+          h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t(subKey))),
+        opts.action||null),
+      body||h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('dsoSoon')));
+  }
+  renderDsoAlerts(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const list=this.alerts(); const ed=!!this.state.dsoAlEdit; const hit=this.state.dsoAlHit;
+    const grid={display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax('+(ed?258:206)+'px,1fr))',gap:12,padding:'18px 22px 22px',alignItems:'stretch'};
+    const iconBtn=(title,onClick,col,bd,bg)=>h('button',{title,onClick,
+      style:{border:'1px solid '+bd,background:bg,color:col,borderRadius:9,padding:'6px 9px',cursor:'pointer',display:'inline-flex',alignItems:'center',flex:'none',fontFamily:'inherit',fontSize:12,fontWeight:700,lineHeight:1}},title);
+    const body = !list.length
+      ? h('div',{style:{padding:'52px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('alEmpty'))
+      : h('div',{style:grid},
+          list.map(a=>{
+            if(!ed){ const on=hit===a.id;
+              return h('button',{key:a.id,onClick:()=>this.fireAlert(a),
+                style:{display:'flex',flexDirection:'column',alignItems:'flex-start',justifyContent:'space-between',gap:10,minHeight:98,
+                  border:'1px solid '+(on?'#c0392b':C.border),background:on?'#fdecea':C.white,color:C.ink,borderRadius:14,
+                  padding:'14px 15px',cursor:'pointer',fontFamily:'inherit',textAlign:'left',
+                  boxShadow:on?'0 0 0 3px rgba(192,57,43,.13)':'0 1px 2px rgba(40,60,10,.05)',transition:'background .12s,border-color .12s,box-shadow .12s'}},
+                h('span',{style:{fontSize:15,fontWeight:700,lineHeight:1.3,wordBreak:'break-word'}},a.name||'—'),
+                h('span',{style:{display:'inline-flex',alignItems:'center',gap:6,fontSize:10.5,fontWeight:600,color:a.snd?C.primary:C.faint}},
+                  this.icSnd(!!a.snd), a.snd?this.t('alHasSnd'):this.t('alNoSnd')));
+            }
+            return h('div',{key:a.id,style:{border:'1px solid '+C.border,borderRadius:14,padding:'12px 13px 13px',background:C.white,display:'flex',flexDirection:'column',gap:9}},
+              h('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+                h('input',{value:a.name,placeholder:this.t('alName'),onChange:e=>this.renameAlert(a.id,e.target.value),
+                  style:{flex:1,minWidth:0,border:'1px solid '+C.border,borderRadius:9,padding:'8px 10px',fontSize:13.5,fontWeight:600,fontFamily:'inherit',color:C.ink,background:C.white}}),
+                h('button',{title:this.t('alDel'),onClick:()=>this.delAlert(a.id),
+                  style:{border:'1px solid #eccfca',background:C.white,color:'#c0392b',borderRadius:9,padding:'7px 8px',cursor:'pointer',display:'flex',flex:'none'}},
+                  h('svg',{width:15,height:15,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},h('path',{d:'M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14'})))),
+              h('div',{style:{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap'}},
+                h('label',{style:{...this.btn('ghost'),padding:'6px 10px',fontSize:12,cursor:'pointer'}},
+                  this.icSnd(true), this.t('alPick'),
+                  h('input',{type:'file',accept:'audio/*',style:{display:'none'},
+                    onChange:e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; this.pickAlertSound(a.id,f); }})),
+                a.snd?iconBtn(this.t('alPlay'),()=>this.playAlert(a),C.primary,C.border,C.tint2):null,
+                a.snd?iconBtn(this.t('alClrSnd'),()=>this.clearAlertSound(a.id),'#c0392b','#eccfca',C.white):null),
+              h('div',{style:{fontSize:10.5,fontFamily:mono,color:a.snd?C.sub:C.faint,wordBreak:'break-all'}},
+                a.snd?(a.snd.name+' · '+this.kb(a.snd.size)):this.t('alNoSnd')));
+          }),
+          ed?h('button',{key:'__add',onClick:()=>this.addAlert(),
+            style:{minHeight:112,border:'1.5px dashed '+C.border,borderRadius:14,background:'#fbfcfa',color:C.primary,
+              cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:7}},
+            h('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},h('path',{d:'M12 5v14M5 12h14'})),
+            this.t('alAdd')):null);
+    const action=h('button',{onClick:()=>this.set({dsoAlEdit:!ed,dsoAlHit:null}),
+      style:ed?this.btn('primary'):this.btn('ghost')},
+      ed?null:h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},h('path',{d:'M12 20h9'}),h('path',{d:'M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z'})),
+      ed?this.t('alDone'):this.t('alEdit'));
+    return this.dsoCard('dsoAlertPanel','dsoAlertSub','DSO Alerts',body,{full:true,action});
+  }
+
+  // Style dung chung cho 2 bang cua M-level Type Setting
+  mtStyles(){ const C=this.C, mono="'IBM Plex Mono',monospace";
+    return {
+      th:{padding:'10px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:C.sub,
+          textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,background:'#f8faf3',whiteSpace:'nowrap'},
+      td:{padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line,verticalAlign:'middle'},
+      inp:{width:'100%',border:'1.5px solid '+C.primary,borderRadius:7,padding:'5px 7px',fontSize:12.5,fontFamily:mono,
+           fontWeight:600,color:C.ink,background:C.white,boxSizing:'border-box'},
+      mono };
+  }
+  mtBtn(label,on,extra){ const h=React.createElement, C=this.C;
+    return h('button',{onClick:on,style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:8,
+      padding:'4px 10px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap',...(extra||{})},
+      'style-hover':{background:C.tint}},label); }
+
+  // ---- Bảng 1 (tỉ lệ 3): danh mục loại M-level ----
+  renderMtypeTable(){
+    const h=React.createElement, C=this.C; const S=this.mtStyles();
+    const list=this.mtypes(), sel=this.mtSelId();
+    const body=list.map((m,i)=>{
+      const ed=this.state.mtEdit==='t:'+m.id, on=sel===m.id, bg=on?C.tint:(i%2?'#f7f9f3':C.white);
+      return h('tr',{key:m.id,onClick:()=>{ if(!ed) this.set({mtSel:m.id}); },style:{cursor:ed?'default':'pointer'}},
+        h('td',{style:{...S.td,background:bg,fontWeight:700,color:on?C.primary:C.ink,
+          borderLeft:'3px solid '+(on?C.primary:'transparent')}},
+          ed?h('input',{autoFocus:true,value:m.name,placeholder:this.t('mtName'),onClick:e=>e.stopPropagation(),
+              onChange:e=>this.mtSetType(m.id,{name:e.target.value}),style:S.inp})
+            :(String(m.name||'').trim()||'—')),
+        h('td',{style:{...S.td,background:bg,color:m.desc?C.ink:C.faint,wordBreak:'break-word'}},
+          ed?h('input',{value:m.desc||'',placeholder:this.t('mtDesc'),onClick:e=>e.stopPropagation(),
+              onChange:e=>this.mtSetType(m.id,{desc:e.target.value}),style:{...S.inp,fontFamily:'inherit'}})
+            :(m.desc||'—')),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('div',{style:{display:'flex',gap:6}},
+            ed?this.mtBtn(this.t('lsDone'),e=>{ e.stopPropagation(); this.set({mtEdit:null}); },{border:'1px solid '+C.primary,background:C.tint})
+              :this.mtBtn(this.t('lsEdit'),e=>{ e.stopPropagation(); this.set({mtEdit:'t:'+m.id,mtSel:m.id}); }),
+            this.mtBtn(this.t('mtDel'),e=>{ e.stopPropagation(); this.mtDelType(m.id); },{color:'#c0392b',borderColor:'#eccfca'}))));
+    });
+    const tbl=h('div',{style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'320px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'30%'}}),h('col',{style:{width:'40%'}}),h('col',{style:{width:'30%'}})),
+        h('thead',null,h('tr',null,
+          h('th',{style:{...S.th,paddingLeft:13}},this.t('mtName')),
+          h('th',{style:S.th},this.t('mtDesc')),
+          h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
+        h('tbody',null, list.length?body:h('tr',null,h('td',{colSpan:3,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'38px 16px',borderRight:'none'}},this.t('mtEmpty'))))));
+    const bodyEl=h('div',null, tbl,
+      h('div',{style:{padding:'11px 13px',borderTop:'1px solid '+C.line}},
+        this.mtBtn('+ '+this.t('mtAdd'),()=>this.mtAddType(),{color:C.primary,borderColor:C.border})));
+    return this.dsoCard('mtPanel','mtSub','DSO M-level Type',bodyEl,{full:true});
+  }
+
+  // ---- Bảng 2 (tỉ lệ 7): chi tiết của loại đang chọn ----
+  renderMtypeDetail(){
+    const h=React.createElement, C=this.C; const S=this.mtStyles();
+    const tid=this.mtSelId(); const rows=tid?this.mtDet(tid):[];
+    const imp=h('div',{style:{display:'flex',alignItems:'center',gap:9}},
+      this.state.mtMsg?h('span',{style:{fontSize:11.5,fontWeight:600,color:C.primary,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:99,padding:'4px 10px',whiteSpace:'nowrap'}},this.state.mtMsg):null,
+      h('label',{title:this.t('mtImportTip'),style:{...this.btn('ghost'),padding:'6px 12px',fontSize:12,cursor:tid?'pointer':'not-allowed',opacity:tid?1:.5}},
+        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M12 3v12M8 11l4 4 4-4'}),h('path',{d:'M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2'})),
+        this.t('mtImport'),
+        h('input',{type:'file',accept:'.xlsx,.xls,.csv',disabled:!tid,style:{display:'none'},
+          onChange:e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(f) this.mtImport(f); }})));
+    let bodyEl;
+    if(!tid) bodyEl=h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('mtPickType'));
+    else {
+      const body=rows.map((r,i)=>{
+        const ed=this.state.mtEdit==='d:'+tid+':'+r.id, bg=i%2?'#f7f9f3':C.white;
+        const cell=(field,fn,ph,align)=>ed
+          ? h('input',{value:r[field]==null?'':r[field],placeholder:ph,inputMode:field==='inc'?'decimal':'numeric',
+              onChange:e=>this.mtSetDet(tid,r.id,{[field]:fn?this[fn](e.target.value):e.target.value}),
+              style:{...S.inp,textAlign:align||'left',...(fn?{}:{fontFamily:'inherit'})}})
+          : (field==='inc'?this.mtMoneyFmt(r.inc)
+             :(r[field]===''||r[field]==null?'—'
+               :(field==='tgt'?r.tgt+'%':String(r[field]))));
+        return h('tr',{key:r.id},
+          h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
+          h('td',{style:{...S.td,background:bg,fontWeight:600,wordBreak:'break-word'}},cell('name',null,this.t('mtName'))),
+          h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,fontWeight:700}},cell('tgt','lsPct','0','center')),
+          h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},cell('inc','mtMoney','0','right')),
+          h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+            h('div',{style:{display:'flex',gap:6}},
+              ed?this.mtBtn(this.t('lsDone'),()=>this.mtDetDone(tid,r.id),{border:'1px solid '+C.primary,background:C.tint})
+                :this.mtBtn(this.t('lsEdit'),()=>this.set({mtEdit:'d:'+tid+':'+r.id})),
+              this.mtBtn(this.t('mtDel'),()=>this.mtDelDet(tid,r.id),{color:'#c0392b',borderColor:'#eccfca'}))));
+      });
+      const tbl=h('div',{style:{overflowX:'auto'}},
+        h('table',{style:{width:'100%',minWidth:'640px',borderCollapse:'collapse'}},
+          h('colgroup',null,h('col',{style:{width:'56px'}}),h('col',{style:{width:'26%'}}),
+            h('col',{style:{width:'15%'}}),h('col',{style:{width:'30%'}}),h('col',{style:{width:'160px'}})),
+          h('thead',null,h('tr',null,
+            h('th',{style:{...S.th,textAlign:'center',paddingLeft:8}},this.t('mtNo')),
+            h('th',{style:S.th},this.t('mtName')),
+            h('th',{style:{...S.th,textAlign:'center'}},this.t('mtTgt')),
+            h('th',{style:{...S.th,textAlign:'right'}},this.t('mtInc')),
+            h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
+          h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:5,
+            style:{...S.td,textAlign:'center',color:C.faint,padding:'38px 16px',borderRight:'none'}},this.t('mtdEmpty'))))));
+      bodyEl=h('div',null, tbl,
+        h('div',{style:{padding:'11px 13px',borderTop:'1px solid '+C.line}},
+          this.mtBtn('+ '+this.t('mtAdd'),()=>this.mtAddDet(tid),{color:C.primary,borderColor:C.border})));
+    }
+    return this.dsoCard('mtdPanel','mtdSub','DSO M-level Type Detail',bodyEl,{full:true,action:imp});
+  }
+
+  // ==== Thu vien loi (Defect Library) =====================================
+  // Danh muc loi dung khi cong nhan bam FAIL o card size. Ca 6 cot deu la CHU
+  // tu do -- moi nha may co bo ma / nhom / muc do rieng, nen khong validate gi
+  // ngoai viec don khoang trang khi bam Xong.
+  DEFECT_DEF=[
+    {code:'SW-001',name:'Bỏ mũi chỉ',              cat:'May',        sev:'Major',    loc:'Đường sườn',    cause:'Kim mòn · chỉ căng'},
+    {code:'SW-002',name:'Đường may nhăn',          cat:'May',        sev:'Major',    loc:'Nẹp áo',        cause:'Áp lực chân vịt sai'},
+    {code:'SW-003',name:'Đường may lệch',          cat:'May',        sev:'Critical', loc:'Cổ áo',         cause:'Canh sai dấu bấm'},
+    {code:'SW-004',name:'Tuột chỉ · nhảy chỉ',     cat:'May',        sev:'Major',    loc:'Gấu áo',        cause:'Máy chưa hiệu chỉnh'},
+    {code:'SW-005',name:'Chỉ thừa chưa cắt',       cat:'Vệ sinh',    sev:'Minor',    loc:'Toàn sản phẩm', cause:'Bỏ sót khâu cắt chỉ'},
+    {code:'FB-001',name:'Vải lỗi sợi · sợi thô',   cat:'Vải',        sev:'Major',    loc:'Thân trước',    cause:'Nguyên liệu đầu vào'},
+    {code:'FB-002',name:'Vải khác màu',            cat:'Vải',        sev:'Critical', loc:'Tay áo',        cause:'Trộn lô nhuộm'},
+    {code:'FB-003',name:'Vải bị lỗ · xước',        cat:'Vải',        sev:'Critical', loc:'Thân sau',      cause:'Nguyên liệu đầu vào'},
+    {code:'CT-001',name:'Cắt sai thông số',        cat:'Cắt',        sev:'Critical', loc:'Chi tiết thân', cause:'Sơ đồ cắt sai'},
+    {code:'CT-002',name:'Chi tiết không đối xứng', cat:'Cắt',        sev:'Major',    loc:'Tay áo',        cause:'Xô lệch khi cắt'},
+    {code:'AC-001',name:'Khóa kéo không êm',       cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp khóa',      cause:'Phụ liệu lỗi'},
+    {code:'AC-002',name:'Cúc lệch · thiếu cúc',    cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp áo',        cause:'Đóng cúc sai vị trí'},
+    {code:'AC-003',name:'Nhãn sai · thiếu nhãn',   cat:'Phụ liệu',   sev:'Critical', loc:'Cổ trong',      cause:'Cấp sai nhãn'},
+    {code:'PR-001',name:'In · thêu lệch vị trí',   cat:'In thêu',    sev:'Major',    loc:'Ngực trái',     cause:'Định vị khuôn sai'},
+    {code:'PR-002',name:'Thêu thiếu mũi',          cat:'In thêu',    sev:'Minor',    loc:'Ngực trái',     cause:'Chương trình thêu'},
+    {code:'IR-001',name:'Vết bẩn dầu máy',         cat:'Vệ sinh',    sev:'Major',    loc:'Toàn sản phẩm', cause:'Máy rỉ dầu'},
+    {code:'IR-002',name:'Là ép bị bóng',           cat:'Hoàn thiện', sev:'Major',    loc:'Thân trước',    cause:'Nhiệt là quá cao'},
+    {code:'SZ-001',name:'Sai thông số kích cỡ',    cat:'Đo lường',   sev:'Critical', loc:'Vòng ngực',     cause:'Rập · cắt sai'},
+  ];
+  // [ten truong, khoa dich] -- dung chung cho bang Cai Dat va bang chon ly do loi
+  DEFECT_COLS=[['code','dfCode'],['name','dfName'],['cat','dfCat'],['sev','dfSev'],['loc','dfLoc'],['cause','dfCause']];
+  initDefects(){ return this.DEFECT_DEF.map((r,i)=>({id:'f'+(i+1),...r})); }
+  // Array.isArray (khong phai l&&l.length) -- xoa het dong phai GIU bang rong,
+  // khong duoc hoi sinh danh muc mac dinh.
+  defects(){ const l=this.state.dsoDefects; return Array.isArray(l)?l:this.initDefects(); }
+  setDefects(fn){ this.setState(s=>({dsoDefects:fn(Array.isArray(s.dsoDefects)?s.dsoDefects:this.initDefects())})); }
+  dfSet(id,patch){ this.setDefects(l=>l.map(r=>r.id===id?{...r,...patch}:r)); }
+  dfAddRow(){ this.setDefects(l=>{ const id=this.mtNextId(l,'f'); this._dfNew=id;
+      return [...l,{id,code:'',name:'',cat:'',sev:'',loc:'',cause:''}]; });
+    // xoa tu khoa tim: dong rong khong khop tu khoa nao nen se bi an mat
+    setTimeout(()=>{ if(this._mounted&&this._dfNew) this.set({dfEdit:this._dfNew,dfQ:''}); },0); }
+  dfDelRow(id){ this.setDefects(l=>l.filter(r=>r.id!==id));
+    this.setState(s=>({dfEdit:s.dfEdit===id?null:s.dfEdit})); }
+  dfDone(id){ const r=this.defects().find(x=>x.id===id);
+    if(r){ const p={}; this.DEFECT_COLS.forEach(([f])=>{ p[f]=String(r[f]||'').replace(/\s+/g,' ').trim(); });
+      this.dfSet(id,p); }
+    this.set({dfEdit:null}); }
+  // Tim khong dau: go 'loi chi' van khop 'Lỗi chỉ'. Moi tu deu phai khop (AND).
+  dfFold(s){ return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().trim(); }
+  dfMatch(r,q){ const k=this.dfFold(q); if(!k) return true;
+    const hay=this.dfFold(this.DEFECT_COLS.map(([f])=>r[f]||'').join(' '));
+    return k.split(/\s+/).every(w=>hay.indexOf(w)>=0); }
+  dfList(q){ return this.defects().filter(r=>this.dfMatch(r,q)); }
+  // Muc do la chu tu do -> bat ca tieng Viet lan tieng Anh; khong khop thi chip xam
+  dfSevChip(sev){ const C=this.C, s=this.dfFold(sev);
+    if(!s) return null;
+    if(/critical|nghiem|nang/.test(s)) return {fg:'#a3271b',bg:'#fdecea',bd:'#eccfca'};
+    if(/major|lon|trung/.test(s))      return {fg:'#946200',bg:'#fdf5e3',bd:'#ecdcb4'};
+    if(/minor|nhe|thap/.test(s))       return {fg:'#2f7d32',bg:'#e6f2e2',bd:'#cfe3b4'};
+    return {fg:C.sub,bg:'#f2f4ee',bd:C.border}; }
+  // Thong bao inline (khong dung window.alert -- dialog cua browser chan het tuong tac)
+  dfSay(msg){ clearTimeout(this._dfT); this.set({dfMsg:msg});
+    this._dfT=setTimeout(()=>{ if(this._mounted) this.set({dfMsg:''}); },4000); }
+  // Doc header linh dong (VI hoac EN). Khong thay header -> doc 6 cot dau theo dung thu tu.
+  dfParse(aoa){
+    const n=s=>this.dfFold(s).replace(/\s+/g,' ');
+    const PAT=[['code',/(ma loi|defect code|\bcode\b|\bma\b)/],['name',/(ten loi|defect name|\bname\b|\bten\b)/],
+      ['cat',/(nhom|phan loai|category|\btype\b)/],['sev',/(muc do|nghiem trong|severity|\blevel\b)/],
+      ['loc',/(vi tri|defect location|location|position)/],['cause',/(nguyen nhan|root cause|\bcause\b|reason)/]];
+    let hi=-1, map={};
+    for(let i=0;i<Math.min((aoa||[]).length,10);i++){ const r=aoa[i]||[], m={};
+      r.forEach((c,j)=>{ const v=n(c); if(!v) return;
+        PAT.forEach(([f,re])=>{ if(m[f]==null&&re.test(v)) m[f]=j; }); });
+      if(m.code!=null||m.name!=null){ hi=i; map=m; break; } }
+    const out=[], start=hi>=0?hi+1:0;
+    const txt=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
+    for(let i=start;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
+      const g=(f,pos)=>txt(hi>=0?(map[f]!=null?r[map[f]]:''):r[pos]);
+      const row={code:g('code',0),name:g('name',1),cat:g('cat',2),sev:g('sev',3),loc:g('loc',4),cause:g('cause',5)};
+      if(!row.code&&!row.name) continue;      // dong trong / dong ke chan
+      out.push(row); }
+    return out; }
+  async dfImport(file){
+    if(!file) return;
+    const X=window.XLSX; if(!X||!X.read){ this.dfSay(this.t('mtNoXlsx')); return; }
+    try{
+      const buf=await file.arrayBuffer();
+      const wb=X.read(new Uint8Array(buf),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const got=this.dfParse(X.utils.sheet_to_json(ws,{header:1,blankrows:false}));
+      if(!got.length){ this.dfSay(this.t('mtImportNone')); return; }
+      this.setDefects(l=>{ let n=0; l.forEach(x=>{ const m=String(x.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
+        return [...l,...got.map((g,i)=>({...g,id:'f'+(n+1+i)}))]; });
+      this.set({dfQ:''});                     // dong vua nhap phai nhin thay ngay
+      this.dfSay(this.t('mtImportOk')+' '+got.length+' '+this.t('mtImportRows'));
+    }catch(e){ this.dfSay(this.t('mtImportErr')); } }
+
+  // O tim dung chung: bang Cai Dat (nho) va hop chon ly do loi (to, tu focus)
+  dfSearchBox(q,onChange,big){
+    const h=React.createElement, C=this.C;
+    return h('div',{style:{position:'relative',flex:big?1:'none',minWidth:0}},
+      h('svg',{width:big?15:14,height:big?15:14,viewBox:'0 0 24 24',fill:'none',stroke:C.faint,strokeWidth:2,
+        style:{position:'absolute',left:big?12:10,top:big?11:9,pointerEvents:'none'}},
+        h('circle',{cx:11,cy:11,r:7}),h('path',{d:'M20 20l-4.5-4.5'})),
+      h('input',{autoFocus:!!big,value:q,placeholder:this.t('dfSearch'),onChange:e=>onChange(e.target.value),
+        style:{width:big?'100%':240,border:'1px solid '+C.border,borderRadius:big?10:9,
+          padding:big?'9px 32px 9px 36px':'7px 26px 7px 30px',fontSize:big?13.5:12.5,
+          fontFamily:'inherit',color:C.ink,background:C.white,boxSizing:'border-box'}}),
+      q?h('button',{title:this.t('dsoClose'),onClick:()=>onChange(''),
+        style:{position:'absolute',right:big?8:5,top:big?6:4,border:'none',background:'none',color:C.faint,
+          cursor:'pointer',fontSize:big?17:15,lineHeight:1,padding:4,fontFamily:'inherit'}},'\u00d7'):null);
+  }
+
+  // ---- Bang thu vien loi trong Cai Dat: CRUD + nhap Excel + tim ----------
+  renderDefectLib(){
+    const h=React.createElement, C=this.C; const S=this.mtStyles();
+    const q=this.state.dfQ||'', all=this.defects(), rows=this.dfList(q);
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+      this.state.dfMsg?h('span',{style:{fontSize:11.5,fontWeight:600,color:C.primary,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:99,padding:'4px 10px',whiteSpace:'nowrap'}},this.state.dfMsg):null,
+      h('span',{style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:999,padding:'4px 10px',whiteSpace:'nowrap'}},
+        this.fmt(all.length)+' '+this.t('dfCount')),
+      this.dfSearchBox(q,v=>this.set({dfQ:v}),false),
+      h('label',{title:this.t('dfImportTip'),style:{...this.btn('ghost'),padding:'6px 12px',fontSize:12,cursor:'pointer'}},
+        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M12 3v12M8 11l4 4 4-4'}),h('path',{d:'M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2'})),
+        this.t('mtImport'),
+        h('input',{type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},
+          onChange:e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(f) this.dfImport(f); }})));
+    const body=rows.map((r,i)=>{
+      const ed=this.state.dfEdit===r.id, bg=i%2?'#f7f9f3':C.white;
+      const cell=(f,useMono)=>{ const k=(this.DEFECT_COLS.find(x=>x[0]===f)||[])[1];
+        return ed
+          ? h('input',{value:r[f]==null?'':r[f],placeholder:this.t(k),
+              onChange:e=>this.dfSet(r.id,{[f]:e.target.value}),
+              style:{...S.inp,...(useMono?{}:{fontFamily:'inherit'})}})
+          : (String(r[f]||'').trim()||'\u2014'); };
+      const sv=this.dfSevChip(r.sev);
+      return h('tr',{key:r.id},
+        h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700,color:C.primary,
+          whiteSpace:ed?'normal':'nowrap'}},cell('code',true)),
+        h('td',{style:{...S.td,background:bg,fontWeight:600,wordBreak:'break-word'}},cell('name')),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},cell('cat')),
+        h('td',{style:{...S.td,background:bg}}, ed?cell('sev')
+          :(sv?h('span',{style:{fontSize:11,fontWeight:700,color:sv.fg,background:sv.bg,border:'1px solid '+sv.bd,
+                borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},String(r.sev).trim())
+             :h('span',{style:{color:C.faint}},'\u2014'))),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},cell('loc')),
+        h('td',{style:{...S.td,background:bg,color:C.sub,wordBreak:'break-word'}},cell('cause')),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('div',{style:{display:'flex',gap:6}},
+            ed?this.mtBtn(this.t('lsDone'),()=>this.dfDone(r.id),{border:'1px solid '+C.primary,background:C.tint})
+              :this.mtBtn(this.t('lsEdit'),()=>this.set({dfEdit:r.id})),
+            this.mtBtn(this.t('mtDel'),()=>this.dfDelRow(r.id),{color:'#c0392b',borderColor:'#eccfca'}))));
+    });
+    const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1140px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'52px'}}),h('col',{style:{width:'11%'}}),
+          h('col',{style:{width:'19%'}}),h('col',{style:{width:'12%'}}),h('col',{style:{width:'10%'}}),
+          h('col',{style:{width:'15%'}}),h('col',{style:{width:'19%'}}),h('col',{style:{width:'130px'}})),
+        h('thead',null,h('tr',null,
+          h('th',{style:{...S.th,textAlign:'center',paddingLeft:8}},this.t('mtNo')),
+          ...this.DEFECT_COLS.map(([f,k])=>h('th',{key:f,style:S.th},this.t(k))),
+          h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:8,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'38px 16px',borderRight:'none'}},
+          this.t(all.length?'dfNoHit':'dfEmpty'))))));
+    const bodyEl=h('div',null, tbl,
+      h('div',{style:{padding:'11px 13px',borderTop:'1px solid '+C.line}},
+        this.mtBtn('+ '+this.t('dfAdd'),()=>this.dfAddRow(),{color:C.primary,borderColor:C.border})));
+    return this.dsoCard('dfPanel','dfSub','DSO Defect Library',bodyEl,{full:true,action});
+  }
+
+  // ==== Bam 1 card size -> hop lon PASS / FAIL ============================
+  // Card khong con +1 truc tiep nua: moi san pham deu di qua 1 lan xac nhan.
+  dsoTapOpen(c){ this.set({dsoTap:{c,stage:'ask'},dsoTapQ:''}); }
+  dsoTapClose(){ this.set({dsoTap:null,dsoTapQ:''}); }
+  dsoTapPass(){ const t=this.state.dsoTap; if(!t) return; this.dsoBump(t.c,1); this.dsoTapClose(); }
+  dsoTapFail(){ this.setState(st=>st.dsoTap?{dsoTap:{...st.dsoTap,stage:'fail'},dsoTapQ:''}:null); }
+  // Hang loi ghi theo (ngay, chuyen, style, PO, mau, size) + ma loi -> dem duoc
+  // ca so luong loi va loi nao hay gap. KHONG cong vao san luong hoan thanh.
+  dsoDefTake(c,d){ const k=this.dsoDoneKey(c);
+    const code=String(d.code||'').trim()||String(d.name||'').trim()||'?';
+    this.setState(st=>{ const m={...(st.dsoDefLog||{})}, cur={...(m[k]||{})};
+      cur[code]=(Number(cur[code])||0)+1; m[k]=cur;
+      return {dsoDefLog:m,dsoTap:null,dsoTapQ:''}; }); }
+  // Tong luy ke moi ngay, giong dsoDoneOf
+  dsoDefOf(c){ const m=this.state.dsoDefLog||{};
+    const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
+    let n=0; Object.keys(m).forEach(k=>{ if(k.slice(-tail.length)!==tail) return;
+      const o=m[k]||{}; Object.keys(o).forEach(x=>{ n+=Number(o[x])||0; }); });
+    return n; }
+
+  // Buoc 1: 2 nut lon PASS / FAIL. Buoc 2: bang ly do loi lay tu Thu Vien Loi
+  // (Cai Dat · Thu Vien Loi) kem o tim. Ve tu renderDsoLineDetail nen khong
+  // phai them slot moi vao shell(), giong renderDsoHandAsk.
+  renderDsoTap(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const t=this.state.dsoTap; if(!t||!t.c) return null;
+    const c=t.c, fail=t.stage==='fail', S=this.mtStyles();
+    const close=()=>this.dsoTapClose();
+    const done=this.dsoDoneOf(c), nf=this.dsoDefOf(c);
+    const chip=(label,val,col)=>h('div',{key:label,style:{minWidth:0}},
+      h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint,whiteSpace:'nowrap'}},label),
+      h('div',{style:{fontSize:13,fontWeight:700,fontFamily:mono,color:col||C.ink,marginTop:2,
+        wordBreak:'break-word'}},val||'\u2014'));
+    // Dai thong tin: size to ben trai, cac truong con lai xep ngang -- cong nhan
+    // phai thay ro dang dem cho size / PO / mau nao truoc khi bam.
+    const info=h('div',{style:{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',flex:'none',
+        padding:'14px 22px',background:C.tint2,borderBottom:'1px solid '+C.line}},
+      h('div',{style:{flex:'none',display:'flex',alignItems:'baseline',gap:9}},
+        h('span',{style:{fontSize:42,fontWeight:700,lineHeight:.95,letterSpacing:'-1.5px',color:C.ink}},c.size),
+        h('span',{style:{fontSize:15,fontWeight:700,fontFamily:mono,
+          color:c.need&&done>=c.need?'#2f7d32':C.sub}},this.fmt(done)+'/'+this.fmt(c.need))),
+      h('div',{style:{flex:1,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(88px,1fr))',
+          gap:14,minWidth:0}},
+        chip(this.t('lsCol1'),c.line,C.primary),
+        chip(this.t('lsCol2'),c.style),
+        chip(this.t('dsoColPo'),c.po),
+        chip(this.t('dsoColColor'),c.color,C.dark),
+        nf?chip(this.t('dsoFail'),this.fmt(nf),'#a3271b'):null));
+    const head=(titleKey,subKey,back)=>h('div',{style:{display:'flex',alignItems:'center',gap:12,flex:'none',
+        padding:'15px 20px',borderBottom:'1px solid '+C.line}},
+      back
+        ? h('button',{onClick:()=>this.set({dsoTap:{c,stage:'ask'},dsoTapQ:''}),
+            style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:9,padding:'6px 12px',
+              fontSize:12.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',flex:'none'},
+            'style-hover':{background:C.tint}},this.t('dsoPickBack'))
+        : h('div',{style:{width:36,height:36,borderRadius:10,background:C.tint,color:C.dark,flex:'none',
+              display:'flex',alignItems:'center',justifyContent:'center'}},
+            h('svg',{width:19,height:19,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+              h('path',{d:'M9 11l3 3 8-8'}),
+              h('path',{d:'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'}))),
+      h('div',{style:{minWidth:0,marginRight:'auto'}},
+        h('div',{style:{fontSize:16,fontWeight:700}},this.t(titleKey)),
+        h('div',{style:{fontSize:11.5,color:C.faint,marginTop:2}},this.t(subKey))),
+      h('button',{title:this.t('dsoClose'),onClick:close,
+        style:{border:'1px solid '+C.border,background:C.white,color:C.sub,borderRadius:9,width:30,height:30,
+          flex:'none',cursor:'pointer',fontSize:17,lineHeight:1,padding:0,fontFamily:'inherit'},
+        'style-hover':{background:C.tint}},'\u00d7'));
+    // ---- Buoc 1: 2 nut lon, bam duoc bang ngon tay tren tablet o chuyen ----
+    const big=(label,sub,tone,on)=>h('button',{onClick:on,
+      style:{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:9,
+        minHeight:168,border:'2px solid '+tone.bd,background:tone.bg,color:tone.fg,borderRadius:16,
+        cursor:'pointer',fontFamily:'inherit',padding:'20px 16px',
+        transition:'background .12s,border-color .12s,box-shadow .12s'},
+      'style-hover':{background:tone.hv,borderColor:tone.fg}},
+      h('svg',{width:40,height:40,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2.4},tone.ic),
+      h('span',{style:{fontSize:29,fontWeight:700,letterSpacing:'1px',lineHeight:1}},label),
+      h('span',{style:{fontSize:12.5,fontWeight:600,opacity:.82}},sub));
+    const PASS={fg:'#2f7d32',bg:'#eff7e9',bd:'#a9cf94',hv:'#e3f2d9',ic:h('path',{d:'M4 12.6l5.2 5.2L20 6.9'})};
+    const FAIL={fg:'#b3271b',bg:'#fdeeec',bd:'#e6b0a8',hv:'#fbe0dd',ic:h('path',{d:'M6 6l12 12M18 6L6 18'})};
+    const ask=h('div',null, head('dsoTapTitle','dsoTapTip',false), info,
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(215px,1fr))',
+          gap:14,padding:'20px 22px 22px'}},
+        big(this.t('dsoPass'),this.t('dsoPassSub'),PASS,()=>this.dsoTapPass()),
+        big(this.t('dsoFail'),this.t('dsoFailSub'),FAIL,()=>this.dsoTapFail())));
+    // ---- Buoc 2: bang ly do loi + o tim -----------------------------------
+    // Mau nen dat o <tr> (khong o <td>) de :hover cua ca dong hien duoc.
+    const q=this.state.dsoTapQ||'', all=this.defects(), rows=this.dfList(q);
+    const sth={...S.th,position:'sticky',top:0,zIndex:1};
+    const ctd={padding:'9px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,
+      borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    const txt=v=>String(v==null?'':v).trim()||'\u2014';
+    const tblRows=rows.map((r,i)=>{ const sv=this.dfSevChip(r.sev);
+      return h('tr',{key:r.id,onClick:()=>this.dsoDefTake(c,r),title:this.t('dsoPickSub'),
+          style:{cursor:'pointer',background:i%2?'#f7f9f3':C.white},'style-hover':{background:C.tint}},
+        h('td',{style:{...ctd,paddingLeft:20,fontFamily:mono,fontWeight:700,color:C.primary,
+          whiteSpace:'nowrap'}},txt(r.code)),
+        h('td',{style:{...ctd,fontWeight:600,wordBreak:'break-word'}},txt(r.name)),
+        h('td',{style:{...ctd,wordBreak:'break-word'}},txt(r.cat)),
+        h('td',{style:ctd}, sv
+          ? h('span',{style:{fontSize:11,fontWeight:700,color:sv.fg,background:sv.bg,border:'1px solid '+sv.bd,
+              borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},String(r.sev).trim())
+          : h('span',{style:{color:C.faint}},'\u2014')),
+        h('td',{style:{...ctd,wordBreak:'break-word'}},txt(r.loc)),
+        h('td',{style:{...ctd,borderRight:'none',paddingRight:20,color:C.sub,
+          wordBreak:'break-word'}},txt(r.cause))); });
+    const search=h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 20px',flex:'none',
+        borderBottom:'1px solid '+C.line,background:'#fbfcf8'}},
+      this.dfSearchBox(q,v=>this.set({dsoTapQ:v}),true),
+      h('span',{style:{flex:'none',fontSize:11.5,fontWeight:700,fontFamily:mono,color:C.faint,
+        whiteSpace:'nowrap'}},this.fmt(rows.length)+' / '+this.fmt(all.length)));
+    const table=h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:130}},
+      h('table',{style:{width:'100%',minWidth:'820px',borderCollapse:'collapse'}},
+        h('thead',null,h('tr',null,
+          h('th',{style:{...sth,paddingLeft:20}},this.t('dfCode')),
+          h('th',{style:sth},this.t('dfName')),
+          h('th',{style:sth},this.t('dfCat')),
+          h('th',{style:sth},this.t('dfSev')),
+          h('th',{style:sth},this.t('dfLoc')),
+          h('th',{style:{...sth,borderRight:'none',paddingRight:20}},this.t('dfCause')))),
+        h('tbody',null, rows.length?tblRows:h('tr',null,h('td',{colSpan:6,
+          style:{...ctd,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
+          this.t(all.length?'dfNoHit':'dsoDefEmpty'))))));
+    const pick=h('div',{style:{display:'flex',flexDirection:'column',minHeight:0,flex:1}},
+      head('dsoPick','dsoPickSub',true), info, search, table,
+      h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 20px',flex:'none',
+          borderTop:'1px solid '+C.line,background:'#f8faf3'}},
+        h('div',{style:{flex:1}}),
+        h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel'))));
+    return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
+        backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:85,padding:24}},
+      h('div',{onClick:ev=>ev.stopPropagation(),style:{width:fail?'min(960px,96vw)':'min(620px,96vw)',
+          maxHeight:'92vh',display:'flex',flexDirection:'column',background:C.white,borderRadius:18,
+          boxShadow:'0 30px 70px rgba(0,0,0,.34)',overflow:'hidden'}},
+        fail?pick:ask));
+  }
+
+  renderDsoSettings(){
+    const h=React.createElement; const sub=this.state.dsoSub||'line';
+    // 3:7 theo chieu ngang -- flex-basis 0 nen ti le dung chinh xac, bang tu cuon ngang khi hep
+    const mtype=h('div',{style:{display:'flex',gap:16,alignItems:'flex-start'}},
+      h('div',{style:{flex:'3 1 0',minWidth:0}},this.renderMtypeTable()),
+      h('div',{style:{flex:'7 1 0',minWidth:0}},this.renderMtypeDetail()));
+    return h('div',null,
+      this.tabBar(this.DSO_SUBS,sub,id=>this.set({dsoSub:id,edit:null,mtEdit:null,dfEdit:null,dfQ:''}),true),
+      sub==='mtype'?mtype
+      :sub==='defect'?this.renderDefectLib()
+                   :this.dsoCard('dsoLinePanel','dsoLineSub','DSO Line Setting',this.renderLineSetting()));
+  }
+  // ---- Line Setting -------------------------------------------------------
+  // Chuyen + Style sinh tu Ke hoach san xuat (qua Ke hoach may tuan) -> chi doc.
+  // Cac gia tri cau hinh khoa theo chuyen+style, KHONG theo tuan (day la bang master).
+  // ==== Loại M-level: bảng danh mục (trái) + bảng chi tiết theo loại (phải) ====
+  MTYPE_DEF=[{id:'m1',name:'1',desc:''},{id:'m2',name:'2',desc:''},{id:'m3',name:'3',desc:''}];
+  mtypes(){ const t=this.state.dsoMtypeRows; return (t&&t.length)?t:this.MTYPE_DEF; }
+  mtSelId(){ const l=this.mtypes(), s=this.state.mtSel;
+    return (s&&l.some(m=>m.id===s))?s:(l.length?l[0].id:null); }
+  mtDet(id){ return ((this.state.dsoMtypeDet||{})[id])||[]; }
+  mtNextId(list,pre){ let n=0; (list||[]).forEach(x=>{ const m=String(x.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); }); return pre+(n+1); }
+  setMtypes(fn){ this.setState(s=>{ const cur=(s.dsoMtypeRows&&s.dsoMtypeRows.length)?s.dsoMtypeRows:this.MTYPE_DEF;
+    return {dsoMtypeRows:fn(cur)}; }); }
+  setMtDet(id,fn){ this.setState(s=>{ const d={...(s.dsoMtypeDet||{})}; d[id]=fn(d[id]||[]); return {dsoMtypeDet:d}; }); }
+  mtSetType(id,patch){ this.setMtypes(l=>l.map(m=>m.id===id?{...m,...patch}:m)); }
+  mtAddType(){ this.setMtypes(l=>{ const id=this.mtNextId(l,'m');
+    this._mtNew=id; return [...l,{id,name:'',desc:''}]; });
+    setTimeout(()=>{ if(this._mounted&&this._mtNew) this.set({mtEdit:'t:'+this._mtNew,mtSel:this._mtNew}); },0); }
+  mtDelType(id){ this.setState(s=>{ const d={...(s.dsoMtypeDet||{})}; delete d[id];
+    const cur=(s.dsoMtypeRows&&s.dsoMtypeRows.length)?s.dsoMtypeRows:this.MTYPE_DEF;
+    return {dsoMtypeRows:cur.filter(m=>m.id!==id),dsoMtypeDet:d,mtEdit:null,mtSel:s.mtSel===id?null:s.mtSel}; }); }
+  mtSetDet(tid,did,patch){ this.setMtDet(tid,l=>l.map(x=>x.id===did?{...x,...patch}:x)); }
+  mtAddDet(tid){ const id=this.mtNextId(this.mtDet(tid),'d');
+    this.setMtDet(tid,l=>[...l,{id,name:'',tgt:'',inc:''}]);
+    setTimeout(()=>{ if(this._mounted) this.set({mtEdit:'d:'+tid+':'+id}); },0); }
+  mtDelDet(tid,did){ this.setMtDet(tid,l=>l.filter(x=>x.id!==did)); this.set({mtEdit:null}); }
+  // Thu nhap: khong am (dau '-' bi loai luon vi khong nam trong [0-9.]), toi da 3 chu so thap phan.
+  // Giu nguyen dang chuoi khi dang nhap de con go duoc dau '.' o giua -- giong lsHrs.
+  mtMoney(v){ const s=String(v==null?'':v).replace(/[^0-9.]/g,''); const p=s.split('.');
+    return p.length>1?p[0]+'.'+p.slice(1).join('').slice(0,3):p[0]; }
+  // Bam Xong: don '.' bi bo lung ('4500.' -> '4500') va '.5' -> '0.5'
+  mtMoneyFix(v){ let s=this.mtMoney(v);
+    if(!/[0-9]/.test(s)) return '';              // chi co dau '.' hoac rong -> de trong
+    if(s.charAt(0)==='.') s='0'+s;
+    if(s.charAt(s.length-1)==='.') s=s.slice(0,-1);
+    return s; }
+  // Import: o Excel dang SO -> lay dung gia tri (lam tron 3 chu so thap phan).
+  // O dang CHU -> '.'/',' coi la phan cach nghin (3.200.000), giu nguyen hanh vi cu.
+  mtMoneyImp(v){ if(typeof v==='number'){ if(!isFinite(v)||v<0) return '';
+      return String(Math.round(v*1000)/1000); }
+    const n=parseInt(String(v==null?'':v).replace(/[^0-9]/g,''),10); return isNaN(n)?'':String(Math.max(0,n)); }
+  mtMoneyFmt(v){ if(v===''||v==null) return '—';
+    const s=String(v), i=s.indexOf('.');
+    const g=(Number(i>=0?s.slice(0,i):s)||0).toLocaleString('en-US');
+    const dec=i>=0?s.slice(i+1):'';
+    return dec?g+'.'+dec:g; }
+  mtDetDone(tid,did){ const r=this.mtDet(tid).find(x=>x.id===did);
+    if(r) this.mtSetDet(tid,did,{inc:this.mtMoneyFix(r.inc)});
+    this.set({mtEdit:null}); }
+  // Thong bao inline, khong dung window.alert (dialog cua browser chan het tuong tac)
+  mtSay(msg){ clearTimeout(this._mtT); this.set({mtMsg:msg});
+    this._mtT=setTimeout(()=>{ if(this._mounted) this.set({mtMsg:''}); },4000); }
+  // Doc header linh dong; khong co header thi doc theo vi tri No / Ten / %Target / Thu nhap
+  mtParse(aoa){
+    const norm=s=>String(s==null?'':s).toLowerCase().replace(/\s+/g,' ').trim();
+    let hi=-1, map={};
+    for(let i=0;i<Math.min((aoa||[]).length,10);i++){ const r=aoa[i]||[], m={};
+      r.forEach((c,j)=>{ const v=norm(c); if(!v) return;
+        if(m.name==null&&/\b(tên|ten|name)\b/.test(v)) m.name=j;
+        else if(m.tgt==null&&/target/.test(v)) m.tgt=j;
+        else if(m.inc==null&&/(thu nhập|thu nhap|income|vnd)/.test(v)) m.inc=j; });
+      if(m.name!=null){ hi=i; map=m; break; } }
+    const out=[], start=hi>=0?hi+1:0, useMap=hi>=0;
+    for(let i=start;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
+      let name,tgt,inc;
+      if(useMap){ name=r[map.name]; tgt=map.tgt!=null?r[map.tgt]:''; inc=map.inc!=null?r[map.inc]:''; }
+      else if(r.length>=4){ name=r[1]; tgt=r[2]; inc=r[3]; }
+      else { name=r[0]; tgt=r[1]; inc=r[2]; }
+      const nm=String(name==null?'':name).trim();
+      if(!nm) continue;
+      out.push({name:nm,tgt:this.lsPct(tgt),inc:this.mtMoneyImp(inc)}); }
+    return out; }
+  async mtImport(file){
+    const tid=this.mtSelId(); if(!tid||!file) return;
+    const X=window.XLSX; if(!X||!X.read){ this.mtSay(this.t('mtNoXlsx')); return; }
+    try{
+      const buf=await file.arrayBuffer();
+      const wb=X.read(new Uint8Array(buf),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const got=this.mtParse(X.utils.sheet_to_json(ws,{header:1,blankrows:false}));
+      if(!got.length){ this.mtSay(this.t('mtImportNone')); return; }
+      this.setMtDet(tid,l=>{ let n=0; l.forEach(x=>{ const m=String(x.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
+        return [...l,...got.map((g,i)=>({...g,id:'d'+(n+1+i)}))]; });
+      this.mtSay(this.t('mtImportOk')+' '+got.length+' '+this.t('mtImportRows'));
+    }catch(e){ this.mtSay(this.t('mtImportErr')); } }
+  lsKey(r){ return this.normName(r.line)+'|'+String(r.style||''); }
+  LS_DEF={w:26,hrs:'9.5',tgt:100};
+  // SMV mac dinh: "random" 50..120 nhung SUY RA TU KHOA DONG, khong dung Math.random().
+  // Random that se cho so khac nhau moi lan re-render, keo Type nhay theo -> khong dung duoc.
+  lsSeedSmv(k){ let h=2166136261;
+    for(let i=0;i<k.length;i++){ h^=k.charCodeAt(i); h=Math.imul(h,16777619); }
+    return 50+(Math.abs(h)%71); }
+  lsGet(r){ const k=this.lsKey(r);
+    return {...this.LS_DEF,smv:this.lsSeedSmv(k),...((this.state.lset||{})[k]||{})}; }
+  // Type suy ra tu SMV, khong sua tay: >100 -> loai 1, 60<smv<=100 -> loai 2, <=60 -> loai 3.
+  lsTypeIdx(smv){ if(smv===''||smv==null) return 0; const n=Number(smv);
+    if(!isFinite(n)) return 0; return n>100?1:(n>60?2:3); }
+  // Tra ve dung '1'/'2'/'3' theo rule. Khong map theo vi tri trong danh muc M-level:
+  // danh muc sua duoc, map vi tri se cho ket qua lech han rule.
+  lsType(r){ const i=this.lsTypeIdx(this.lsGet(r).smv); return i?String(i):''; }
+  lsSet(r,patch){ const k=this.lsKey(r);
+    this.setState(st=>({lset:{...(st.lset||{}),[k]:{...((st.lset||{})[k]||{}),...patch}}})); }
+  // %target: so nguyen 0..100, khong am, khong thap phan
+  lsPct(v){ const n=parseInt(String(v).replace(/[^0-9]/g,''),10); return isNaN(n)?'':Math.max(0,Math.min(100,n)); }
+  lsNum(v){ const n=parseInt(String(v).replace(/[^0-9]/g,''),10); return isNaN(n)?'':Math.max(0,n); }
+  // Gio lam: bo dau '-' va ky tu la, giu 1 dau '.' dau tien, toi da 1 chu so sau no.
+  // Tra ve CHUOI de con go duoc trang thai trung gian '9.'
+  lsHrs(v){ const s=String(v==null?'':v).replace(/[^0-9.]/g,''); const p=s.split('.');
+    return p.length>1?p[0]+'.'+p.slice(1).join('').slice(0,1):p[0]; }
+  // Bam Xong: don dau '.' bi bo lung ('9.' -> '9')
+  lsDone(r){ const v=this.lsGet(r);
+    if(typeof v.hrs==='string'&&/\.$/.test(v.hrs)) this.lsSet(r,{hrs:v.hrs.slice(0,-1)});
+    this.set({lsEdit:null}); }
+  lsFileSize(n){ n=Number(n)||0; return n<1024?n+' B':(n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(1)+' MB'); }
+  async lsImport(r,file){ if(!file) return;
+    const k=this.lsKey(r);
+    try{ await this.mlvPut(k,file);
+      this.lsSet(r,{file:{name:file.name,size:file.size,at:Date.now()}}); }
+    catch(e){ window.alert(this.t('lsFileErr')); } }
+  async lsFileDel(r){ const k=this.lsKey(r);
+    try{ await this.mlvDel(k); }catch(e){}
+    this.lsSet(r,{file:null}); }
+
+  // 1 card / 1 CHUYEN. Mot chuyen chay nhieu style -> Line Setting co nhieu dong
+  // nhung van chi 1 card; uu tien dong da duoc cau hinh that.
+  prodLines(){ const by={}, order=[], stored=this.state.lset||{};
+    this.getWeek().rows.forEach(r=>{ const n=this.normName(r.line);
+      if(!by[n]){ by[n]=[]; order.push(n); } by[n].push(r); });
+    return order.map(n=>{ const rows=by[n];
+      const pick=rows.find(r=>stored[this.lsKey(r)])||rows[0];
+      return {line:n,cfg:this.lsGet(pick)}; }); }
+
+  // ---- Detail 1 chuyen: 1 card / (Size x PO x Mau) ----------------------
+  // Nguon: don dang chay cua chuyen trong Ke hoach san xuat -> psPlan(o) ra
+  // tac nghiep cat -> section (mau vai, bo 'aux') -> demand theo size.
+  dsoSizeCards(line){ const out=[];
+    this.psActiveOrders().forEach(o=>{
+      if(this.normName(o.line)!==line) return;
+      const pl=this.psPlan(o); if(!pl) return;
+      const style=this.psCode(o.code);
+      const po=String(pl.po||o.po||'').replace(/^PO\s*/i,'').trim()||'\u2014';
+      (pl.sections||[]).forEach(sec=>{ if(sec.grp==='aux') return;
+        (sec.demand||[]).forEach(([sz,qty])=>{ if(!(Number(qty)>0)) return;
+          out.push({line,style,size:sz,need:Number(qty),po,color:sec.fab||'\u2014'}); }); }); });
+    // xep theo thu tu size chuan roi den mau, dung thu tu trong file
+    const oi=z=>{ const i=this.SORDER.indexOf(z); return i<0?99:i; };
+    return out.sort((a,b)=>oi(a.size)-oi(b.size)||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color)));
+  }
+  dsoStyles(line){ const out=[];
+    this.getWeek().rows.forEach(r=>{ if(this.normName(r.line)!==line) return;
+      const st=r.style||''; if(st&&out.indexOf(st)<0) out.push(st); });
+    return out; }
+  dsoToday(){ return this.psFmtD(new Date()); }
+  dsoDay(d){ const p=String(d||'').split('-'); return p.length>2?(p[2]+'/'+p[1]+'/'+p[0]):String(d||''); }
+  dsoRowKey(c,day){ return [day||this.dsoToday(),c.line,c.style,c.po,c.color].join('|'); }
+  dsoDoneKey(c,day){ return this.dsoRowKey(c,day)+'|'+c.size; }
+  // Card size hien TONG luy ke -> cong het moi ngay
+  dsoDoneOf(c){ const m=this.state.dsoDone||{}; const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
+    let n=0; Object.keys(m).forEach(k=>{ if(k.slice(-tail.length)===tail) n+=Number(m[k])||0; }); return n; }
+  // Chi ghi/sua san luong cua HOM NAY; so cua ngay truoc giu nguyen trong lich su
+  dsoBump(c,d){ const k=this.dsoDoneKey(c);
+    this.setState(st=>{ const m={...(st.dsoDone||{})}; m[k]=Math.max(0,(Number(m[k])||0)+d);
+      if(!m[k]) delete m[k];
+      return {dsoDone:m}; }); }
+  // Tong hop theo (ngay, style, PO, mau). Bo trong 'line' -> lay MOI chuyen,
+  // day la duong dung cho bang tong hop o cap Daily Sewing Output sau nay.
+  dsoHistory(line){ const m=this.state.dsoDone||{}, at={}, out=[];
+    Object.keys(m).forEach(k=>{ const q=Number(m[k])||0; if(q<=0) return;
+      const p=k.split('|'); if(p.length!==6) return;
+      if(line&&p[1]!==line) return;
+      const rk=p.slice(0,5).join('|');
+      if(!at[rk]){ at[rk]={key:rk,day:p[0],line:p[1],style:p[2],po:p[3],color:p[4],qty:0,sizes:{}}; out.push(at[rk]); }
+      at[rk].qty+=q; at[rk].sizes[p[5]]=(at[rk].sizes[p[5]]||0)+q; });
+    return out.sort((a,b)=>String(b.day).localeCompare(String(a.day))
+      ||String(a.line).localeCompare(String(b.line))||String(a.style).localeCompare(String(b.style))
+      ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color))); }
+  dsoHandAt(row){ return (this.state.dsoHand||{})[row.key]||0; }
+  dsoHandOver(row,on){ this.setState(st=>{ const m={...(st.dsoHand||{})};
+    if(on) m[row.key]=Date.now(); else delete m[row.key];
+    return {dsoHand:m}; }); }
+
+  renderDsoLineDetail(line){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const cards=this.dsoSizeCards(line), styles=this.dsoStyles(line);
+    const need=cards.reduce((a,c)=>a+c.need,0), done=cards.reduce((a,c)=>a+this.dsoDoneOf(c),0);
+    const back=h('button',{onClick:()=>this.set({dsoLine:null}),
+      style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:9,padding:'6px 13px',
+        fontSize:12.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',marginBottom:14},
+      'style-hover':{background:C.tint}},this.t('dsoBack'));
+    // Card summary full size: ten chuyen + style (+ tong da lam/can lam)
+    const summary=h('div',{style:{border:'1px solid '+C.border,borderRadius:14,background:C.tint2,
+        boxShadow:C.shadow,padding:'16px 20px',marginBottom:16,display:'flex',alignItems:'center',
+        flexWrap:'wrap',gap:16}},
+      h('div',{style:{minWidth:0,flex:1}},
+        h('div',{style:{fontSize:22,fontWeight:700,color:C.primary,fontFamily:mono,lineHeight:1.1}},line),
+        h('div',{style:{fontSize:13,color:C.sub,marginTop:4,wordBreak:'break-all'}},
+          styles.length?styles.join(' \u00b7 '):'\u2014')),
+      h('div',{style:{flex:'none',textAlign:'right'}},
+        h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('dsoDoneNeed')),
+        h('div',{style:{fontSize:19,fontWeight:700,fontFamily:mono,marginTop:2,color:need&&done>=need?'#2f7d32':C.ink}},
+          this.fmt(done)+' / '+this.fmt(need))));
+    if(!cards.length) return h('div',{style:{padding:'18px 20px 24px'}},back,summary,
+      h('div',{style:{padding:'48px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('dsoNoCut')));
+    // ---- Ma tran: 1 dong = 1 mau (theo tung PO), cot = size tang dan --------
+    // Cot lay hop cac size cua ca chuyen roi xep theo SORDER (XXS..6XL), nen moi
+    // dong deu co du o; mau nao khong co size do thi o de TRONG cho thang hang.
+    const known=this.SORDER.filter(z=>cards.some(c=>c.size===z));
+    const other=[]; cards.forEach(c=>{ if(this.SORDER.indexOf(c.size)<0&&other.indexOf(c.size)<0) other.push(c.size); });
+    const cols=known.concat(other);
+    const rmap={}, rows=[];
+    cards.forEach(c=>{ const rk=c.po+'|'+c.color;
+      if(!rmap[rk]){ rmap[rk]={k:rk,po:c.po,color:c.color,by:{}}; rows.push(rmap[rk]); }
+      rmap[rk].by[c.size]=c; });
+    rows.sort((a,b)=>String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color)));
+    const gt='repeat('+(cols.length||1)+',minmax(150px,1fr))';
+    const cell=(c)=>{ const d=this.dsoDoneOf(c), ok=d>=c.need, nf=this.dsoDefOf(c);
+        return h('div',{key:this.dsoDoneKey(c),onClick:()=>this.dsoTapOpen(c),title:this.t('dsoTapAdd'),
+          style:{border:'1px solid '+(ok?'#cfe3b4':C.border),borderRadius:13,background:ok?'#f4f9ec':C.white,
+            boxShadow:C.shadow,cursor:'pointer',overflow:'hidden',userSelect:'none'},
+          'style-hover':{borderColor:C.primary}},
+          h('div',{style:{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8,padding:'11px 13px 9px'}},
+            h('span',{style:{fontSize:26,fontWeight:700,lineHeight:1,color:C.ink,letterSpacing:'-.5px'}},c.size),
+            h('span',{style:{display:'inline-flex',alignItems:'center',gap:6,flex:'none'}},
+              nf?h('span',{title:this.fmt(nf)+' '+this.t('dsoDefLogged'),
+                style:{fontSize:10.5,fontWeight:700,fontFamily:mono,color:'#a3271b',background:'#fdecea',
+                  border:'1px solid #eccfca',borderRadius:999,padding:'1px 6px',whiteSpace:'nowrap'}},
+                '✕ '+this.fmt(nf)):null,
+              h('span',{style:{fontSize:14,fontWeight:700,fontFamily:mono,color:ok?'#2f7d32':C.ink,whiteSpace:'nowrap'}},
+                this.fmt(d)+'/'+this.fmt(c.need)),
+              h('button',{title:this.t('dsoTapSub'),onClick:e=>{ e.stopPropagation(); this.dsoBump(c,-1); },
+                style:{flex:'none',width:19,height:19,lineHeight:1,border:'1px solid '+C.border,background:C.white,
+                  color:C.sub,borderRadius:6,cursor:'pointer',padding:0,fontSize:13,fontFamily:'inherit'}},'\u2212'))),
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,
+              padding:'7px 13px 9px',borderTop:'1px solid '+C.line,background:ok?'rgba(255,255,255,.5)':'#fbfcf8'}},
+            h('span',{style:{fontSize:11.5,fontWeight:600,fontFamily:mono,color:C.sub,whiteSpace:'nowrap'}},c.po),
+            h('span',{style:{fontSize:11.5,fontWeight:700,color:C.dark,whiteSpace:'nowrap'}},c.color))); };
+    // hang tieu de size -- de doc duoc cot nao la size nao khi o bi bo trong
+    const head=h('div',{key:'hd',style:{display:'grid',gridTemplateColumns:gt,gap:10,marginBottom:7}},
+      cols.map(z=>h('div',{key:z,style:{fontSize:11,fontWeight:700,letterSpacing:'.5px',color:C.sub,
+        textAlign:'center',textTransform:'uppercase'}},z)));
+    const grid=h('div',null,head,
+      rows.map(r=>h('div',{key:r.k,style:{display:'grid',gridTemplateColumns:gt,gap:10,marginBottom:10}},
+        cols.map(z=>{ const c=r.by[z];
+          // khong co size nay -> o trong, van chiem 1 cot
+          return c?cell(c):h('div',{key:'e'+z}); }))));
+    return h('div',{style:{padding:'18px 20px 24px'}},back,summary,
+      h('div',{className:'yscroll',style:{overflowX:'auto',paddingBottom:4}},
+        h('div',{style:{minWidth:(cols.length*160)+'px'}},grid)),
+      this.renderDsoHistory(line),
+      this.renderDsoTap());
+  }
+
+  // Bang lich su: 1 dong = 1 (ngay, style, PO, mau) da hoan thanh bao nhieu.
+  // Hop xac nhan giao sang hoan thien -- PLACEHOLDER, form chuan se thay sau.
+  // Render tu trong renderDsoHistory nen dung duoc o ca man detail va man tong,
+  // khong phai them slot moi vao shell().
+  renderDsoHandAsk(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const r=this.state.dsoHandAsk; if(!r) return null;
+    const close=()=>this.set({dsoHandAsk:null});
+    const row=(k,v)=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:14,
+      padding:'7px 0',borderBottom:'1px solid '+C.line}},
+      h('span',{style:{fontSize:11.5,fontWeight:700,letterSpacing:'.3px',color:C.faint,whiteSpace:'nowrap'}},k),
+      h('span',{style:{fontSize:13,fontWeight:600,fontFamily:mono,color:C.ink,textAlign:'right',wordBreak:'break-all'}},v));
+    return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
+        backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:24}},
+      h('div',{onClick:ev=>ev.stopPropagation(),style:{width:'min(430px,94vw)',background:C.white,
+          borderRadius:16,boxShadow:'0 30px 70px rgba(0,0,0,.32)',overflow:'hidden'}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'16px 20px',borderBottom:'1px solid '+C.line}},
+          h('div',{style:{width:36,height:36,borderRadius:10,background:C.tint,color:C.dark,flex:'none',
+              display:'flex',alignItems:'center',justifyContent:'center'}},
+            h('svg',{width:19,height:19,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+              h('path',{d:'M5 12h14M13 6l6 6-6 6'}))),
+          h('div',{style:{minWidth:0}},
+            h('div',{style:{fontSize:15.5,fontWeight:700}},this.t('dsoHandOver')),
+            h('div',{style:{fontSize:11.5,color:C.faint,marginTop:2}},this.t('dsoAskPh')))),
+        h('div',{style:{padding:'12px 20px 4px'}},
+          row(this.t('dsoColDay'),this.dsoDay(r.day)),
+          row(this.t('lsCol1'),r.line),
+          row(this.t('lsCol2'),r.style),
+          row(this.t('dsoColPo'),r.po),
+          row(this.t('dsoColColor'),r.color),
+          h('div',{style:{display:'flex',justifyContent:'space-between',gap:14,padding:'11px 0 3px'}},
+            h('span',{style:{fontSize:11.5,fontWeight:700,letterSpacing:'.3px',color:C.faint}},this.t('dsoColQty')),
+            h('span',{style:{fontSize:19,fontWeight:700,fontFamily:mono,color:C.dark}},this.fmt(r.qty)))),
+        h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'14px 20px',
+            borderTop:'1px solid '+C.line,background:'#f8faf3'}},
+          h('div',{style:{flex:1}}),
+          h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel')),
+          h('button',{onClick:()=>{ this.dsoHandOver(r,true); close(); },style:this.btn('primary')},
+            this.t('dsoAskOk')))));
+  }
+
+  renderDsoHistory(line){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const rows=this.dsoHistory(line);
+    const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+      color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,
+      background:'#f8faf3',whiteSpace:'nowrap'};
+    const td={padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:10,marginTop:22}},
+      h('div',{style:{minWidth:0}},
+        h('div',{style:{fontSize:15,fontWeight:700}},this.t('dsoHist')),
+        h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('dsoHistSub'))),
+      h('div',{style:{flex:1}}),
+      h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:C.dark,background:C.tint,borderRadius:999,padding:'4px 11px',whiteSpace:'nowrap'}},
+        this.fmt(rows.reduce((a,r)=>a+r.qty,0))+' pcs'));
+    if(!rows.length) return h('div',null,head,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,background:C.white,padding:'34px 20px',textAlign:'center',color:C.faint,fontSize:13}},this.t('dsoHistEmpty')),
+      this.renderDsoHandAsk());
+    // Cot size = hop cac size co trong bang, xep theo SORDER; size la xep cuoi.
+    const zs=this.SORDER.filter(z=>rows.some(r=>r.sizes&&r.sizes[z]));
+    rows.forEach(r=>Object.keys(r.sizes||{}).forEach(z=>{ if(zs.indexOf(z)<0) zs.push(z); }));
+    const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white, at=this.dsoHandAt(r);
+      return h('tr',{key:r.key},
+        h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:600,whiteSpace:'nowrap'}},this.dsoDay(r.day)),
+        line?null:h('td',{style:{...td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},r.line),
+        h('td',{style:{...td,background:bg,fontFamily:mono,wordBreak:'break-all'}},r.style),
+        h('td',{style:{...td,background:bg,fontFamily:mono,whiteSpace:'nowrap'}},r.po),
+        h('td',{style:{...td,background:bg,fontWeight:700,color:C.dark,whiteSpace:'nowrap'}},r.color),
+        ...zs.map(z=>h('td',{key:'z'+z,style:{...td,background:bg,textAlign:'right',fontFamily:mono,
+          color:r.sizes[z]?C.ink:'#dfe3da',whiteSpace:'nowrap'}}, r.sizes[z]?this.fmt(r.sizes[z]):'')),
+        h('td',{style:{...td,background:bg,textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,whiteSpace:'nowrap'}},this.fmt(r.qty)),
+        h('td',{style:{...td,background:bg,borderRight:'none',whiteSpace:'nowrap'}}, at
+          ? h('span',{style:{display:'inline-flex',alignItems:'center',gap:7}},
+              h('span',{style:{fontSize:11,fontWeight:700,color:'#2f7d32',background:'#e6f2e2',border:'1px solid #cfe3b4',borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},
+                this.t('dsoHanded')+' \u00b7 '+this.recvTime(at)),
+              h('button',{title:this.t('dsoUndoHand'),onClick:()=>this.dsoHandOver(r,false),
+                style:{border:'none',background:'none',color:'#c0392b',cursor:'pointer',padding:0,fontSize:14,lineHeight:1,fontFamily:'inherit'}},'\u00d7'))
+          : h('button',{onClick:()=>this.set({dsoHandAsk:r}),
+              style:{border:'1px solid '+C.primary,background:C.white,color:C.dark,borderRadius:8,padding:'5px 11px',
+                fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'},
+              'style-hover':{background:C.tint}},this.t('dsoHandOver')))); });
+    return h('div',null,head,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,overflow:'hidden'}},
+        h('div',{className:'yscroll',style:{overflowX:'auto'}},
+          h('table',{style:{width:'100%',minWidth:((line?760:860)+zs.length*54)+'px',borderCollapse:'collapse'}},
+            h('thead',null,h('tr',null,
+              h('th',{style:{...th,paddingLeft:14}},this.t('dsoColDay')),
+              line?null:h('th',{style:th},this.t('lsCol1')),
+              h('th',{style:th},this.t('lsCol2')),
+              h('th',{style:th},this.t('dsoColPo')),
+              h('th',{style:th},this.t('dsoColColor')),
+              ...zs.map(z=>h('th',{key:'z'+z,style:{...th,textAlign:'right',padding:'9px 8px'}},z)),
+              h('th',{style:{...th,textAlign:'right'}},this.t('dsoColQty')),
+              h('th',{style:{...th,borderRight:'none'}},this.t('lsCol10')))),
+            h('tbody',null,body)))),
+      this.renderDsoHandAsk());
+  }
+
+  dsoSummary(){ const at={}, out=[];
+    this.dsoHistory().forEach(r=>{ const k=r.day+'|'+r.line;
+      if(!at[k]){ at[k]={key:k,day:r.day,line:r.line,done:0,handed:0}; out.push(at[k]); }
+      at[k].done+=r.qty;
+      if(this.dsoHandAt(r)) at[k].handed+=r.qty; });
+    return out; }   // dsoHistory da sap ngay giam dan, chuyen tang dan
+
+  // Bang tong hop o cap Daily Sewing Output (truoc khi chon chuyen)
+  renderDsoOverview(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const sum=this.dsoSummary();
+    const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+      color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,
+      background:'#f8faf3',whiteSpace:'nowrap'};
+    const td={padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    const tDone=sum.reduce((a,r)=>a+r.done,0), tHand=sum.reduce((a,r)=>a+r.handed,0);
+    const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:10}},
+      h('div',{style:{minWidth:0}},
+        h('div',{style:{fontSize:15,fontWeight:700}},this.t('dsoOvw')),
+        h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('dsoOvwSub'))),
+      h('div',{style:{flex:1}}),
+      h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:'#2f7d32',background:'#e6f2e2',
+        border:'1px solid #cfe3b4',borderRadius:999,padding:'4px 11px',whiteSpace:'nowrap'}},
+        this.t('dsoHanded')+' '+this.fmt(tHand)+' / '+this.fmt(tDone)+' pcs'));
+    if(!sum.length) return h('div',null,head,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,background:C.white,padding:'30px 20px',
+        textAlign:'center',color:C.faint,fontSize:13}},this.t('dsoHistEmpty')));
+    const body=sum.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white, left=r.done-r.handed;
+      return h('tr',{key:r.key},
+        h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:600,whiteSpace:'nowrap'}},this.dsoDay(r.day)),
+        h('td',{style:{...td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},r.line),
+        h('td',{style:{...td,background:bg,textAlign:'right',fontFamily:mono,fontWeight:600,whiteSpace:'nowrap'}},this.fmt(r.done)),
+        h('td',{style:{...td,background:bg,textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,
+          color:r.handed?'#2f7d32':'#c3c8bf',whiteSpace:'nowrap'}},this.fmt(r.handed)),
+        h('td',{style:{...td,background:bg,borderRight:'none',textAlign:'right',fontFamily:mono,fontWeight:600,
+          color:left?'#946200':C.faint,whiteSpace:'nowrap'}},this.fmt(left))); });
+    const foot=h('tr',null,
+      h('td',{colSpan:2,style:{padding:'10px 12px',fontSize:11,fontWeight:700,letterSpacing:'.4px',
+        color:'#cfe0be',background:C.dark,whiteSpace:'nowrap'}},this.t('colTotal')),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,color:'#e6efdb',background:C.dark}},this.fmt(tDone)),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,color:'#fff',background:C.dark}},this.fmt(tHand)),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,color:'#e6efdb',background:C.dark}},this.fmt(tDone-tHand)));
+    return h('div',null,head,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,overflow:'hidden'}},
+        h('div',{className:'yscroll',style:{overflowX:'auto'}},
+          h('table',{style:{width:'100%',minWidth:'620px',borderCollapse:'collapse'}},
+            h('thead',null,h('tr',null,
+              h('th',{style:{...th,paddingLeft:14}},this.t('dsoColDay')),
+              h('th',{style:th},this.t('lsCol1')),
+              h('th',{style:{...th,textAlign:'right'}},this.t('dsoOvwDone')),
+              h('th',{style:{...th,textAlign:'right'}},this.t('dsoOvwHanded')),
+              h('th',{style:{...th,borderRight:'none',textAlign:'right'}},this.t('dsoOvwLeft')))),
+            h('tbody',null,body),
+            h('tfoot',null,foot)))));
+  }
+
+  renderDsoProd(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const list=this.prodLines();
+    if(this.state.dsoLine&&list.some(x=>x.line===this.state.dsoLine)) return this.renderDsoLineDetail(this.state.dsoLine);
+    if(!list.length) return h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('demandEmpty'));
+    const show=v=>(v===''||v==null)?'\u2014':String(v);
+    // 1 goc = nhan nho + so; align phai cho 2 goc ben phai
+    const corner=(label,val,right)=>h('div',{style:{minWidth:0,textAlign:right?'right':'left'}},
+      h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint,whiteSpace:'nowrap'}},label),
+      h('div',{style:{fontSize:15,fontWeight:700,fontFamily:mono,color:C.ink,marginTop:2,whiteSpace:'nowrap'}},val));
+    const cardGrid=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(238px,1fr))',gap:12}},
+      list.map(x=>h('div',{key:x.line,onClick:()=>this.set({dsoLine:x.line}),title:this.t('dsoOpenLine'),
+        style:{border:'1px solid '+C.border,borderRadius:14,background:C.white,boxShadow:C.shadow,cursor:'pointer',
+          padding:'13px 15px',minHeight:116,display:'flex',flexDirection:'column',justifyContent:'space-between',gap:14},
+        'style-hover':{borderColor:C.primary}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}},
+          h('div',{style:{fontSize:16,fontWeight:700,color:C.primary,fontFamily:mono,whiteSpace:'nowrap'}},x.line),
+          corner(this.t('lsCol3'),show(x.cfg.w),true)),
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:10}},
+          corner(this.t('lsCol4'),show(x.cfg.hrs),false),
+          corner(this.t('lsCol6'),show(x.cfg.smv),true)))));
+    return h('div',{style:{padding:'16px 18px 20px'}},
+      this.renderDsoOverview(),
+      h('div',{style:{fontSize:15,fontWeight:700,margin:'24px 0 4px'}},this.t('dsoLines')),
+      h('div',{style:{fontSize:12,color:C.faint,marginBottom:11}},this.t('dsoLinesSub')),
+      cardGrid);
+  }
+
+  renderLineSetting(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const rows=this.getWeek().rows;
+    if(!rows.length) return h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('demandEmpty'));
+    const th={padding:'10px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,background:'#f8faf3',whiteSpace:'nowrap'};
+    const td={padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    const lock={...td,opacity:.7,cursor:'default'};
+    const inp={width:'100%',border:'1.5px solid '+C.primary,borderRadius:7,padding:'5px 7px',fontSize:12.5,fontFamily:mono,fontWeight:600,color:C.ink,background:C.white,boxSizing:'border-box'};
+    const gbtn=(label,on,extra)=>h('button',{onClick:on,style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:8,padding:'4px 10px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap',...(extra||{})},'style-hover':{background:C.tint}},label);
+    const body=rows.map((r,i)=>{
+      const k=this.lsKey(r), v=this.lsGet(r), ed=this.state.lsEdit===k, bg=i%2?'#f7f9f3':C.white;
+      const num=(field,ph,fn)=>ed
+        ? h('input',{type:'text',inputMode:'decimal',value:v[field]==null?'':v[field],placeholder:ph,
+            onChange:e=>this.lsSet(r,{[field]:this[fn||'lsNum'](e.target.value)}),style:{...inp,textAlign:'center'}})
+        : (v[field]===''||v[field]==null?'\u2014':String(v[field]));
+      return h('tr',{key:k},
+        h('td',{title:this.t('tipPlanCol'),style:{...lock,background:C.tint,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},this.normName(r.line)),
+        h('td',{title:this.t('tipPlanCol'),style:{...lock,background:bg,fontFamily:mono,wordBreak:'break-all'}},r.style||'\u2014'),
+        h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('w','0')),
+        h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('hrs','9.5','lsHrs')),
+        h('td',{style:{...td,background:bg,textAlign:'center',color:C.faint,fontFamily:mono}},v.date||'\u2014'),
+        h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('smv','0')),
+        h('td',{title:this.t('lsTypeTip'),style:{...td,background:bg,textAlign:'center'}}, ed
+          ? h('select',{value:this.lsType(r),disabled:true,onChange:()=>{},
+              style:{...inp,border:'1px solid '+C.border,color:C.sub,background:'#f1f2ef',cursor:'not-allowed',appearance:'auto'}},
+              h('option',{value:this.lsType(r)},this.lsType(r)||'\u2014'))
+          : (this.lsType(r)||'\u2014')),
+        h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono,fontWeight:700}}, ed
+          ? h('input',{type:'text',inputMode:'numeric',value:v.tgt==null?'':v.tgt,placeholder:'0',
+              title:this.t('lsPctTip'),onChange:e=>this.lsSet(r,{tgt:this.lsPct(e.target.value)}),style:{...inp,textAlign:'center'}})
+          : (v.tgt===''||v.tgt==null?'\u2014':v.tgt+'%')),
+        h('td',{style:{...td,background:bg}}, v.file
+          ? h('span',{style:{display:'inline-flex',alignItems:'center',gap:7,minWidth:0}},
+              h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:C.primary,strokeWidth:2,style:{flex:'none'}},h('path',{d:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'}),h('path',{d:'M14 2v6h6'})),
+              h('span',{style:{fontWeight:600,wordBreak:'break-all'}},v.file.name),
+              h('span',{style:{flex:'none',fontSize:10.5,color:C.faint,fontFamily:mono}},this.lsFileSize(v.file.size)),
+              h('button',{title:this.t('lsFileDel'),onClick:()=>this.lsFileDel(r),style:{flex:'none',border:'none',background:'none',color:'#c0392b',cursor:'pointer',padding:0,fontSize:14,lineHeight:1,fontFamily:'inherit'}},'\u00d7'))
+          : h('span',{style:{color:C.faint}},'\u2014')),
+        h('td',{style:{...td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('div',{style:{display:'flex',gap:6,alignItems:'center'}},
+            ed?gbtn(this.t('lsDone'),()=>this.lsDone(r),{border:'1px solid '+C.primary,background:C.tint})
+              :gbtn(this.t('lsEdit'),()=>this.set({lsEdit:k})),
+            h('label',{title:this.t('lsImportTip'),style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:8,padding:'4px 10px',fontSize:11.5,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'},'style-hover':{background:C.tint}},
+              this.t('lsImport'),
+              h('input',{type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},
+                onChange:e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(f) this.lsImport(r,f); }})))));
+    });
+    return h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1180px',borderCollapse:'collapse'}},
+        h('thead',null,h('tr',null,
+          h('th',{style:{...th,paddingLeft:22}},this.t('lsCol1')),
+          h('th',{style:th},this.t('lsCol2')),
+          h('th',{style:{...th,textAlign:'center'}},this.t('lsCol3')),
+          h('th',{style:{...th,textAlign:'center'}},this.t('lsCol4')),
+          h('th',{style:{...th,textAlign:'center'}},this.t('lsCol5')),
+          h('th',{style:{...th,textAlign:'center'}},this.t('lsCol6')),
+          h('th',{style:{...th,textAlign:'center'}},this.t('lsCol7')),
+          h('th',{style:{...th,textAlign:'center'}},this.t('lsCol8')),
+          h('th',{style:th},this.t('lsCol9')),
+          h('th',{style:{...th,borderRight:'none'}},this.t('lsCol10')))),
+        h('tbody',null,body)));
+  }
+
+  renderDsoBody(){
+    const h=React.createElement; const tab=this.state.dsoTab||'cfg';
     return h('div',{ref:this.scrollRef,className:'yscroll',style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
-      this.renderTitle('cutPageTitle','S-02-CUTPLAN-MONITOR · UI Proto'), this.renderCapKpis(), this.renderCutTabs(),
-      this.state.cutTab==='plan'?this.renderCutPlanPanel():this.renderCapPanel());
+      this.renderTitle('dsoTitle','S-05-SEWOUT-DAILY · UI Proto'),
+      this.tabBar(this.DSO_TABS,tab,id=>this.set({dsoTab:id,edit:null}),false),
+      tab==='prod'?this.dsoCard('dsoProdPanel','dsoProdSub','DSO Production',this.renderDsoProd())
+      :tab==='alert'?this.renderDsoAlerts()
+      :tab==='mlv'?this.dsoCard('dsoMlvPanel','dsoMlvSub','DSO M-level')
+      :this.renderDsoSettings());
   }
 
   renderDashBody(){
@@ -1557,28 +2701,15 @@ class Component extends DCLogic {
       tbPanel);
   }
 
-  renderCapKpis(){
-    const h=React.createElement, C=this.C; const T=this.capTotals();
-    const cards=[[this.t('capK1'),this.fmtn(Math.round(T.out)),this.t('capK1s')],
-      [this.t('capK2'),String(T.tc),this.t('capK2s')],
-      [this.t('capK3'),this.fmtn(T.rem),this.t('capK3s')],
-      [this.t('capK4'),this.fmtn(Math.round(T.sew)),this.t('capK4s')]];
-    const icons=[
-      h('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8},h('path',{d:'M22 12h-4l-3 9L9 3l-3 9H2'})),
-      h('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8},h('circle',{cx:6,cy:6,r:3}),h('circle',{cx:6,cy:18,r:3}),h('path',{d:'M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12'})),
-      h('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8},h('circle',{cx:12,cy:12,r:9}),h('path',{d:'M12 7v5l3 3'})),
-      h('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8},h('path',{d:'M12 2 2 7l10 5 10-5-10-5z'}),h('path',{d:'M2 17l10 5 10-5M2 12l10 5 10-5'}))];
-    return h('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:16}},
-      cards.map(([label,val,sub],i)=>h('div',{key:i,style:{background:C.white,border:'1px solid '+C.border,borderRadius:13,padding:'10px 14px',boxShadow:C.shadow,display:'flex',alignItems:'center',gap:10}},
-        h('div',{style:{width:26,height:26,borderRadius:8,background:i===1?'#fbf3df':C.tint,color:i===1?'#b0791b':C.dark,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}},icons[i]),
-        h('div',{style:{flex:1,minWidth:0,fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:C.sub,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},label),
-        h('div',{style:{fontSize:19,fontWeight:700,letterSpacing:'-.4px',lineHeight:1,fontVariantNumeric:'tabular-nums',flex:'none'}},val))));
-  }
-
-  PS(){ this.ensureSeed(); return window.PSCHED||{groups:[],start:'2026-01-01',days:1}; }
-  // File dữ liệu nạp sau khi component dựng xong sẽ gán lại window.* — gieo lại khi mất dấu
+  psClone(o){ return o?JSON.parse(JSON.stringify(o)):{groups:[],start:'2026-01-01',days:1}; }
+  PS(){ this.ensureSeed(); return (this.state&&this.state.ps)||window.PSCHED||{groups:[],start:'2026-01-01',days:1}; }
+  // Mọi thay đổi kế hoạch đi qua đây: sửa bản sao rồi setState -> tự động lưu
+  psSet(fn){ this._psLines=null;
+    this.setState(st=>{ const ps=this.psClone(st.ps||window.PSCHED); if(fn(ps)===false) return {}; return {ps}; });
+    this.psTouch(); }
   ensureSeed(){ if(this._seeding||!window.PSCHED||!window.KHC) return;
-    if(window.KHC.__seed&&window.PSCHED.__seed) return;
+    const cur=(this.state&&this.state.ps)||window.PSCHED;
+    if(window.KHC.__seed&&cur.__seed) return;
     this._seeding=true; try{ this.psSeedPlans(); }catch(e){} this._seeding=false;
     if(this._mounted){ clearTimeout(this._seedT); this._seedT=setTimeout(()=>this.reconcileWeeks(),0); } }
   psS(){ const p=String(this.PS().start).split('-').map(Number); return new Date(p[0],(p[1]||1)-1,p[2]||1); }
@@ -1593,11 +2724,12 @@ class Component extends DCLogic {
   psMats(o){ const p=this.psPlan(o); const out=[];
     if(p){ (p.sections||[]).forEach(s=>{ if(s.grp!=='aux'&&out.indexOf(s.fab)<0) out.push(s.fab); }); if(out.length) return out; }
     return (this.fabOf(this.psCode(o.code))||[]).map(f=>f.vl).filter(v=>v&&v!=='—'); }
-  psSetDate(field,val){ const k=this.state.gsel; if(!k||!val) return; const key=k.g+'|'+k.r+'|'+k.i;
-    this.setState(st=>{ const ov={...(st.psOver||{})}; ov[key]={...(ov[key]||{}),[field]:val}; return {psOver:ov}; }); this.psTouch(); }
+  psSetDate(field,val){ const k=this.state.gsel; if(!k||!val) return;
+    this.psSet(ps=>{ const o=(((((ps.groups||[])[k.g]||{}).rows||[])[k.r]||{}).orders||[])[k.i];
+      if(!o) return false; o[field]=val; }); }
   psShortD(v){ const p=String(v||'').split('-'); return p.length>2?p[2]+'/'+p[1]:''; }
   // Tuần của kỳ hiện tại luôn có dòng — bù lại sau khi khôi phục bản lưu / dữ liệu về muộn
-  reconcileWeeks(){ this.psApplyLines();
+  reconcileWeeks(){
     const keys=[]; Object.values(this.MONTHS).forEach(ws=>ws.forEach(w=>keys.push(w)));
     const w={...(this.state.weeks||{})}; let ch=false;
     // Bản lưu cũ còn mã hàng dính mô tả từ file KHSX — làm sạch cả dữ liệu đã lưu
@@ -1678,7 +2810,7 @@ class Component extends DCLogic {
         const id='gen-'+this.genPlanKey(o).replace(/[^A-Za-z0-9]+/g,'').slice(0,30);
         if(!have[id]){ const p=this.genPlan(o,id); if(!p) return; have[id]=1; KH.plans.push(p); made++; }
         o.planId=id; })); });
-    KH.__seed=1; window.PSCHED.__seed=1; this._kt={}; this._seeding=wasSeeding; return made>0; }
+    KH.__seed=1; const _ps=(this.state&&this.state.ps)||window.PSCHED; if(_ps) _ps.__seed=1; this._kt={}; this._seeding=wasSeeding; return made>0; }
   psQty(o){ if(o.qty) return o.qty; const pl=this.psPlan(o); return pl?this.kcStat(pl).pcs:0; }
   psGeom(o){ const s=o.start?this.psOff(o.start):(o.s||0); const n=o.end?(this.psOff(o.end)-s+1):(o.n||1); return {s,n:Math.max(1,n)}; }
   psDayW(){ return [5,8.4,13.5][this.state.gz==null?1:this.state.gz]; }
@@ -1695,82 +2827,48 @@ class Component extends DCLogic {
   psSel(){ const k=this.state.gsel; if(!k) return null; const g=(this.PS().groups||[])[k.g]; if(!g) return null;
     const r=(g.rows||[])[k.r]; if(!r) return null;
     const o=this.psOrderAt(k.g,k.r,k.i);
-    if(!o) return null; const p=(this.state.psOver||{})[k.g+'|'+k.r+'|'+k.i];
-    return {g,r,o:p?Object.assign({},o,p):o,ov:!!p}; }
-  psRowItems(gi,ri,r){ const st=this.state||{}; const del=st.psDel||{}, ov=st.psOver||{}, ex=(st.psExtra||{})[gi+'|'+ri]||[];
-    const out=(r.orders||[]).map((o,oi)=>({o,i:oi,key:gi+'|'+ri+'|'+oi}));
-    ex.forEach((o,n)=>out.push({o,i:'x'+n,key:gi+'|'+ri+'|x'+n}));
-    out.forEach(it=>{ it.del=!!del[it.key]; const p=ov[it.key]; if(p){ it.o=Object.assign({},it.o,p); it.ov=!!p.src; } }); return out; }
+    if(!o) return null;
+    return {g,r,o,ov:!!o.src}; }
+  // Don con nam tren bieu do (bo don da xoa) -- dung cho ve, xep lane va dem
+  psLiveItems(gi,ri,r){ return this.psRowItems(gi,ri,r).filter(it=>!it.del); }
+  // Không còn overlay: đơn nào cũng nằm thẳng trong r.orders
+  psRowItems(gi,ri,r){ return (r.orders||[]).map((o,oi)=>({o,i:oi,key:gi+'|'+ri+'|'+oi,del:false,ov:!!o.src})); }
   // Sửa kế hoạch sản xuất -> gieo lại các tuần chưa sửa tay của Kế hoạch may
   psLineNo(name){ const n=this.parseNums(name); return n.length?n[0]:9999; }
-  // psExtra/psDel/psOver khóa theo 'nhóm|dòng' nên đổi thứ tự dòng phải map lại khóa,
-  // f(oldRowIndex) -> newRowIndex, hoặc null nếu dòng bị xóa.
-  psReindex(gi,f){ const st=this.state||{};
-    const rk=o=>{ const out={}; Object.keys(o||{}).forEach(k=>{ const p=String(k).split('|');
-      if(Number(p[0])!==gi){ out[k]=o[k]; return; }
-      const nr=f(Number(p[1])); if(nr==null) return; p[1]=String(nr); out[p.join('|')]=o[k]; }); return out; };
-    const tr=(st.psTrash||[]).filter(t=>{ const p=String(t.key).split('|'); return Number(p[0])!==gi||f(Number(p[1]))!=null; })
-      .map(t=>{ const p=String(t.key).split('|'); if(Number(p[0])===gi) p[1]=String(f(Number(p[1]))); return {...t,key:p.join('|')}; });
-    let gs=st.gsel; if(gs&&gs.g===gi){ const nr=f(gs.r); gs=(nr==null)?null:{...gs,r:nr}; }
-    this.setState({psExtra:rk(st.psExtra),psDel:rk(st.psDel),psOver:rk(st.psOver),psTrash:tr,gsel:gs}); }
-  psSortGroup(gi){ const g=((window.PSCHED||{}).groups||[])[gi]; if(!g||!g.rows) return;
-    const idx=g.rows.map((r,i)=>i).sort((a,b)=>(this.psLineNo(g.rows[a].line)-this.psLineNo(g.rows[b].line))||(a-b));
-    if(idx.every((o,i)=>o===i)) return;
-    const map={}; idx.forEach((o,nw)=>{ map[o]=nw; });
-    g.rows=idx.map(i=>g.rows[i]); this._psLines=null; this.psReindex(gi,o=>(map[o]==null?o:map[o])); }
   psFreeLineNo(g){ const used=new Set(); ((g&&g.rows)||[]).forEach(r=>this.parseNums(r.line).forEach(n=>used.add(n)));
     let n=1; while(used.has(n)) n++; return n; }
-  psAddLine(gi){ const g=((window.PSCHED||{}).groups||[])[gi]; if(!g) return;
+  // Chuyền nằm thẳng trong state.ps -> thêm/xóa là sửa mảng rows, không cần phát lại gì.
+  // gsel bỏ về null vì chỉ số dòng đổi sau khi sắp lại.
+  psAddLine(gi){ const g=(this.PS().groups||[])[gi]; if(!g) return;
     const nm='LINE '+this.psFreeLineNo(g);
-    g.rows=[...(g.rows||[]),{line:nm,cap:'',orders:[]}]; this._psLines=null;
-    const xl={...(this.state.psXL||{})}; xl[gi]=[...(xl[gi]||[]),nm];
-    const xd={...(this.state.psXD||{})}; xd[gi]=(xd[gi]||[]).filter(x=>x!==nm);
-    this.setState({psXL:xl,psXD:xd});
-    this.psSortGroup(gi); this.psTouch(); }
-  psDelLine(gi,ri){ const g=((window.PSCHED||{}).groups||[])[gi]; if(!g) return;
-    const r=(g.rows||[])[ri]; if(!r) return;
-    if(this.psRowItems(gi,ri,r).length) return;             // còn đơn thì không xóa
-    const nm=this.normName(r.line);
-    g.rows=(g.rows||[]).filter((x,i)=>i!==ri); this._psLines=null;
-    const xl={...(this.state.psXL||{})}; xl[gi]=(xl[gi]||[]).filter(x=>this.normName(x)!==nm);
-    const xd={...(this.state.psXD||{})}; xd[gi]=[...(xd[gi]||[]),nm];
-    this.setState({psXL:xl,psXD:xd});
-    this.psReindex(gi,o=>(o===ri?null:(o>ri?o-1:o))); this.psTouch(); }
-  // window.PSCHED được nạp lại từ file mỗi lần mở trang -> phát lại chuyền đã thêm/xóa
-  psApplyLines(){ const ps=window.PSCHED; if(!ps||!ps.groups) return false;
-    const xl=this.state.psXL||{}, xd=this.state.psXD||{}; let ch=false;
-    ps.groups.forEach((g,gi)=>{ g.rows=g.rows||[];
-      (xd[gi]||[]).forEach(nm=>{ const i=g.rows.findIndex(r=>this.normName(r.line)===this.normName(nm));
-        if(i>=0&&!(g.rows[i].orders||[]).length){ g.rows.splice(i,1); ch=true; } });
-      (xl[gi]||[]).forEach(nm=>{ if(!g.rows.some(r=>this.normName(r.line)===this.normName(nm))){
-        g.rows.push({line:nm,cap:'',orders:[]}); ch=true; } });
-      if(ch){ g.rows.sort((a,b)=>this.psLineNo(a.line)-this.psLineNo(b.line)); } });
-    if(ch) this._psLines=null;
-    return ch; }
+    this.psSet(ps=>{ const gg=(ps.groups||[])[gi]; if(!gg) return false;
+      gg.rows=[...(gg.rows||[]),{line:nm,cap:'',orders:[]}];
+      gg.rows.sort((a,b)=>this.psLineNo(a.line)-this.psLineNo(b.line)); });
+    this.setState({gsel:null}); }
+  psDelLine(gi,ri){ const g=(this.PS().groups||[])[gi]; if(!g) return;
+    const r=(g.rows||[])[ri]; if(!r||(r.orders||[]).length) return;   // còn đơn thì không xóa
+    this.psSet(ps=>{ const gg=(ps.groups||[])[gi]; if(!gg) return false;
+      gg.rows=(gg.rows||[]).filter((x,i)=>i!==ri); });
+    this.setState({gsel:null}); }
   psTouch(){ clearTimeout(this._rcT); this._rcT=setTimeout(()=>this.reconcileWeeks(),0); }
+  // Xóa thật: cắt khỏi r.orders. Thùng rác giữ cả nội dung đơn + tên chuyền để hoàn tác
+  // (giữ tên chuyền chứ không giữ chỉ số dòng, để thêm/xóa chuyền sau đó không làm lệch).
   psDelOrder(){ const k=this.state.gsel, s=this.psSel(); if(!k||!s) return;
-    const key=k.g+'|'+k.r+'|'+k.i, label=this.normName(s.r.line)+' · '+this.psLabel(s.o);
-    if(String(k.i).charAt(0)==='x'){                     // don them tay -> xoa han
-      const ek=k.g+'|'+k.r, n=Number(String(k.i).slice(1));
-      this.setState(st=>{ const ex={...(st.psExtra||{})}; const arr=[...(ex[ek]||[])]; const o=arr[n];
-        if(o==null) return {gsel:null};
-        arr.splice(n,1); ex[ek]=arr;
-        // cac don them tay phia sau tut 1 chi so -> don lai khoa psDel/psOver
-        const shift=mp=>{ const out={}; Object.keys(mp||{}).forEach(kk=>{ const p=String(kk).split('|');
-          if(p[0]===String(k.g)&&p[1]===String(k.r)&&String(p[2]).charAt(0)==='x'){
-            const j=Number(String(p[2]).slice(1)); if(j===n) return; if(j>n) p[2]='x'+(j-1); }
-          out[p.join('|')]=mp[kk]; }); return out; };
-        return {psExtra:ex,psDel:shift(st.psDel),psOver:shift(st.psOver),
-                psTrash:[...(st.psTrash||[]),{key,label,g:k.g,r:k.r,o}],gsel:null}; });
-      this.psTouch(); return; }
-    this.setState(st=>({psDel:{...(st.psDel||{}),[key]:true},psTrash:[...(st.psTrash||[]),{key,label}],gsel:null})); this.psTouch(); }
-  psRestore(key){ const tr=(this.state.psTrash||[]).find(x=>x.key===key);
-    if(tr&&tr.o){ this.setState(st=>{ const ex={...(st.psExtra||{})}; const ek=tr.g+'|'+tr.r;
-        ex[ek]=[...(ex[ek]||[]),tr.o];
-        const t=(st.psTrash||[]).filter(x=>x.key!==key);
-        return {psExtra:ex,psTrash:t,psTrashOpen:t.length?st.psTrashOpen:false}; }); this.psTouch(); return; }
-    this.setState(st=>{ const d={...(st.psDel||{})}; delete d[key];
-    const t=(st.psTrash||[]).filter(x=>x.key!==key); return {psDel:d,psTrash:t,psTrashOpen:t.length?st.psTrashOpen:false}; }); this.psTouch(); }
+    const label=this.normName(s.r.line)+' · '+this.psLabel(s.o);
+    const key='del'+Date.now()+'-'+k.g+'-'+k.r+'-'+k.i;
+    const o=this.psClone(s.o), line=this.normName(s.r.line);
+    this.psSet(ps=>{ const rr=(((ps.groups||[])[k.g]||{}).rows||[])[k.r];
+      if(!rr||!rr.orders||!rr.orders[k.i]) return false;
+      rr.orders=rr.orders.filter((x,i)=>i!==k.i); });
+    this.setState(st=>({psTrash:[...(st.psTrash||[]),{key,label,g:k.g,line,i:k.i,o}],gsel:null})); }
+  psRestore(key){ const tr=(this.state.psTrash||[]).find(x=>x.key===key); if(!tr) return;
+    if(tr.o){ this.psSet(ps=>{ const g=(ps.groups||[])[tr.g]; if(!g) return false;
+        const rr=(g.rows||[]).find(x=>this.normName(x.line)===tr.line)||(g.rows||[])[tr.i];
+        if(!rr) return false;
+        const arr=[...(rr.orders||[])]; arr.splice(Math.min(tr.i==null?arr.length:tr.i,arr.length),0,tr.o);
+        rr.orders=arr; }); }
+    this.setState(st=>{ const t=(st.psTrash||[]).filter(x=>x.key!==key);
+      return {psTrash:t,psTrashOpen:t.length?st.psTrashOpen:false}; }); }
   psUndo(){ const t=this.state.psTrash||[]; if(t.length) this.psRestore(t[t.length-1].key); }
   psFmtD(d){ const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
   psOpenAdd(g,r){ const t=this.psToday(); const b=t==null?0:t;
@@ -1806,16 +2904,18 @@ class Component extends DCLogic {
     const o={code,po:mpo||String(f.po||'').trim(),qty:mq||Math.max(0,parseInt(String(f.qty).replace(/[^0-9]/g,''),10)||0),
       start:f.start,end:f.end,brand:brand||undefined,color:((this.PS().brands)||{})[brand]||'#e3ecd4',man:man,
       txt:code+(brand?(' · '+brand):'')+((mpo||f.po)?(' · PO '+(mpo||f.po)):'')};
-    const k=f.g+'|'+f.r;
-    this.setState(s=>{ const ex={...(s.psExtra||{})}; const arr=[...(ex[k]||[]),o]; ex[k]=arr;
-      return {psExtra:ex,psAdd:null,files:f.file?[...s.files,{name:f.file}]:s.files,gsel:{g:f.g,r:f.r,i:'x'+(arr.length-1)}}; });
-    this.psTouch(); setTimeout(()=>this.psScrollToCut(),200); }
+    const at=((((this.PS().groups||[])[f.g]||{}).rows||[])[f.r]||{}).orders||[];
+    const idx=at.length;
+    this.psSet(ps=>{ const rr=(((ps.groups||[])[f.g]||{}).rows||[])[f.r]; if(!rr) return false;
+      rr.orders=[...(rr.orders||[]),o]; });
+    this.setState(s=>({psAdd:null,files:f.file?[...s.files,{name:f.file}]:s.files,gsel:{g:f.g,r:f.r,i:idx}}));
+    setTimeout(()=>this.psScrollToCut(),200); }
   // Xếp làn (lane) cho từng chuyền: đơn chồng thời gian nằm làn riêng
   psLaneMap(gi,g,rows){
     const info=rows.map(()=>({lanes:1,place:{}}));
     const fits=(arr,s,e)=>!arr.some(x=>x.s<e&&x.e>s);
     rows.forEach((r,ri)=>{
-      const items=this.psRowItems(gi,(g.rows||[]).indexOf(r),r), lanes=[[]];
+      const items=this.psLiveItems(gi,(g.rows||[]).indexOf(r),r), lanes=[[]];
       items.map(it=>({it,g:this.psGeom(it.o)})).sort((a,b)=>a.g.s-b.g.s).forEach(({it,g:gm})=>{
         const s=gm.s, e=gm.s+gm.n; let li=0;
         while(li<lanes.length&&!fits(lanes[li],s,e)) li++;
@@ -1862,12 +2962,9 @@ class Component extends DCLogic {
     this.psActiveOrders().forEach(add); this.psAllOrders().forEach(add); return s; }
   psStyles(brand){ const s=[]; const add=o=>{ const c=this.psCode(o.code); if(c&&(!brand||this.brandOf(o)===brand)&&s.indexOf(c)<0) s.push(c); };
     this.psActiveOrders().forEach(add); this.psAllOrders().forEach(add); return s; }
-  // i = so nguyen -> don tu file KHSX; i = 'x<n>' -> don them tay (nam trong psExtra)
   psOrderAt(g,r,i){ const gg=(this.PS().groups||[])[g]; if(!gg) return null;
     const rr=(gg.rows||[])[r]; if(!rr) return null;
-    return (String(i).charAt(0)==='x'
-      ? (((this.state.psExtra||{})[g+'|'+r])||[])[Number(String(i).slice(1))]
-      : (rr.orders||[])[i])||null; }
+    return (rr.orders||[])[i]||null; }
   psPick(g,r,i){ const o=this.psOrderAt(g,r,i); const patch={gsel:{g,r,i},qrOpen:null};
     if(o&&o.planId) patch.khcPlan=o.planId;
     this._psScroll=true; this.setState(patch);
@@ -1955,7 +3052,7 @@ class Component extends DCLogic {
       if(!exp) return;
       const lm=this.psLaneMap(gi,g,rows);
       rows.forEach((r,ri)=>{ const realRi=(g.rows||[]).indexOf(r);
-        const items=this.psRowItems(gi,realRi,r);
+        const items=this.psLiveItems(gi,realRi,r);
         const LI=lm[ri]||{lanes:1,place:{}}, RH=rowH*Math.max(1,LI.lanes);
         const laneTop=k=>k*rowH;
         const lastEnd=items.reduce((a,it)=>{ const gm=this.psGeom(it.o); return Math.max(a,gm.s+gm.n); },0);
@@ -1974,9 +3071,6 @@ class Component extends DCLogic {
               const gm=this.psGeom(o);
               const w=Math.max(6,Math.round(gm.n*dw)-2);
               const lane=Math.max(0,LI.place[it.key]||0), ltop=laneTop(lane)+4;
-              if(it.del) return h('div',{key:it.key,className:'ps-stub',title:this.t('psRestore'),onClick:()=>this.psRestore(it.key),
-                style:{position:'absolute',boxSizing:'border-box',left:Math.round(gm.s*dw),width:Math.max(18,w),top:ltop,height:rowH-12,borderRadius:6,cursor:'pointer',border:'1.5px dashed #c6cdba',
-                  background:'repeating-linear-gradient(45deg,#f5f7f0 0 5px,#eaeee1 5px 10px)',display:'flex',alignItems:'center',justifyContent:'center',color:C.primary,fontSize:15,fontWeight:700,lineHeight:1}},'+');
               const on=sel.g===gi&&sel.r===realRi&&sel.i===it.i;
               const bh=rowH-12;
               const brand=this.brandOf(o);
@@ -2174,7 +3268,7 @@ class Component extends DCLogic {
     const w0=this.psD(b-3), w1=this.psD(b+30), out=[];
     (this.PS().groups||[]).forEach((g,gi)=>(g.rows||[]).forEach((r,ri)=>(r.orders||[]).forEach((o,oi)=>{
       if(out.length>=4) return; const key=gi+'|'+ri+'|'+oi;
-      if((this.state.psDel||{})[key]||(this.state.psOver||{})[key]) return;
+      if(o.src) return;                                  // đơn đã nhận số từ file trước đó
       const s=this.pd(o.start), e=this.pd(o.end); if(!(s<=w1&&e>=w0)) return;
       const cq=this.psQty(o); if(cq<=0) return;
       const k=(hash(key+'|'+o.code)+base)%97, up=k%2===0, step=(k%4)+1;
@@ -2187,9 +3281,11 @@ class Component extends DCLogic {
     })));
     return out; }
   applyConflict(){ const f=this.state.conf; if(!f) return;
-    this.setState(s=>{ const ov={...(s.psOver||{})};
-      (f.items||[]).forEach((it,i)=>{ if((f.pick||[])[i]==='inc') ov[it.key]={qty:it.inc.qty,start:it.inc.start,end:it.inc.end,src:f.file}; });
-      return {psOver:ov,conf:null}; }); }
+    this.psSet(ps=>{ (f.items||[]).forEach((it,i)=>{ if((f.pick||[])[i]!=='inc') return;
+      const p=String(it.key).split('|');
+      const o=(((((ps.groups||[])[+p[0]]||{}).rows||[])[+p[1]]||{}).orders||[])[+p[2]];
+      if(o){ o.qty=it.inc.qty; o.start=it.inc.start; o.end=it.inc.end; o.src=f.file; } }); });
+    this.setState({conf:null}); }
   renderConflict(){
     const f=this.state.conf; if(!f) return null;
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
@@ -2328,6 +3424,7 @@ class Component extends DCLogic {
       if(e.key==='Escape'&&this.state.whOpen) this.set({whOpen:null,whErr:''});
       if(e.key==='Escape'&&this.state.psAdd) this.set({psAdd:null});
       if(e.key==='Escape'&&this.state.conf) this.set({conf:null});
+      if(e.key==='Escape'&&this.state.dsoTap) this.dsoTapClose();
       if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')&&(this.state.psTrash||[]).length){ e.preventDefault(); this.psUndo(); } };
     document.addEventListener('keydown',this._esc);
     this.awaitData();
@@ -2485,332 +3582,6 @@ class Component extends DCLogic {
         h('div',{'data-qr-grid':'',style:{padding:18,display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(360px,1fr))',gap:13,maxHeight:'calc(100vh - 175px)',overflowY:'auto'}},cards)));
   }
 
-  renderCutTabs(){
-    const h=React.createElement, C=this.C;
-    const tabs=[['capacity',this.t('ctab1')],['plan',this.t('ctab2')]];
-    return h('div',{style:{display:'inline-flex',gap:3,background:'#e7eadf',padding:4,borderRadius:12,marginBottom:20}},
-      tabs.map(([id,label])=>{ const a=this.state.cutTab===id;
-        return h('button',{key:id,onClick:()=>this.set({cutTab:id,edit:null}),style:{border:'none',cursor:'pointer',padding:'8px 18px',fontSize:13.5,fontWeight:600,color:a?C.dark:C.sub,background:a?'#fff':'transparent',borderRadius:9,fontFamily:'inherit',boxShadow:a?'0 1px 3px rgba(24,36,14,.14)':'none',transition:'background .15s,color .15s'}},label); }));
-  }
-
-  capPill(label,val){ const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    return h('div',{style:{border:'1px solid '+C.border,borderRadius:9,padding:'6px 13px',background:C.white}},
-      h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},label),
-      h('div',{style:{fontSize:13,fontWeight:700,color:C.ink,fontFamily:mono,marginTop:2,whiteSpace:'nowrap'}},val)); }
-
-  renderCapPanel(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const multChip=(text,key,green)=>{ const col=green?C.primary:'#6b726a', bg=green?C.tint:'#eceee9', bd=green?'#dbe7cb':'#dcdfd8';
-      return h('label',{title:this.t('capX7tip'),style:{display:'inline-flex',alignItems:'center',gap:7,fontSize:11,fontWeight:700,letterSpacing:'.2px',borderRadius:6,padding:'3px 5px 3px 10px',whiteSpace:'nowrap',color:col,background:bg,border:'1px solid '+bd}},
-        text,
-        h('input',{type:'number',min:0,max:60,value:this.multFor(!!green),onChange:ev=>this.setMult(key,ev.target.value),
-          style:{width:40,border:'1px solid '+bd,borderRadius:5,background:C.white,color:col,fontFamily:mono,fontSize:12,fontWeight:700,textAlign:'center',padding:'2px 0'}})); };
-    return h('div',{ref:this.panelRef,style:{background:C.white,border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',boxShadow:C.shadow}},
-      this.renderPeriodBar(),
-      h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:12,padding:'16px 22px 14px',borderBottom:'1px solid '+C.line}},
-        h('div',{style:{marginRight:'auto'}},
-          h('div',{style:{fontSize:16,fontWeight:700}},this.t('capTitle')),
-          h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('capSub')+' · '+this.state.week)),
-        this.capPill(this.t('factory'),'YIC Hà Nam'),
-        h('button',{style:this.btn('ghost'),title:this.t('renumberTip'),onClick:()=>this.renumberTurns()},this.ic('copy'),this.t('renumber')),
-        h('button',{style:this.btn('ghost'),title:this.t('capExportTip'),onClick:()=>this.exportCut()},this.ic('grid'),this.t('exportXls'))),
-      h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:9,padding:'10px 20px',borderBottom:'1px solid '+C.line,background:C.offBg}},
-        h('div',{style:{marginRight:'auto',display:'flex',alignItems:'center',gap:7,fontSize:11.5,color:C.faint}},
-          h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'currentColor'},
-            [[9,5],[15,5],[9,12],[15,12],[9,19],[15,19]].map(([cx,cy],i)=>h('circle',{key:i,cx:cx,cy:cy,r:1.9}))),
-          this.t('dragHint')),
-        multChip(this.t('capX3'),'multPlain',false), multChip(this.t('capX7'),'multEmb',true)),
-      h('div',{style:{padding:'16px 12px 8px'}}, this.renderCapGrid()));
-  }
-
-  renderCapLegend(){
-    const h=React.createElement, C=this.C;
-    const sw=(bg,bd)=>h('span',{style:{width:13,height:13,borderRadius:3,background:bg,border:'1px solid '+bd,flex:'none'}});
-    const item=(el,label)=>h('span',{style:{display:'inline-flex',alignItems:'center',gap:7,fontSize:11.5,color:C.sub}},el,label);
-    return h('div',{style:{display:'flex',flexWrap:'wrap',gap:20,padding:'0 20px 16px'}},
-      item(sw(C.white,'#cdd2c8'),this.t('lgMan')),
-      item(sw('#f2f5f8','#d3dde5'),this.t('lgPull')),
-      item(sw('#eef1ea','#d8ddd2'),this.t('lgCalc')));
-  }
-
-  renderCapGrid(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const rows=this.capRows(), T=this.capTotals();
-    const pad=this.dense?'6px 4px':'8px 4px';
-    const e=this.state.edit; const ed=(id,col)=>e&&e.id===id&&e.col===col;
-    const commit=fn=>({onBlur:ev=>{fn(ev.target.value);this.stopEdit();},onKeyDown:ev=>{if(ev.key==='Enter'){fn(ev.target.value);this.stopEdit();}else if(ev.key==='Escape')this.stopEdit();}});
-    const inp={width:'100%',border:'2px solid '+C.primary,padding:pad,fontSize:12,fontFamily:mono,fontWeight:700,color:C.ink,background:C.white,textAlign:'center'};
-    const W={stt:46,brand:72,style:150,emb:56,line:60,cut:72,iss:76,rem:76,wip1:60,ahead:78,sew:76,out:84,turns:118,po:72};
-    const F0=0, F1=W.stt, F2=W.stt+W.brand;
-    const dg=this.state.dragRow; this.rowEls=this.rowEls||{};
-    const cb={borderRight:'1px solid '+C.line,borderBottom:'1px solid '+C.line,verticalAlign:'middle'};
-    const gh={padding:'7px 6px',fontSize:10,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',textAlign:'center',color:C.dark,background:'#eef2e6',borderRight:'1px solid '+C.line,borderBottom:'1px solid '+C.line,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'};
-    const th={padding:'8px 4px',fontSize:10,fontWeight:700,letterSpacing:'.3px',textTransform:'uppercase',color:C.sub,textAlign:'center',background:'#f8faf3',borderRight:'1px solid '+C.line,borderBottom:'2px solid '+C.border,verticalAlign:'middle',lineHeight:1.25};
-    const stick=(left,z,bg,last)=>({position:'sticky',left:left,zIndex:z,background:bg,...(last?{borderRight:'2px solid #ced3c8'}:{})});
-    const totalW=W.stt+W.brand+W.style+W.emb+W.line+W.cut+W.iss+W.rem+W.wip1+W.ahead+W.sew+W.out+W.turns+W.po;
-
-    const groups=[[this.t('gInfo'),4,true],[this.t('gLine2'),1],[this.t('gWip'),3],[this.t('gCalc'),4],[this.t('gOrder'),2]];
-    const groupRow=h('tr',null, groups.map(([label,span,frozen],i)=>
-      h('th',{key:i,colSpan:span,title:label,style:{...gh,...(frozen?{position:'sticky',left:0,zIndex:6}:{})}},label)));
-
-    const headRow=h('tr',null,
-      h('th',{key:'stt',title:this.t('tStt'),style:{...th,...stick(F0,5,'#fbfcfa')}},this.t('cStt')),
-      h('th',{key:'brand',style:{...th,...stick(F1,5,'#fbfcfa')}},this.t('colBrand')),
-      h('th',{key:'style',style:{...th,...stick(F2,5,'#fbfcfa',true)}},this.t('colStyle')),
-      h('th',{key:'emb',title:this.t('tEmb'),style:th},this.t('cEmb2')),
-      h('th',{key:'line',style:th},this.t('colLine')),
-      h('th',{key:'cut',title:this.t('tCut'),style:th},this.t('cCut')),
-      h('th',{key:'iss',title:this.t('tIss'),style:th},this.t('cIss')),
-      h('th',{key:'rem',title:this.t('tRem'),style:th},this.t('cRem')),
-      h('th',{key:'wip1',title:this.t('tWip1'),style:th},this.t('cWip1')),
-      h('th',{key:'ahead',title:this.t('tAhead'),style:th},this.t('cAhead')),
-      h('th',{key:'sew',title:this.t('tSew'),style:th},this.t('cSew')),
-      h('th',{key:'out',title:this.t('tOut'),style:{...th,color:C.dark,background:C.tint}},this.t('cOut')),
-      h('th',{key:'turns',title:this.t('tTurns'),style:th},this.t('cTurns')),
-      h('th',{key:'po',title:this.t('tPo'),style:{...th,borderRight:'none'}},this.t('cPo')));
-
-    const body=rows.map((r,idx)=>{
-      const v=this.capVals(r); const stripe=idx%2===1;
-      const isDrag=!!dg&&dg.id===r.id;
-      let shift=0;
-      if(dg&&!isDrag){ if(dg.from<dg.to&&idx>dg.from&&idx<=dg.to) shift=-dg.h; else if(dg.from>dg.to&&idx>=dg.to&&idx<dg.from) shift=dg.h; }
-      const dispIdx=dg?(isDrag?dg.to:(shift<0?idx-1:(shift>0?idx+1:idx))):idx;
-      const rbg=stripe?'#f7f9f3':C.white, pbg=stripe?'#ecf0f4':'#f2f5f8', cbg=stripe?'#e9ede4':'#eef1ea';
-      const num=(field,val,tip)=>ed(r.id,field)
-        ? h('td',{key:field,style:{...cb,padding:0,background:C.tint}},h('input',Object.assign({type:'number',autoFocus:true,defaultValue:val,style:inp},commit(x=>this.setCap(r.id,field,x)))))
-        : h('td',{key:field,onClick:()=>this.startEdit(r.id,field),title:tip,style:{...cb,padding:pad,textAlign:'center',fontFamily:mono,fontSize:11.5,fontWeight:600,color:val?C.ink:'#c3c8bf',cursor:'pointer',background:rbg}},this.fmtn(val));
-      const pull=(key,val,tip)=>h('td',{key:key,title:tip,style:{...cb,padding:pad,textAlign:'center',fontFamily:mono,fontSize:11.5,fontWeight:val?600:400,color:val?'#41627e':'#b6c2cc',background:pbg}},this.fmtn(val));
-      const calc=(key,val,tip,hero)=>h('td',{key:key,title:tip,style:{...cb,padding:pad,textAlign:'center',fontFamily:mono,fontSize:hero?12.5:11.5,fontWeight:hero?700:600,
-        color:val?(hero?C.dark:C.sub):'#c3c8bf',background:hero?(stripe?'#e7f0dc':C.tint):cbg}},this.fmtn(val));
-      const emb=r.emb==='THÊU';
-      const cells=[
-        h('td',{key:'stt',title:this.t('tStt'),style:{...cb,...stick(F0,2,rbg),padding:'0 4px',textAlign:'center',cursor:isDrag?'grabbing':'grab'}},
-          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4}},
-            h('svg',{className:'grip',width:9,height:14,viewBox:'0 0 9 14',fill:'currentColor',style:{color:isDrag?C.primary:C.faint,flex:'none'}},
-              [[2,3],[7,3],[2,7],[7,7],[2,11],[7,11]].map(([cx,cy],i)=>h('circle',{key:i,cx:cx,cy:cy,r:1.3}))),
-            h('span',{style:{fontFamily:mono,fontSize:11,fontWeight:700,color:isDrag?C.primary:C.sub}},dispIdx+1))),
-        h('td',{key:'brand',style:{...cb,...stick(F1,2,rbg),padding:pad,fontSize:11,fontWeight:600,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},r.brand),
-        h('td',{key:'style',style:{...cb,...stick(F2,2,rbg,true),padding:pad,fontSize:11,fontFamily:mono,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},r.style),
-        h('td',{key:'emb',style:{...cb,padding:pad,textAlign:'center',background:rbg}},
-          h('button',{role:'checkbox','aria-checked':emb,onClick:()=>this.setCap(r.id,'emb',emb?'KHÔNG':'THÊU'),title:this.t('tEmb'),
-            style:{display:'inline-flex',alignItems:'center',justifyContent:'center',width:22,height:22,borderRadius:'50%',border:emb?'none':'1.5px solid #cdd2c8',background:emb?C.primary:'#fff',color:emb?'#fff':'#b9bfb4',padding:0,cursor:'pointer',verticalAlign:'middle',transition:'background .15s,border-color .15s'}},
-            emb
-              ? h('svg',{width:12,height:12,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:3.2,strokeLinecap:'round',strokeLinejoin:'round'},h('path',{d:'M20 6 9 17l-5-5'}))
-              : h('svg',{width:11,height:11,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2.6,strokeLinecap:'round'},h('path',{d:'M18 6 6 18M6 6l12 12'})))),
-        h('td',{key:'line',style:{...cb,padding:pad,textAlign:'center',fontSize:11,fontWeight:600,color:C.sub,background:rbg,whiteSpace:'nowrap'}},r.line),
-        num('cut',r.cut,this.t('tCut')),
-        num('iss',r.iss,this.t('tIss')),
-        calc('rem',v.rem,this.t('tRem')),
-        pull('wip1',v.wip1,this.t('tWip1')+(v.linked?'':'  ·  '+this.t('tNoBd'))),
-        calc('ahead',v.ahead,this.t('tAhead')+'  ·  '+this.fmtn(v.wip1)+' × '+v.mult),
-        pull('sew',v.sew,this.t('tSew')+(v.linked?'':'  ·  '+this.t('tNoBd'))),
-        calc('out',v.out,this.t('tOut')+'  ·  '+this.fmtn(v.sew)+' + '+this.fmtn(v.ahead)+' − '+this.fmtn(v.rem),true),
-        (()=>{ const sum=v.list.reduce((a,x)=>a+(Number(x.q)||0),0);
-          return h('td',{key:'turns',style:{...cb,padding:'5px 5px',background:rbg}},
-            v.ooo
-              ? h('div',{style:{textAlign:'center'}},h('span',{style:{display:'inline-block',fontSize:9.5,fontWeight:700,color:'#c0392b',background:'#fdeceb',border:'1px solid #f6d6d3',borderRadius:5,padding:'2px 5px'}},this.t('capOoo')))
-              : h('div',{title:this.t('tTurns')+'  ·  Σ '+this.fmtn(sum)+' pcs',
-                  className:'yscroll',style:{display:'flex',flexWrap:'wrap',gap:3,justifyContent:'center',maxHeight:58,overflowY:'auto',borderRadius:6,padding:'2px 0'}},
-                  v.list.length? v.list.map((s,i)=>h('span',{key:i,
-                    style:{fontSize:10,fontWeight:700,fontFamily:mono,color:C.primary,background:C.tint,border:'1px solid #dbe7cb',borderRadius:4,padding:'2px 5px'}},s.c))
-                    : h('span',{style:{fontSize:11,color:'#b9bfb4'}},'—'))); })(),
-        (()=>{ const po=this.capPo(r);
-          return h('td',{key:'po',title:this.t('tPo'),style:{...cb,padding:pad,textAlign:'center',fontFamily:mono,fontSize:10.5,fontWeight:po?600:400,color:po?'#41627e':'#b6c2cc',background:pbg,borderRight:'none',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},po||'—'); })()
-      ];
-      const trStyle=isDrag
-        ? {transform:'translateY('+dg.dy+'px)',position:'relative',zIndex:9,boxShadow:'0 14px 30px rgba(20,26,20,.24)',cursor:'grabbing'}
-        : {opacity:v.ooo?.62:1,transform:shift?'translateY('+shift+'px)':'none',transition:dg?'transform .16s ease':'none'};
-      return h('tr',{key:r.id,ref:el=>{ this.rowEls=this.rowEls||{}; this.rowEls[r.id]=el; },
-        className:'cap-row'+(isDrag?' lift':''),onPointerDown:ev=>this.rowPress(ev,r.id,idx),style:trStyle},cells);
-    });
-
-    const tf={padding:pad,textAlign:'center',fontFamily:mono,fontSize:11.5,fontWeight:700,color:'#fff',background:C.dark,borderRight:'1px solid rgba(255,255,255,.18)'};
-    const totalRow=h('tr',null,
-      h('th',{key:'n',colSpan:4,style:{...tf,textAlign:'left',paddingLeft:12,letterSpacing:'.5px',position:'sticky',left:0,zIndex:2}},'TOTAL'),
-      h('td',{key:'line',style:tf},''),
-      h('td',{key:'cut',style:tf},this.fmtn(T.cut)), h('td',{key:'iss',style:tf},this.fmtn(T.iss)), h('td',{key:'rem',style:tf},this.fmtn(T.rem)),
-      h('td',{key:'wip1',style:tf},this.fmtn(T.wip1)), h('td',{key:'ahead',style:tf},this.fmtn(T.ahead)), h('td',{key:'sew',style:tf},this.fmtn(Math.round(T.sew))),
-      h('td',{key:'out',style:{...tf,fontSize:14}},this.fmtn(Math.round(T.out))),
-      h('td',{key:'turns',title:this.t('tTotTurns'),style:tf},T.tc+' '+(this.state.lang==='vi'?'lượt':'turns')),
-      h('td',{key:'po',style:{...tf,borderRight:'none'}},''));
-
-    return h('div',{className:'yscroll',style:{border:'1px solid '+C.border,borderRadius:12,overflow:'auto'}},
-      h('table',{onClickCapture:ev=>{ if(this._noClick){ ev.stopPropagation(); ev.preventDefault(); } },style:{width:'100%',minWidth:totalW+'px',borderCollapse:'separate',borderSpacing:0,tableLayout:'fixed'}},
-        h('colgroup',null,
-          h('col',{style:{width:W.stt+'px'}}),
-          h('col',{style:{width:W.brand+'px'}}),h('col',{style:{width:W.style+'px'}}),
-          h('col',{style:{width:W.emb+'px'}}),
-          h('col',{style:{width:W.line+'px'}}),
-          h('col',{style:{width:W.cut+'px'}}),h('col',{style:{width:W.iss+'px'}}),h('col',{style:{width:W.rem+'px'}}),
-          h('col',{style:{width:W.wip1+'px'}}),h('col',{style:{width:W.ahead+'px'}}),h('col',{style:{width:W.sew+'px'}}),h('col',{style:{width:W.out+'px'}}),
-          h('col',{style:{width:W.turns+'px'}}),h('col',{style:{width:W.po+'px'}})),
-        h('thead',null,groupRow,headRow),
-        h('tbody',null,body,totalRow)));
-  }
-
-  renderCutPlanPanel(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const dates=this.weekDates(), caps=this.capRows();
-    let ordered=0; caps.forEach(r=>{ ordered+=this.capVals(r).list.length; });
-    let placed=0; this.DAYS.forEach(d=>{ const dr=(this.state.daily||{})[this.state.week+'|'+d];
-      if(dr) placed+=dr.filter(r=>r.k&&r.tc).length;
-      else this.CUTPLAN.forEach(b=>{ if(b.days[d]) placed++; }); });
-    const stat=(label,val,tone)=>h('div',{style:{display:'inline-flex',alignItems:'baseline',gap:8,border:'1px solid '+C.border,borderRadius:9,padding:'7px 13px',background:C.white}},
-      h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},label),
-      h('span',{style:{fontSize:16,fontWeight:700,fontFamily:mono,color:tone||C.ink}},val));
-    const dayJobs=d=>{ const out=[]; this.CUTPLAN.forEach(b=>{ const s=b.days[d]; if(!s) return; const src=caps[b.row]; if(!src) return;
-      const t=((this.state.capTurns||{})[src.id]||[])[s.slot]; out.push({src,code:t?t.c:'',qty:(t&&Number(t.q))||Number(s.qty)||0}); }); return out; };
-    const allWks=[]; Object.values(this.MONTHS).forEach(ws=>ws.forEach(w=>allWks.push(w)));
-    const wi=allWks.indexOf(this.state.week), ci2=allWks.indexOf(this.CURWK), maxI=Math.min(ci2+1,allWks.length-1);
-    const goWk=j=>{ if(j<0||j>maxI) return; this.set({week:allWks[j],openMonth:allWks[j].split(' · ')[0],dayOpen:null}); };
-    const navBtn=(dir,dis)=>h('button',{onClick:()=>goWk(wi+dir),disabled:dis,
-      style:{width:28,height:28,border:'1px solid '+C.border,borderRadius:8,background:dis?'#f2f3ef':C.white,color:dis?'#c3c8bf':C.ink,cursor:dis?'default':'pointer',fontSize:15,fontFamily:'inherit',lineHeight:1,padding:0}},dir<0?'‹':'›');
-    const tone=wi<ci2?{bg:'#eef0ea',fg:C.sub,label:this.t('cpPast')}:(wi===ci2?{bg:C.tint,fg:C.dark,label:this.t('cpThis')}:{bg:'#fdf6e8',fg:'#9a6b15',label:this.t('cpNext')});
-    const weekBar=h('div',null,this.renderPeriodBar(),
-      h('div',{style:{display:'flex',alignItems:'center',gap:9,padding:'7px 14px',borderBottom:'1px solid '+C.line,background:C.offBg}},
-        h('span',{style:{fontSize:11,fontFamily:mono,fontWeight:600,color:C.faint}},this.wkRange()),
-        h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',background:tone.bg,color:tone.fg,borderRadius:6,padding:'3px 8px'}},tone.label),
-        h('div',{style:{flex:1}}), navBtn(-1,wi<=0), navBtn(1,wi>=maxI)));
-    const today=new Date(); const isCurWk=this.state.week===this.CURWK;
-    const todayIdx=isCurWk?[1,2,3,4,5,6].indexOf(today.getDay()):-1;
-    const hd=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(6,1fr)',borderBottom:'2px solid '+C.border,background:'#f8faf3'}},
-      this.DAYS.map((d,i)=>{ const isToday=i===todayIdx;
-        return h('div',{key:d,style:{padding:'7px 10px 8px',textAlign:'center',borderRight:i<5?'1px solid '+C.line:'none',display:'flex',flexDirection:'column',alignItems:'center',gap:3,background:isToday?C.tint:'transparent'}},
-          h('span',{style:{fontSize:10,fontWeight:700,letterSpacing:'.6px',textTransform:'uppercase',color:isToday?C.dark:C.sub}},this.dayLabel(d,i)),
-          h('span',{style:{width:30,height:30,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:700,fontFamily:mono,background:isToday?C.primary:'transparent',color:isToday?'#fff':C.ink}},String(dates[i]).split('-')[0])); }));
-    const openD=this.state.dayOpen;
-    const calRow=h('div',{style:{display:'grid',gridTemplateColumns:'repeat(6,1fr)'}},
-      this.DAYS.map((d,i)=>{
-        const jobs=dayJobs(d);
-        const drows=(this.state.daily||{})[this.state.week+'|'+d];
-        const sched=drows?drows.filter(r=>r.k):null;
-        const items=sched?sched.map(r=>{ const c=caps.find(x=>x.id===r.k)||{}; const t2=(((this.state.capTurns||{})[r.k])||[]).find(x=>x.c===r.tc); return {code:r.tc,style:c.style||'',qty:t2?Number(t2.q)||0:this.codeQty(c.style,r.tc,c.po)}; }):jobs.map(j=>({code:j.code,style:j.src.style,qty:j.qty}));
-        const tbs=sched?new Set(sched.map(r=>r.tb)).size:jobs.length;
-        const tot=items.reduce((a,x)=>a+x.qty,0);
-        const isSel=openD===d; const dim=!!openD&&!isSel; const isToday=i===todayIdx;
-        return h('div',{key:d,onClick:()=>this.openDay(d,this.state.week),title:this.t('dpHeadHint'),
-          style:{minHeight:150,padding:'10px 8px',borderRight:i<5?'1px solid '+C.line:'none',cursor:'pointer',background:isSel?C.tint2:(isToday?'#fdfef9':C.white),boxShadow:isSel?'inset 0 0 0 2px '+C.primary:'none',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2,opacity:dim?.38:1,transition:'background .12s,opacity .15s,box-shadow .12s'},'style-hover':isSel?{}:{background:C.tint2,boxShadow:'inset 0 0 0 2px '+C.primary}},
-          h('span',{style:{fontSize:items.length?54:38,fontWeight:700,fontFamily:mono,letterSpacing:'-2px',lineHeight:1,color:items.length?(isSel?C.dark:C.primary):'#d7dbd1'}},items.length||'0'),
-          h('span',{style:{fontSize:11,fontWeight:700,letterSpacing:'.6px',textTransform:'uppercase',color:items.length?C.sub:'#c3c8bf'}},this.t('cpTurnU')));
-      }));
-    const di2=openD?this.DAYS.indexOf(openD):-1;
-    const detail=openD?h('div',{ref:this.dailyRef,style:{borderTop:'2px solid '+C.primary,background:'#fbfcf9',padding:'12px 14px'}},
-      h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:8}},
-        h('span',{style:{background:C.dark,color:'#fff',borderRadius:7,padding:'3px 10px',fontSize:11,fontWeight:700,fontFamily:mono}},this.dayLabel(openD,di2)+' · '+dates[di2]),
-        h('span',{style:{fontSize:11.5,fontWeight:700,color:C.ink}},this.t('dpTitle')),
-        h('button',{onClick:()=>this.set({dayOpen:null}),title:this.t('dpClose'),
-          style:{marginLeft:'auto',width:24,height:24,border:'1px solid '+C.border,borderRadius:7,background:C.white,color:C.sub,fontSize:14,cursor:'pointer',fontFamily:'inherit',lineHeight:1,padding:0}},'×')),
-      this.renderDailyPanel()):null;
-    return h('div',{ref:this.panelRef,style:{background:C.white,border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',boxShadow:C.shadow}},
-      weekBar,
-      h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:12,padding:'14px 22px 12px',borderBottom:'1px solid '+C.line}},
-        h('div',{style:{marginRight:'auto'}},
-          h('div',{style:{fontSize:16,fontWeight:700}},this.t('cutPlanTitle')),
-          h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('cutPlanSub')+' · '+this.state.week)),
-        stat(this.t('cpOrdered'),String(ordered)),
-        stat(this.t('cpSched'),String(placed),C.primary)),
-      h('div',null,hd,calRow,detail));
-  }
-
-  seedDaily(day){ const caps=this.capRows(); const rows=[]; let n=0;
-    this.CUTPLAN.forEach(b=>{ const s=b.days[day]; if(!s) return; const src=caps[b.row]; if(!src) return;
-      const mc='ABC'[n%3]; rows.push({id:'dj'+day+'-'+n,mc,tb:this.MACH[mc][0],seq:String(Math.floor(n/3)+1),k:src.id,tc:this.dTurn(src,day).code,fi:this.fabOf(src.style)[0].vl}); n++; });
-    return rows; }
-  openDay(d,wk){ this.setState(s=>{ const week=wk||s.week; const key=week+'|'+d;
-    const daily=s.daily[key]?s.daily:{...s.daily,[key]:this.seedDaily(d)};
-    const same=s.dayOpen===d&&s.week===week;
-    return {week,dayOpen:same?null:d,daily}; },()=>{ if(!this.state.dayOpen) return;
-    setTimeout(()=>{ const el=this.dailyRef.current, sc=this.scrollRef.current; if(!el||!sc) return;
-      const top=el.getBoundingClientRect().top-sc.getBoundingClientRect().top+sc.scrollTop-16;
-      sc.scrollTo({top,behavior:'smooth'}); },60); }); }
-  dRows(){ return this.state.daily[this.state.week+'|'+this.state.dayOpen]||[]; }
-  mutD(fn){ this.setState(s=>{ const key=s.week+'|'+s.dayOpen; const daily={...s.daily}; daily[key]=fn([...(daily[key]||[])]); return {daily}; }); }
-  addD(){ this.mutD(rows=>[...rows,{id:'dj'+Date.now(),mc:'A',tb:'1',seq:'',k:'',tc:'',fi:''}]); }
-  setD(id,patch){ this.mutD(rows=>rows.map(r=>r.id===id?{...r,...patch}:r)); }
-  delD(id){ this.mutD(rows=>rows.filter(r=>r.id!==id)); }
-  dTurn(r,day){ const caps=this.capRows(); const ci=caps.findIndex(x=>x.id===r.id);
-    const b=this.CUTPLAN.find(x=>x.row===ci&&x.days[day]); const cat=this.cutTurns(r.style,r.po)||[];
-    let code='',k=0;
-    if(b){ k=b.days[day].slot; const t=((this.state.capTurns||{})[r.id]||[])[k]; if(t) code=t.c; }
-    const ct=cat.length?cat[k%cat.length]:null;
-    return {code,layers:ct?ct.layers:0,marker:ct?ct.marker:''}; }
-
-  renderDailyPanel(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const day=this.state.dayOpen, caps=this.capRows(), rows=this.dRows();
-    const th={padding:'8px 8px',fontSize:10,fontWeight:700,letterSpacing:'.3px',textTransform:'uppercase',color:C.sub,textAlign:'center',background:'#f8faf3',borderRight:'1px solid '+C.line,borderBottom:'2px solid '+C.border,lineHeight:1.3};
-    const td={borderRight:'1px solid '+C.line,borderTop:'1px solid '+C.line,padding:'5px 6px',textAlign:'center',verticalAlign:'middle',background:C.white};
-    const sel={width:'100%',border:'1px solid '+C.border,borderRadius:7,padding:'6px 5px',fontSize:11.5,fontFamily:'inherit',fontWeight:600,color:C.ink,background:C.white,cursor:'pointer'};
-    const body=rows.map(e=>{
-      const r=caps.find(x=>x.id===e.k)||null;
-      const seqV=String(e.seq||'').trim();
-      const dup=!!seqV&&rows.some(o=>o.id!==e.id&&String(o.seq||'').trim()===seqV&&((e.mc!=='T'&&o.mc===e.mc)||o.tb===e.tb));
-      const codes=r?(((this.state.capTurns||{})[r.id])||[]):[];
-      const fb=r?this.fabOf(r.style):null;
-      return h('tr',{key:e.id},
-        h('td',{style:td},h('select',{value:e.mc,onChange:ev=>{ const v=ev.target.value; this.setD(e.id,{mc:v,tb:this.MACH[v].includes(e.tb)?e.tb:this.MACH[v][0]}); },style:{...sel,fontFamily:mono,fontWeight:700}},
-          ['A','B','C'].map(m=>h('option',{key:m,value:m},this.t('dpMcOpt')+' '+m)),
-          h('option',{value:'T'},this.t('dpHand')))),
-        h('td',{style:td},h('select',{value:e.tb,onChange:ev=>this.setD(e.id,{tb:ev.target.value}),style:{...sel,fontFamily:mono,fontWeight:700}},
-          this.MACH[e.mc].map(b2=>h('option',{key:b2,value:b2},this.t('dpTbOpt')+' '+b2)))),
-        h('td',{style:td},
-          h('input',{type:'number',min:1,max:99,step:1,value:e.seq,onChange:ev=>this.setD(e.id,{seq:ev.target.value.replace(/[^0-9]/g,'').slice(0,2)}),title:dup?this.t('dpDup'):this.t('dpSeqTip'),
-            style:{width:'100%',border:'1px solid '+(dup?'#d64545':C.border),background:dup?'#fdf1f1':C.white,color:dup?'#b02a2a':C.ink,borderRadius:7,padding:'6px 4px',fontSize:12,fontWeight:700,fontFamily:mono,textAlign:'center'}}),
-          dup?h('div',{style:{fontSize:8.5,color:'#c03535',fontWeight:700,marginTop:2,lineHeight:1.2}},this.t('dpDupShort')):null),
-        h('td',{style:{...td,textAlign:'left'}},h('select',{value:e.k,onChange:ev=>{ const k=ev.target.value; const c=caps.find(x=>x.id===k); this.setD(e.id,{k,tc:c?this.dTurn(c,day).code:'',fi:c?this.fabOf(c.style)[0].vl:''}); },style:{...sel,color:e.k?C.ink:C.faint}},
-          h('option',{value:''},this.t('dpPick')),
-          caps.map(c=>h('option',{key:c.id,value:c.id},c.brand+' · '+c.style+(c.po?' · PO '+c.po:''))))),
-        h('td',{style:td,title:this.t('dpFabTip')},r?h('select',{value:e.fi||'',onChange:ev=>this.setD(e.id,{fi:ev.target.value}),
-          style:{...sel,fontFamily:mono,fontWeight:700}},
-          fb.map(f=>h('option',{key:f.vl,value:f.vl},f.vl+' · '+this.fmtn(f.tot)))):h('span',{style:{color:C.faint}},'—')),
-        h('td',{style:td,title:this.t('dpLayTip')},r&&codes.length?h('select',{value:e.tc||'',onChange:ev=>this.setD(e.id,{tc:ev.target.value}),
-          style:{...sel,fontFamily:mono,fontWeight:700,color:e.tc?C.primary:C.faint}},
-          h('option',{value:''},this.t('dpPickTurn')),
-          codes.map(t2=>h('option',{key:t2.c,value:t2.c},t2.c+' · '+this.fmtn(t2.q)))):h('span',{style:{color:C.faint}},'—')),
-        h('td',{style:{...td,borderRight:'none'}},h('button',{onClick:()=>this.delD(e.id),title:this.t('dpDel'),
-          style:{width:22,height:22,border:'1px solid '+C.border,borderRadius:6,background:C.white,color:C.faint,fontSize:13,lineHeight:1,cursor:'pointer',fontFamily:'inherit',padding:0}},'×')));
-    });
-    body.push(h('tr',{key:'add'},h('td',{colSpan:7,style:{...td,borderRight:'none',padding:'6px 8px'}},
-      h('button',{onClick:()=>this.addD(),style:{width:'100%',border:'1px dashed '+C.border,borderRadius:7,background:'transparent',color:C.faint,fontSize:11,fontWeight:600,fontFamily:'inherit',padding:'7px',cursor:'pointer'}},'+ '+this.t('dpAdd')))));
-    return h('div',{className:'yscroll',style:{overflow:'auto',border:'1px solid '+C.border,borderRadius:10,background:C.white}},
-      h('table',{style:{width:'100%',minWidth:'880px',borderCollapse:'separate',borderSpacing:0,tableLayout:'fixed'}},
-        h('colgroup',null,[100,96,64,null,150,150,36].map((w,i)=>h('col',{key:i,style:w?{width:w+'px'}:null}))),
-        h('thead',null,h('tr',null,['dpMc','dpTb','dpSeq','dpStylePo','dpFab','dpLay',''].map((k,i)=>
-          h('th',{key:i,style:{...th,textAlign:i===3?'left':'center',borderRight:i===6?'none':th.borderRight}},k?this.t(k):'')))),
-        h('tbody',null,body)));
-  }
-
-  exportCut(){
-    const X=window.XLSX;
-    if(!X){ window.alert('Thư viện Excel chưa tải xong — thử lại sau vài giây.'); return; }
-    const rows=this.capRows(), T=this.capTotals(), wk=this.state.week, dates=this.weekDates();
-    const wb=X.utils.book_new();
-    const add=(name,aoa,cols)=>{ const ws=X.utils.aoa_to_sheet(aoa); ws['!cols']=cols.map(w=>({wch:w})); X.utils.book_append_sheet(wb,ws,name); };
-    const dayHead=this.DAYS.map((d,i)=>d.toUpperCase()+' '+dates[i]);
-    const a1=[['WEEKLY CUTTING CAPACITY'],['(Đơn Đặt Năng Lực Cắt Hàng Tuần)'],
-      ['Nhà máy (Factory)','YIC Hà Nam'],['Tuần (Week)',this.wkRange()],
-      ['Hàng ko in thêu là cắt trước 3 ngày, hàng in thêu cắt trước 6 ngày'],[],
-      ['#','NHÀ MÁY','BRAND','STYLE #','THÊU/KHÔNG IN THÊU','LINE','TỔNG WIP ĐÃ CẮT','TỔNG ĐÃ CẤP CHO CHUYỀN','WIP TỒN ĐẾN CUỐI TUẦN','WIP 1 NGÀY','TỔNG WIP CẦN CẮT TRƯỚC','TỔNG MAY CẦN','SẢN LƯỢNG CẮT','LƯỢT CẮT','PO']];
-    rows.forEach(r=>{ const v=this.capVals(r);
-      a1.push([r.n,'YIC Hà Nam',r.brand,r.style,r.emb,r.line,Number(r.cut)||0,Number(r.iss)||0,v.rem,v.wip1,v.ahead,v.sew,v.out,v.ooo?'Out of order':v.list.map(x=>x.c).join(', '),r.po||'']); });
-    a1.push(['TOTAL','','','','','',T.cut,T.iss,T.rem,T.wip1,T.ahead,T.sew,T.out,T.tc,'']);
-    add('Cutting Capacity',a1,[5,12,12,16,15,13,14,16,16,11,17,13,13,20,17]);
-    const a2=[['WEEKLY CUTTING SCHEDULE'],['(Kế Hoạch Cắt Tuần)'],[],['BRAND','',...dayHead,'SUMMARY']];
-    this.CUTPLAN.forEach(b=>{
-      const src=rows[b.row]||{}; const codes=(this.state.capTurns||{})[src.id]||[];
-      const g=fn=>this.DAYS.map(d=>{ const s=b.days[d]; return s?fn(s):''; });
-      const turns=this.DAYS.map(d=>{ const s=b.days[d]; const t=s&&codes[s.slot]; return t?t.c:''; }).filter(Boolean);
-      const qtyOf=s=>{ const t=codes[s.slot]; return (t&&Number(t.q))||Number(s.qty)||0; };
-      const tot=this.DAYS.reduce((a,d)=>a+(b.days[d]?qtyOf(b.days[d]):0),0);
-      a2.push([src.brand,'Style',...g(()=>src.style),'']);
-      a2.push(['','PO',...g(()=>src.po),'']);
-      a2.push(['','Cutting turn',...g(s=>{ const t=codes[s.slot]; return t?t.c:''; }),turns.join(', ')]);
-      a2.push(['','Total quantity',...g(qtyOf),tot]);
-    });
-    add('Cutting Plan',a2,[14,14,...this.DAYS.map(()=>15),18]);
-    X.writeFile(wb,('YIC-HaNam_Cutting_'+wk).replace(/[^0-9A-Za-z]+/g,'-').replace(/-+$/,'')+'.xlsx');
-  }
-
   btn(kind){ const C=this.C; const base={display:'inline-flex',alignItems:'center',gap:7,padding:'9px 14px',borderRadius:10,transition:'background .12s,border-color .12s,box-shadow .12s',fontSize:13,fontWeight:600,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'};
     if(kind==='primary') return {...base,background:C.primary,color:'#fff',border:'1px solid '+C.primary};
     return {...base,background:C.white,color:C.ink,border:'1px solid '+C.border}; }
@@ -2823,375 +3594,6 @@ class Component extends DCLogic {
     return null;
   }
 
-  // ============== F · KẾ HOẠCH CẤP VẢI TUẦN / G · KẾ HOẠCH LÀM VIỆC KHO ==============
-  FTYPES=[['Dệt thoi (Woven)','Woven'],['Thun Single Jersey','Single Jersey'],['Thun Rib / Interlock','Rib / Interlock'],['Thun Spandex','Spandex'],['Vải lót (Lining)','Lining']];
-  frHash(s){ let n=2166136261; String(s).split('').forEach(c=>{ n^=c.charCodeAt(0); n=Math.imul(n,16777619); }); return Math.abs(n); }
-  frType(item){ const t=this.FTYPES[this.frHash(item)%this.FTYPES.length]; return this.state.lang==='vi'?t[0]:t[1]; }
-  frEst(qty,item){ const f=1.15+(this.frHash(String(item)+'y')%60)/100; return Math.round((Number(qty)||0)*f*10)/10; }
-  frDayName(i){ return (this.state.lang==='vi'?['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7']:['Mon','Tue','Wed','Thu','Fri','Sat'])[i]||''; }
-  // Lượt cắt sổ xuống lấy từ kế hoạch cắt — đã xếp lịch ngày thì mang theo ngày cắt
-  frPool(){ const sched={};
-    this.DAYS.forEach((d,i)=>{ (((this.state.daily||{})[this.state.week+'|'+d])||[]).forEach(r=>{ if(r.k&&r.tc) sched[r.k+'|'+r.tc]=i; }); });
-    return this.frPoolBase().map(t=>({...t,day:sched[t.rowId+'|'+t.code]})); }
-  frPoolBase(){ return this.turnCatalog(); }
-  frInfo(rowId,code){ if(!rowId||!code) return null;
-    this._frC=this._frC||{}; const ck=rowId+'|'+code+'|'+this.state.lang;
-    if(this._frC[ck]) return this._frC[ck];
-    const r=this.capRows().find(x=>x.id===rowId); if(!r) return null;
-    let sec=null,pl=null,tb=null,sIdx=0;
-    this.khcPlansFor(r.style).forEach(p=>{ let n=0; (p.sections||[]).forEach(s=>{ if(s.grp==='aux') return;
-      const t=(s.tables||[]).find(x=>x.tb===code); if(t){ sec=s; pl=p; tb=t; sIdx=n; } n++; }); });
-    const fabs=this.fabOf(r.style);
-    const cols=this.cutColors(r.style);
-    const label=(sec&&sec.fab)||((fabs[0]||{}).vl)||'—'; const up=String(label).toUpperCase();
-    let color=cols.find(c=>up.indexOf(String(c).toUpperCase().slice(0,4))>=0);
-    if(!color){ let ix=fabs.findIndex(f=>f.vl===label); if(ix<0) ix=0; color=cols[ix%cols.length]; }
-    // Item vải: mã item của mã hàng — ưu tiên danh mục vải, nếu chưa có thì lấy nhãn màu/vải của tác nghiệp cắt
-    const cds=this.FAB[this.sKey(r.style)]||[];
-    const item=cds.length?cds[sIdx%cds.length].vl:label;
-    const po=(sec&&sec.qrPo)||(pl&&pl.qrPo)||this.capPo(r)||r.po||'';
-    const hit=(((this.state.capTurns||{})[rowId])||[]).find(x=>x.c===code);
-    const o={style:r.style,brand:r.brand,line:r.line,po:String(po).replace('PO ',''),item:item,color:color,
-      type:this.frType(item),qty:hit?Number(hit.q)||0:(tb?this.kcPcs(tb):0),ly:tb?tb.ly:0};
-    this._frC[ck]=o; return o; }
-  frRows(){ const st=(this.state.freq||{})[this.state.week]; if(st) return st;
-    const out=[], seen={};
-    this.frPool().filter(t=>{ const k=t.style+'|'+t.code; if(seen[k]) return false; seen[k]=1; return true; })
-      .slice(0,11).forEach((t,i)=>{
-      const ci=t.day!=null?t.day:Math.min(5,1+Math.floor(i/2));
-      const info=this.frInfo(t.rowId,t.code);
-      out.push({id:'fr-'+t.rowId+'-'+t.code,di:Math.max(0,ci-1),ci:ci,rowId:t.rowId,code:t.code,
-        y:info?this.frEst(t.qty,info.item):''}); });
-    return out; }
-  frMut(fn){ this.setState(s=>{ const cur=(((s.freq||{})[s.week])||this.frRows()).map(r=>({...r}));
-    return {freq:{...(s.freq||{}),[s.week]:fn(cur)}}; }); }
-  frAdd(di){ const id='fr'+Date.now().toString(36)+Math.floor(Math.random()*900+100);
-    this.frMut(rows=>rows.concat([{id:id,di:di,ci:Math.min(5,di+1),rowId:'',code:'',y:''}])); }
-  frSet(id,patch){ this.frMut(rows=>rows.map(r=>r.id===id?{...r,...patch}:r)); }
-  frDel(id){ this.frMut(rows=>rows.filter(r=>r.id!==id)); }
-  frStat(r){ const C=this.C, need=Number(r.y)||0, got=this.whTot(r.id);
-    if(!got) return {label:this.t('frWait'),fg:'#69707a',bg:'#eef0ea',bd:'#e0e3dc'};
-    if(got+0.05>=need) return {label:this.t('frDone')+' · '+this.fmtn(got)+' Y',fg:'#3d6b12',bg:C.tint,bd:'#d5e6b6'};
-    return {label:'−'+this.fmtn(Math.round((need-got)*10)/10)+' Y',fg:'#b02a2a',bg:'#fdf1f1',bd:'#f0d6d6'}; }
-
-  // Kho vải: mỗi item có nhiều Lot, mỗi Lot nhiều cây, mỗi cây một tem QR (số Y + Lot)
-  whStock(item){ this._whS=this._whS||{}; if(this._whS[item]) return this._whS[item];
-    const H=this.frHash(item), n=3+H%3, lots=[];
-    for(let k=0;k<n;k++){ const h2=this.frHash(item+'#'+k), rn=6+h2%9, rolls=[];
-      for(let j=0;j<rn;j++){ const h3=this.frHash(item+'#'+k+'#'+j);
-        rolls.push({no:'R'+String(j+1).padStart(2,'0'),y:Math.round((44+h3%35+(h3%10)/10)*10)/10,
-          bin:'A'+(1+h2%6)+'-'+String(1+h3%18).padStart(2,'0')}); }
-      lots.push({id:'L'+(2600+(H%40)+k*3),rolls:rolls}); }
-    this._whS[item]=lots; return lots; }
-  whRollQr(item,lot,r){ return 'ITEM: '+this.qrAscii(item)+'\nLOT: '+lot+'\nROLL: '+r.no+'\nYARD: '+r.y+'\nBIN: '+r.bin; }
-  whQr(text){ this._qrc=this._qrc||{}; if(this._qrc[text]!==undefined) return this._qrc[text];
-    let src=null; try{ src=window.QRSvgUrl?window.QRSvgUrl(text,'#2b3d10'):null; }catch(e){ src=null; }
-    this._qrc[text]=src; return src; }
-  whKey(id){ return this.state.week+'|'+id; }
-  whScans(id){ return (((this.state.wsc||{})[this.whKey(id)])||[]); }
-  whTot(id){ return Math.round(this.whScans(id).reduce((a,r)=>a+(Number(r.y)||0),0)*10)/10; }
-  whUsed(){ const m={}, w=this.state.wsc||{};
-    Object.keys(w).forEach(k=>(w[k]||[]).forEach(r=>{ m[r.item+'|'+r.lot+'|'+r.no]=k; })); return m; }
-  whAdd(id,item,lot,roll){ const used=this.whUsed(); if(used[item+'|'+lot+'|'+roll.no]) return false;
-    const key=this.whKey(id);
-    this.setState(s=>({wsc:{...(s.wsc||{}),[key]:(((s.wsc||{})[key])||[]).concat([{item:item,lot:lot,no:roll.no,y:roll.y,bin:roll.bin}])},whErr:''}));
-    return true; }
-  whRm(id,i){ const key=this.whKey(id);
-    this.setState(s=>{ const cur=(((s.wsc||{})[key])||[]).slice(); cur.splice(i,1); return {wsc:{...(s.wsc||{}),[key]:cur}}; }); }
-  whAuto(id,item,need){ const used=this.whUsed(); let tot=this.whTot(id); const add=[];
-    this.whStock(item).forEach(L=>L.rolls.forEach(r=>{ if(tot>=need-0.05) return;
-      if(used[item+'|'+L.id+'|'+r.no]) return;
-      add.push({item:item,lot:L.id,no:r.no,y:r.y,bin:r.bin}); tot+=r.y; }));
-    if(!add.length) return; const key=this.whKey(id);
-    this.setState(s=>({wsc:{...(s.wsc||{}),[key]:(((s.wsc||{})[key])||[]).concat(add)},whErr:''})); }
-  whFind(item,txt){ const s=String(txt||'').toUpperCase().replace(/\s+/g,' ');
-    const rm=s.match(/R\s*0?(\d{1,2})/), lm=s.match(/L\s*(\d{3,5})/);
-    if(!rm) return null;
-    const no='R'+String(parseInt(rm[1],10)).padStart(2,'0'); const lots=this.whStock(item);
-    const L=lm?lots.find(x=>x.id==='L'+lm[1]):null; const pool=L?[L]:lots; const used=this.whUsed();
-    for(let i=0;i<pool.length;i++){ const r=pool[i].rolls.find(y=>y.no===no);
-      if(r&&!used[item+'|'+pool[i].id+'|'+r.no]) return {lot:pool[i].id,roll:r}; }
-    return null; }
-  whItems(){ const out=[]; this.frRows().forEach(r=>{ const i=this.frInfo(r.rowId,r.code);
-    if(i&&i.item&&out.indexOf(i.item)<0) out.push(i.item); }); return out; }
-  openScan(r){ const i=this.frInfo(r.rowId,r.code)||{};
-    this.set({whOpen:{id:r.id,item:i.item||'—',need:Number(r.y)||0,style:i.style||'',code:r.code,color:i.color||''},whQ:'',whErr:''}); }
-  openStock(item){ this.set({whOpen:{item:item||(this.whItems()[0]||'—')},whQ:'',whErr:''}); }
-
-  fgCards(cards){ const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    return h('div',{style:{display:'grid',gridTemplateColumns:'repeat('+cards.length+',1fr)',gap:12,marginBottom:16,maxWidth:1320}},
-      cards.map((c,i)=>h('div',{key:i,style:{background:C.white,border:'1px solid '+C.border,borderRadius:13,padding:'11px 15px',boxShadow:C.shadow}},
-        h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},c[0]),
-        h('div',{style:{display:'flex',alignItems:'baseline',gap:7,marginTop:4}},
-          h('span',{style:{fontSize:20,fontWeight:700,fontFamily:mono,letterSpacing:'-.4px',color:c[3]||C.ink}},c[1]),
-          h('span',{style:{fontSize:10.5,color:C.faint,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},c[2]))))); }
-  fgWeekBar(){ const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const all=[]; Object.values(this.MONTHS).forEach(ws=>ws.forEach(w=>all.push(w)));
-    const wi=all.indexOf(this.state.week), ci=all.indexOf(this.CURWK), maxI=Math.min(ci+1,all.length-1);
-    const go=j=>{ if(j<0||j>maxI) return; this.set({week:all[j],openMonth:all[j].split(' · ')[0]}); };
-    const nav=(dir,dis)=>h('button',{key:dir,onClick:()=>go(wi+dir),disabled:dis,
-      style:{width:28,height:28,border:'1px solid '+C.border,borderRadius:8,background:dis?'#f2f3ef':C.white,color:dis?'#c3c8bf':C.ink,cursor:dis?'default':'pointer',fontSize:15,fontFamily:'inherit',lineHeight:1,padding:0}},dir<0?'‹':'›');
-    const tone=wi<ci?{bg:'#eef0ea',fg:C.sub,label:this.t('cpPast')}:(wi===ci?{bg:C.tint,fg:C.dark,label:this.t('cpThis')}:{bg:'#fdf6e8',fg:'#9a6b15',label:this.t('cpNext')});
-    return h('div',null,this.renderPeriodBar(),
-      h('div',{style:{display:'flex',alignItems:'center',gap:9,padding:'7px 14px',borderBottom:'1px solid '+C.line,background:C.offBg}},
-        h('span',{style:{fontSize:11,fontFamily:mono,fontWeight:600,color:C.faint}},this.wkRange()),
-        h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',background:tone.bg,color:tone.fg,borderRadius:6,padding:'3px 8px'}},tone.label),
-        h('div',{style:{flex:1}}), nav(-1,wi<=0), nav(1,wi>=maxI))); }
-
-  renderFabReqBody(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const dates=this.weekDates(), rows=this.frRows(), pool=this.frPool();
-    const need=Math.round(rows.reduce((a,r)=>a+(Number(r.y)||0),0)*10)/10;
-    const got=Math.round(rows.reduce((a,r)=>a+this.whTot(r.id),0)*10)/10;
-    const short=Math.max(0,Math.round((need-got)*10)/10);
-    const th={padding:'8px 8px',fontSize:9.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:C.sub,textAlign:'center',background:'#f8faf3',borderRight:'1px solid '+C.line,borderBottom:'2px solid '+C.border,lineHeight:1.35};
-    const td={borderRight:'1px solid '+C.line,borderTop:'1px solid '+C.line,padding:'6px 8px',textAlign:'center',verticalAlign:'middle',background:C.white};
-    const sel={width:'100%',border:'1px solid '+C.border,borderRadius:7,padding:'6px 5px',fontSize:11.5,fontFamily:'inherit',fontWeight:600,color:C.ink,background:C.white,cursor:'pointer'};
-    const dash=h('span',{style:{color:'#c3c8bf'}},'—');
-    const schedT=pool.filter(t=>t.day!=null), restT=pool.filter(t=>t.day==null);
-    const optOf=t=>h('option',{key:t.rowId+'|'+t.code,value:t.rowId+'|'+t.code},t.code+' · '+t.style+' · '+this.fmtn(t.qty)+' pcs');
-    const baseOpts=[h('option',{key:'_',value:''},this.t('frPick'))]
-      .concat(schedT.length?[h('optgroup',{key:'g1',label:this.t('frSched')},schedT.map(optOf))]:[])
-      .concat(restT.length?[h('optgroup',{key:'g2',label:this.t('frOrd')},restT.map(optOf))]:[]);
-    const dayOpts=this.DAYS.map((d,k)=>h('option',{key:d,value:String(k)},this.frDayName(k)+' · '+dates[k]));
-    const body=[];
-    this.DAYS.forEach((d,i)=>{
-      const lines=rows.filter(r=>r.di===i);
-      const dn=Math.round(lines.reduce((a,r)=>a+(Number(r.y)||0),0)*10)/10;
-      body.push(h('tr',{key:'g'+i},h('td',{colSpan:10,style:{background:'#f4f7ec',borderTop:'1px solid '+C.border,borderBottom:'1px solid '+C.line,padding:'7px 12px'}},
-        h('div',{style:{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}},
-          h('span',{style:{background:C.dark,color:'#fff',borderRadius:7,padding:'4px 11px',fontSize:11.5,fontWeight:700,fontFamily:mono,letterSpacing:'.3px'}},this.frDayName(i)+' · '+dates[i]),
-          h('span',{style:{fontSize:11.5,fontWeight:600,color:C.sub}},lines.length+' '+this.t('cpTurnU')),
-          dn?h('span',{style:{fontSize:12.5,fontFamily:mono,fontWeight:700,color:C.dark}},this.fmtn(dn)+' Y'):null,
-          h('div',{style:{flex:1}}),
-          h('button',{onClick:()=>this.frAdd(i),
-            style:{border:'1px solid '+C.border,background:C.white,color:C.primary,borderRadius:8,padding:'5px 11px',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'},
-            'style-hover':{background:C.tint,borderColor:C.primary}},'+ '+this.t('frAdd'))))));
-      if(!lines.length){ body.push(h('tr',{key:'e'+i},h('td',{colSpan:10,style:{...td,borderRight:'none',color:'#b9beb4',fontSize:11.5,padding:'9px 14px',textAlign:'left'}},this.t('frEmpty')))); return; }
-      lines.forEach(r=>{
-        const info=this.frInfo(r.rowId,r.code), st=this.frStat(r);
-        const has=pool.some(t=>t.rowId===r.rowId&&t.code===r.code);
-        const opts=(!has&&r.code)?[h('option',{key:'cur',value:r.rowId+'|'+r.code},r.code)].concat(baseOpts):baseOpts;
-        body.push(h('tr',{key:r.id},
-          h('td',{style:td},h('select',{value:String(r.ci),onChange:ev=>this.frSet(r.id,{ci:parseInt(ev.target.value,10)||0}),
-            style:{...sel,fontFamily:mono,fontWeight:700}},dayOpts)),
-          h('td',{style:{...td,textAlign:'left'}},h('select',{value:r.rowId&&r.code?r.rowId+'|'+r.code:'',
-            onChange:ev=>{ const v=ev.target.value, p=v?v.split('|'):['','']; const t=pool.find(x=>x.rowId===p[0]&&x.code===p[1]);
-              const patch={rowId:p[0],code:p[1]}; if(t&&t.day!=null) patch.ci=t.day; this.frSet(r.id,patch); },
-            style:{...sel,fontWeight:700,color:r.code?C.ink:C.faint}},opts)),
-          h('td',{style:td},info?h('div',null,
-            h('div',{style:{fontSize:12,fontWeight:700,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},info.style),
-            h('div',{style:{fontSize:9,color:C.faint,letterSpacing:'.4px'}},info.brand)):dash),
-          h('td',{style:td},info?h('span',{style:{fontSize:11.5,fontFamily:mono,color:C.sub}},info.po||'—'):dash),
-          h('td',{style:td},info?h('div',{style:{display:'flex',alignItems:'center',gap:7,justifyContent:'center',minWidth:0}},
-            h('span',{style:{width:11,height:11,borderRadius:'50%',background:this.colorHex(info.color),border:'1px solid rgba(0,0,0,.12)',flex:'none'}}),
-            h('span',{style:{fontSize:11.5,fontWeight:600,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},info.color)):dash),
-          h('td',{style:td},info?h('span',{style:{fontSize:11.5,fontFamily:mono,fontWeight:700,color:C.dark}},info.item):dash),
-          h('td',{style:{...td,textAlign:'left'}},info?h('span',{style:{fontSize:11,color:C.sub}},info.type):dash),
-          h('td',{style:{...td,background:'#fcfdf7'}},h('input',{type:'number',min:0,step:'0.1',value:r.y===''?'':r.y,placeholder:'0.0',
-            onChange:ev=>this.frSet(r.id,{y:ev.target.value===''?'':Math.max(0,parseFloat(ev.target.value)||0)}),
-            style:{width:'100%',border:'1px solid '+C.primary,borderRadius:7,padding:'6px 7px',fontSize:12.5,fontWeight:700,fontFamily:mono,textAlign:'right',color:C.ink,background:C.white}})),
-          h('td',{style:td},h('span',{style:{display:'inline-block',fontSize:9.5,fontWeight:700,letterSpacing:'.4px',color:st.fg,background:st.bg,border:'1px solid '+st.bd,borderRadius:6,padding:'4px 8px',whiteSpace:'nowrap'}},st.label)),
-          h('td',{style:{...td,borderRight:'none'}},h('button',{onClick:()=>this.frDel(r.id),title:this.t('frDel'),
-            style:{width:22,height:22,border:'1px solid '+C.border,borderRadius:6,background:C.white,color:C.faint,fontSize:13,lineHeight:1,cursor:'pointer',fontFamily:'inherit',padding:0}},'×'))));
-      });
-    });
-    const heads=[['frCut'],['frTurn'],['frStyle'],['frPo'],['frColor'],['frItem'],['frTypeC'],['frNeed','frHand'],['frSt'],['']];
-    return h('div',{ref:this.scrollRef,className:'yscroll',style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
-      this.renderTitle('frTitle','S-03-FABREQ-WEEKLY · UI Proto'),
-      this.fgCards([[this.t('frK1'),String(rows.length),this.t('frK1s')],[this.t('frK2'),this.fmtn(need),this.t('frK2s')],
-        [this.t('frK3'),this.fmtn(got),this.t('frK3s'),C.primary],[this.t('frK4'),this.fmtn(short),this.t('frK4s'),short?'#b02a2a':C.ink]]),
-      h('div',{'data-screen-label':'Weekly Fabric Request',style:{background:C.white,border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',boxShadow:C.shadow,maxWidth:1320}},
-        this.fgWeekBar(),
-        h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:12,padding:'14px 22px 12px',borderBottom:'1px solid '+C.line}},
-          h('div',{style:{marginRight:'auto'}},
-            h('div',{style:{fontSize:16,fontWeight:700}},this.t('frPanel')),
-            h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('frSub'))),
-          h('button',{onClick:()=>this.set({page:'whplan'}),style:this.btn('ghost')},this.t('whBc'),' →')),
-        h('div',{style:{padding:'8px 22px',fontSize:10.5,color:C.faint,borderBottom:'1px solid '+C.line,background:'#fbfcf8',lineHeight:1.5}},this.t('frNote')),
-        h('div',{className:'yscroll',style:{overflow:'auto'}},
-          h('table',{style:{width:'100%',minWidth:'1120px',borderCollapse:'separate',borderSpacing:0,tableLayout:'fixed'}},
-            h('colgroup',null,[104,178,124,80,112,104,138,116,124,34].map((w,i)=>h('col',{key:i,style:{width:w+'px'}}))),
-            h('thead',null,h('tr',null,heads.map((k,i)=>h('th',{key:i,style:{...th,textAlign:i===1||i===6?'left':'center',borderRight:i===9?'none':th.borderRight}},
-              k[0]?this.t(k[0]):'', k[1]?h('div',{style:{fontSize:8.5,fontWeight:700,color:C.primary,marginTop:2,letterSpacing:'.2px'}},'· '+this.t(k[1])+' ·'):null)))),
-            h('tbody',null,body)))));
-  }
-
-  renderWhBody(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const dates=this.weekDates();
-    const rows=this.frRows().filter(r=>r.rowId&&r.code).slice()
-      .sort((a,b)=>(a.di-b.di)||String(a.code).localeCompare(String(b.code)));
-    let needT=0,gotT=0,rollT=0;
-    rows.forEach(r=>{ needT+=Number(r.y)||0; gotT+=this.whTot(r.id); rollT+=this.whScans(r.id).length; });
-    needT=Math.round(needT*10)/10; gotT=Math.round(gotT*10)/10;
-    const th={padding:'8px 8px',fontSize:9.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:C.sub,textAlign:'center',background:'#f8faf3',borderRight:'1px solid '+C.line,borderBottom:'2px solid '+C.border,lineHeight:1.35};
-    const td={borderRight:'1px solid '+C.line,borderTop:'1px solid '+C.line,padding:'7px 8px',textAlign:'center',verticalAlign:'middle',background:C.white};
-    const scanTd={...td,background:'#fbfdf6'};
-    const body=[];
-    rows.forEach(r=>{
-      const info=this.frInfo(r.rowId,r.code)||{}, scans=this.whScans(r.id);
-      const need=Number(r.y)||0, got=this.whTot(r.id), d=Math.round((got-need)*10)/10;
-      const lots=[]; scans.forEach(s=>{ if(lots.indexOf(s.lot)<0) lots.push(s.lot); });
-      const ok=got>0&&d>=-0.05;
-      body.push(h('tr',{key:r.id},
-        h('td',{style:td},h('span',{style:{fontSize:11.5,fontWeight:700,color:C.dark}},this.frDayName(r.di))),
-        h('td',{style:td},h('span',{style:{fontSize:11.5,fontFamily:mono,color:C.sub}},dates[r.di])),
-        h('td',{style:td},h('span',{style:{fontSize:11.5,fontFamily:mono,fontWeight:700,color:C.dark}},info.item||'—')),
-        h('td',{style:td},h('div',null,
-          h('div',{style:{fontSize:12,fontWeight:700,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},info.style||'—'),
-          h('div',{style:{fontSize:9,color:C.faint,letterSpacing:'.4px'}},info.po?'PO '+info.po:''))),
-        h('td',{style:td},h('div',{style:{display:'flex',alignItems:'center',gap:6,justifyContent:'center',minWidth:0}},
-          h('span',{style:{width:10,height:10,borderRadius:'50%',background:this.colorHex(info.color),border:'1px solid rgba(0,0,0,.12)',flex:'none'}}),
-          h('span',{style:{fontSize:11,fontWeight:600,color:C.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},info.color||'—'))),
-        h('td',{style:td},h('span',{style:{fontSize:13,fontFamily:mono,fontWeight:700,color:C.primary}},r.code)),
-        h('td',{style:td},h('span',{style:{fontSize:13,fontFamily:mono,fontWeight:700,color:C.ink}},this.fmtn(need))),
-        h('td',{style:scanTd},h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:3}},
-          h('span',{style:{fontSize:13.5,fontFamily:mono,fontWeight:700,color:got?C.dark:'#c3c8bf'}},got?this.fmtn(got):'—'),
-          got?h('span',{style:{fontSize:9.5,fontWeight:700,fontFamily:mono,letterSpacing:'.2px',color:ok?'#3d6b12':'#b02a2a',background:ok?C.tint:'#fdf1f1',border:'1px solid '+(ok?'#d5e6b6':'#f0d6d6'),borderRadius:5,padding:'2px 6px',whiteSpace:'nowrap'}},
-            d>0.05?'+'+this.fmtn(d):(d<-0.05?'−'+this.fmtn(-d):'✓ '+this.t('frDone'))):null)),
-        h('td',{style:scanTd},lots.length?h('span',{style:{fontSize:11,fontFamily:mono,fontWeight:700,color:C.dark}},lots.join(' · ')):h('span',{style:{color:'#c3c8bf'}},'—')),
-        h('td',{style:scanTd},h('span',{style:{fontSize:13,fontFamily:mono,fontWeight:700,color:scans.length?C.ink:'#c3c8bf'}},scans.length||'—')),
-        h('td',{style:{...td,borderRight:'none'}},h('button',{onClick:()=>this.openScan(r),
-          style:{display:'inline-flex',alignItems:'center',gap:5,border:'1.5px solid '+C.primary,background:C.white,color:C.primary,borderRadius:8,padding:'6px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.3px',fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'},
-          'style-hover':{background:C.tint}},this.ic('qr'),this.t('whScan')))));
-      scans.forEach((s,si)=>{
-        body.push(h('tr',{key:r.id+'-s'+si},
-          h('td',{colSpan:6,style:{...td,textAlign:'left',paddingLeft:26,background:'#fcfdfa'}},
-            h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
-              h('span',{style:{width:18,height:18,borderRadius:5,background:C.tint,color:C.dark,fontSize:9.5,fontWeight:700,fontFamily:mono,display:'inline-flex',alignItems:'center',justifyContent:'center',flex:'none'}},si+1),
-              this.ic('qr'),
-              h('span',{style:{fontSize:11.5,fontFamily:mono,fontWeight:700,color:C.dark}},'LOT '+s.lot),
-              h('span',{style:{fontSize:11.5,fontFamily:mono,color:C.sub}},this.t('whRollN')+' '+s.no),
-              h('span',{style:{fontSize:10.5,fontFamily:mono,color:C.faint}},this.t('whBin')+' '+s.bin))),
-          h('td',{style:{...td,background:'#fcfdfa'}},''),
-          h('td',{style:{...scanTd,background:'#fcfdfa'}},h('span',{style:{fontSize:12,fontFamily:mono,fontWeight:600,color:C.ink}},this.fmtn(s.y))),
-          h('td',{style:{...scanTd,background:'#fcfdfa'}},h('span',{style:{fontSize:11,fontFamily:mono,color:C.sub}},s.lot)),
-          h('td',{style:{...scanTd,background:'#fcfdfa'}},h('span',{style:{fontSize:11.5,fontFamily:mono,color:C.sub}},'1')),
-          h('td',{style:{...td,borderRight:'none',background:'#fcfdfa'}},h('button',{onClick:()=>this.whRm(r.id,si),title:this.t('frDel'),
-            style:{width:20,height:20,border:'1px solid '+C.border,borderRadius:6,background:C.white,color:C.faint,fontSize:12,lineHeight:1,cursor:'pointer',fontFamily:'inherit',padding:0}},'×'))));
-      });
-    });
-    if(!rows.length) body.push(h('tr',{key:'empty'},h('td',{colSpan:11,style:{...td,borderRight:'none',color:'#b9beb4',fontSize:12.5,padding:'22px 16px'}},this.t('whEmpty'))));
-    else body.push(h('tr',{key:'tot'},
-      h('td',{colSpan:6,style:{...td,textAlign:'left',background:'#f4f7ec',fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:C.sub}},this.t('whTotR')),
-      h('td',{style:{...td,background:'#f4f7ec'}},h('span',{style:{fontSize:13,fontFamily:mono,fontWeight:700,color:C.ink}},this.fmtn(needT))),
-      h('td',{style:{...td,background:'#f4f7ec'}},h('span',{style:{fontSize:13,fontFamily:mono,fontWeight:700,color:C.dark}},this.fmtn(gotT))),
-      h('td',{style:{...td,background:'#f4f7ec'}},''),
-      h('td',{style:{...td,background:'#f4f7ec'}},h('span',{style:{fontSize:13,fontFamily:mono,fontWeight:700,color:C.ink}},rollT)),
-      h('td',{style:{...td,borderRight:'none',background:'#f4f7ec'}},'')));
-    const heads=[['whD'],['whDate'],['frItem'],['frStyle'],['frColor'],['frTurn'],['frNeed'],['whReal','qr'],['whLotC','qr'],['whRollC','qr'],['']];
-    const hLabel=k=>k==='whD'?(this.state.lang==='vi'?'THỨ':'DAY'):(k==='whDate'?(this.state.lang==='vi'?'NGÀY':'DATE'):this.t(k));
-    return h('div',{ref:this.scrollRef,className:'yscroll',style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
-      this.renderTitle('whTitle','S-04-WHWORK-WEEKLY · UI Proto'),
-      this.fgCards([[this.t('whK1'),String(rows.length),this.t('whK1s')],[this.t('whK2'),this.fmtn(needT),this.t('whK2s')],
-        [this.t('whK3'),this.fmtn(gotT),this.t('whK3s'),C.primary],[this.t('whK4'),String(rollT),this.t('whK4s')]]),
-      h('div',{'data-screen-label':'Weekly Working Warehouse',style:{background:C.white,border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',boxShadow:C.shadow,maxWidth:1320}},
-        this.fgWeekBar(),
-        h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:12,padding:'14px 22px 12px',borderBottom:'1px solid '+C.line}},
-          h('div',{style:{marginRight:'auto'}},
-            h('div',{style:{fontSize:16,fontWeight:700}},this.t('whPanel')),
-            h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('whSub'))),
-          h('button',{onClick:()=>this.set({page:'fabreq'}),style:this.btn('ghost')},'← ',this.t('frBc')),
-          h('button',{onClick:()=>this.openStock(),style:{...this.btn('primary'),gap:6}},this.ic('qr'),this.t('whStockB'))),
-        h('div',{style:{padding:'8px 22px',fontSize:10.5,color:C.faint,borderBottom:'1px solid '+C.line,background:'#fbfcf8',lineHeight:1.5}},this.t('whNote')),
-        h('div',{className:'yscroll',style:{overflow:'auto'}},
-          h('table',{style:{width:'100%',minWidth:'1160px',borderCollapse:'separate',borderSpacing:0,tableLayout:'fixed'}},
-            h('colgroup',null,[80,88,116,132,104,90,110,124,116,72,104].map((w,i)=>h('col',{key:i,style:{width:w+'px'}}))),
-            h('thead',null,h('tr',null,heads.map((k,i)=>h('th',{key:i,style:{...th,background:i>=7&&i<=9?'#eef6e0':th.background,borderRight:i===10?'none':th.borderRight}},
-              k[0]?hLabel(k[0]):'',
-              k[1]==='qr'?h('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:4,marginTop:3,color:C.primary}},this.ic('qr'),h('span',{style:{fontSize:8.5,fontWeight:700}},'QR')):null)))),
-            h('tbody',null,body)))));
-  }
-
-  renderWhModal(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const o=this.state.whOpen; if(!o) return null;
-    const item=o.item||'—', lots=this.whStock(item), used=this.whUsed();
-    const rowId=o.id||null, key=rowId?this.whKey(rowId):null;
-    const scans=rowId?this.whScans(rowId):[];
-    const need=Number(o.need)||0, got=rowId?this.whTot(rowId):0, d=Math.round((got-need)*10)/10;
-    let avR=0,avY=0,totR=0,totY=0;
-    lots.forEach(L=>L.rolls.forEach(r=>{ totR++; totY+=r.y; if(!used[item+'|'+L.id+'|'+r.no]){ avR++; avY+=r.y; } }));
-    const items=this.whItems();
-    const pill=(l,v,tone)=>h('div',{key:l,style:{border:'1px solid rgba(255,255,255,.22)',borderRadius:9,padding:'6px 12px',background:'rgba(255,255,255,.08)'}},
-      h('div',{style:{fontSize:9,fontWeight:700,letterSpacing:'.5px',color:'#dcefad'}},l),
-      h('div',{style:{fontSize:14.5,fontWeight:700,fontFamily:mono,color:tone||'#fff',marginTop:2,whiteSpace:'nowrap'}},v));
-    const tile=(L,r)=>{ const k=item+'|'+L.id+'|'+r.no, taken=used[k], mine=taken&&taken===key;
-      const dis=!rowId||(taken&&!mine);
-      const src=this.whQr(this.whRollQr(item,L.id,r));
-      return h('div',{key:r.no,onClick:dis?undefined:()=>this.whAdd(rowId,item,L.id,r),
-        title:dis?(taken?this.t('whOut'):this.t('whHint')):this.t('whScanS')+' '+L.id+' · '+r.no,
-        style:{display:'flex',alignItems:'center',gap:9,border:'1px solid '+(mine?C.primary:(taken?'#e2e4de':C.border)),
-          background:mine?C.tint2:(taken?'#f4f5f1':'#fff'),borderRadius:10,padding:'7px 9px',cursor:dis?'default':'pointer',opacity:taken&&!mine?.5:1,transition:'background .12s,border-color .12s'},
-        'style-hover':dis?{}:{borderColor:C.primary,background:C.tint2}},
-        src?h('img',{src:src,alt:r.no,style:{width:42,height:42,display:'block',flex:'none'}})
-          :h('div',{style:{width:42,height:42,background:'#f2f4ee',flex:'none'}}),
-        h('div',{style:{minWidth:0,flex:1}},
-          h('div',{style:{fontSize:12,fontFamily:mono,fontWeight:700,color:C.ink}},r.no),
-          h('div',{style:{fontSize:13,fontFamily:mono,fontWeight:700,color:mine?C.dark:C.primary}},this.fmtn(r.y),h('span',{style:{fontSize:9,color:C.faint,marginLeft:3}},'Y')),
-          h('div',{style:{fontSize:9,fontFamily:mono,color:C.faint}},r.bin)),
-        mine?h('span',{style:{fontSize:8.5,fontWeight:700,letterSpacing:'.3px',color:'#3d6b12',background:C.tint,border:'1px solid #d5e6b6',borderRadius:5,padding:'2px 5px',flex:'none'}},this.t('whMine'))
-          :(taken?h('span',{style:{fontSize:8.5,fontWeight:700,letterSpacing:'.3px',color:'#8a8f86',background:'#eceee9',borderRadius:5,padding:'2px 5px',flex:'none'}},this.t('whOut')):null)); };
-    const lotCard=L=>{ const free=L.rolls.filter(r=>!used[item+'|'+L.id+'|'+r.no]);
-      const fy=Math.round(free.reduce((a,r)=>a+r.y,0)*10)/10;
-      return h('div',{key:L.id,style:{border:'1px solid '+C.border,borderRadius:13,background:'#fff',overflow:'hidden'}},
-        h('div',{style:{display:'flex',alignItems:'center',gap:9,padding:'9px 13px',background:'#f6faee',borderBottom:'1px solid '+C.line,flexWrap:'wrap'}},
-          h('span',{style:{fontSize:12.5,fontWeight:700,fontFamily:mono,letterSpacing:'.4px',color:'#fff',background:C.dark,borderRadius:7,padding:'4px 10px'}},'LOT '+L.id),
-          h('span',{style:{fontSize:10.5,fontWeight:600,color:C.sub}},free.length+' / '+L.rolls.length+' '+this.t('whRollU')),
-          h('span',{style:{marginLeft:'auto',fontSize:12,fontFamily:mono,fontWeight:700,color:C.dark,whiteSpace:'nowrap'}},this.fmtn(fy)+' Y')),
-        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(158px,1fr))',gap:8,padding:11}},L.rolls.map(r=>tile(L,r)))); };
-    const scanStrip=rowId?h('div',{style:{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',padding:'13px 20px',background:'#fff',borderBottom:'1px solid '+C.border}},
-      h('div',{style:{minWidth:0}},
-        h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('frTurn')+' · '+this.t('frStyle')),
-        h('div',{style:{fontSize:13.5,fontWeight:700,color:C.ink,marginTop:2,whiteSpace:'nowrap'}},
-          h('span',{style:{fontFamily:mono,color:C.primary}},o.code),' · ',o.style)),
-      h('div',{style:{display:'flex',alignItems:'baseline',gap:7,border:'1px solid '+C.border,borderRadius:10,padding:'7px 13px'}},
-        h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('whNeedL')),
-        h('span',{style:{fontSize:15,fontFamily:mono,fontWeight:700,color:C.ink}},this.fmtn(need)),
-        h('span',{style:{fontSize:9.5,color:C.faint}},'Y')),
-      h('div',{style:{display:'flex',alignItems:'baseline',gap:7,border:'1px solid '+(got?C.primary:C.border),borderRadius:10,padding:'7px 13px',background:got?C.tint2:'#fff'}},
-        h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('whGotL')),
-        h('span',{style:{fontSize:15,fontFamily:mono,fontWeight:700,color:C.dark}},this.fmtn(got)),
-        h('span',{style:{fontSize:9.5,color:C.faint}},'Y · '+scans.length+' '+this.t('whRollU'))),
-      h('div',{style:{display:'flex',alignItems:'baseline',gap:7,borderRadius:10,padding:'7px 13px',
-        background:d>=-0.05?C.tint:'#fdf1f1',border:'1px solid '+(d>=-0.05?'#d5e6b6':'#f0d6d6')}},
-        h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:d>=-0.05?'#3d6b12':'#b02a2a'}},d>=-0.05?this.t('whOverL'):this.t('whShortL')),
-        h('span',{style:{fontSize:15,fontFamily:mono,fontWeight:700,color:d>=-0.05?'#3d6b12':'#b02a2a'}},d>=-0.05?'+'+this.fmtn(d):this.fmtn(-d))),
-      h('div',{style:{flex:1,minWidth:180}},
-        h('input',{value:this.state.whQ||'',autoFocus:true,placeholder:this.t('whInput'),
-          onChange:e=>this.setState({whQ:e.target.value,whErr:''}),
-          onKeyDown:e=>{ if(e.key!=='Enter') return; const f=this.whFind(item,this.state.whQ);
-            if(f&&this.whAdd(rowId,item,f.lot,f.roll)) this.setState({whQ:'',whErr:''});
-            else this.setState({whErr:this.t('whErrM')}); },
-          style:{width:'100%',border:'1.5px solid '+(this.state.whErr?'#d64545':C.primary),borderRadius:10,padding:'10px 13px',fontSize:12.5,fontFamily:mono,fontWeight:600,color:C.ink,background:this.state.whErr?'#fdf1f1':'#fff'}}),
-        this.state.whErr?h('div',{style:{fontSize:10,fontWeight:700,color:'#b02a2a',marginTop:4}},this.state.whErr)
-          :h('div',{style:{fontSize:10,color:C.faint,marginTop:4}},this.t('whHint'))),
-      h('button',{onClick:()=>this.whAuto(rowId,item,need),
-        style:{border:'1px solid '+C.border,background:'#fff',color:C.dark,borderRadius:10,padding:'10px 14px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'},
-        'style-hover':{background:C.tint,borderColor:C.primary}},this.t('whAutoB'))):null;
-    const itemBar=(!rowId&&items.length)?h('div',{style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',padding:'11px 20px',background:'#fff',borderBottom:'1px solid '+C.border}},
-      h('span',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('frItem')),
-      items.map(it=>{ const on=it===item;
-        return h('button',{key:it,onClick:()=>this.setState({whOpen:{item:it}}),
-          style:{border:'1px solid '+(on?C.primary:C.border),background:on?C.tint:'#fff',color:on?C.dark:C.sub,borderRadius:8,padding:'5px 11px',fontSize:11.5,fontWeight:700,fontFamily:mono,cursor:'pointer'}},it); })):null;
-    return h('div',{onClick:e=>{ if(e.target===e.currentTarget) this.set({whOpen:null,whErr:''}); },
-      style:{position:'fixed',inset:0,zIndex:430,background:'rgba(24,36,14,.55)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'26px 20px',overflowY:'auto'}},
-      h('div',{style:{width:'min(1120px,100%)',background:'#eef0ea',borderRadius:14,overflow:'hidden',boxShadow:'0 18px 60px rgba(20,30,10,.35)'}},
-        h('div',{style:{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',padding:'15px 20px',background:C.dark}},
-          h('div',{style:{minWidth:0}},
-            h('div',{style:{fontSize:14.5,fontWeight:700,letterSpacing:'.7px',color:'#fff',fontFamily:mono}},this.t('whStockT')+' · '+item),
-            h('div',{style:{fontSize:10.5,fontFamily:mono,color:'#dcefad',marginTop:4,letterSpacing:'.3px'}},
-              lots.length+' '+this.t('whLotU')+' · '+totR+' '+this.t('whRollU')+' · '+this.fmtn(Math.round(totY*10)/10)+' Y')),
-          h('div',{style:{display:'flex',gap:8,marginLeft:'auto',alignItems:'center',flexWrap:'wrap'}},
-            pill(this.t('whAvail'),avR+' '+this.t('whRollU')+' · '+this.fmtn(Math.round(avY*10)/10)+' Y','#dcefad'),
-            h('button',{onClick:()=>this.set({whOpen:null,whErr:''}),
-              style:{cursor:'pointer',border:'1px solid rgba(255,255,255,.35)',background:'transparent',color:'#fff',fontWeight:700,fontSize:11.5,letterSpacing:'.6px',borderRadius:9,padding:'10px 18px',fontFamily:'inherit'},
-              'style-hover':{background:'rgba(255,255,255,.12)'}},this.t('kcClose')))),
-        scanStrip, itemBar,
-        h('div',{className:'yscroll',style:{padding:16,display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(330px,1fr))',gap:13,maxHeight:'calc(100vh - 230px)',overflowY:'auto'}},
-          lots.map(lotCard))));
-  }
 }
 
   /* ---- mount ---------------------------------------------------------------- */
