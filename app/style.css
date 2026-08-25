@@ -368,4 +368,8 @@ input:focus,button:focus,select:focus{outline:none}
   body.kc-qr-open [data-qr-panel]{width:100% !important;max-width:none !important;border-radius:0 !important;background:#fff !important;box-shadow:none !important}
   body.kc-qr-open [data-qr-grid]{max-height:none !important;overflow:visible !important;grid-template-columns:repeat(2,1fr) !important;padding:0 !important}
   body.kc-qr-open [data-qr-card]{break-inside:avoid}
+  /* To phieu ban giao duoc portal ra <body> -- in ra chi con to phieu */
+  body.bg-slip-open:has([data-bg-overlay])>*:not([data-bg-overlay]){display:none !important}
+  body.bg-slip-open [data-bg-overlay]{position:static !important;display:block !important;padding:0 !important;background:#fff !important;backdrop-filter:none !important;overflow:visible !important}
+  body.bg-slip-open [data-bg-panel]{width:100% !important;max-width:none !important;max-height:none !important;overflow:visible !important;border-radius:0 !important;box-shadow:none !important;break-inside:avoid}
 }

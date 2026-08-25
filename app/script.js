@@ -238,14 +238,18 @@ class Component extends DCLogic {
     this.psSeedPlans();
     const weeks=this.seed();
     this.state = {
-      page:'gantt', cutTab:'capacity', dsoTab:'cfg', dsoSub:'line', lset:{}, lsEdit:null, dsoLine:null, dsoDone:{}, dsoDoneV:2, dsoHand:{}, dsoHandAsk:null, gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
+      page:'gantt', cutTab:'capacity', dsoTab:'cfg', dsoSub:'line', lset:{}, lsEdit:null, dsoLine:null, mlvLine:null, mlvFs:false, dsoDone:{}, dsoDoneV:2, dsoHand:{}, dsoHandQ:{}, dsoSlips:[], dsoHandWho:{}, dsoHandAsk:null, gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
       tab:'weekly', openMonth:this.CURWK.split(' · ')[0], week:this.CURWK, lang:'vi',
       weeks,
-      edit:null, bedit:null, bform:null, addLine:null, khcPlan:null, qrOpen:null, ps:this.psClone(window.PSCHED), psTrash:[], recvLog:[], conf:null, psAdd:null, psTrashOpen:false, sidebarOpen:false, navOpen:{'PRODUCTION PLAN':true,'DASHBOARD':true,'SEWING':true}, dragOver:false, dayOpen:null, daily:{}, freq:{}, wsc:{}, whOpen:null, whQ:'', whErr:'',
+      edit:null, bedit:null, bform:null, addLine:null, khcPlan:null, qrOpen:null, ps:this.psClone(window.PSCHED), psTrash:[], recvLog:[], conf:null, psAdd:null, psTrashOpen:false, sidebarOpen:false, navOpen:{'PRODUCTION PLAN':true,'DASHBOARD':true,'SEWING':true,'FINISHING':true}, dragOver:false, dayOpen:null, daily:{}, freq:{}, wsc:{}, whOpen:null, whQ:'', whErr:'',
       bundle:this.initBundle((weeks[this.CURWK]||{rows:[]}).rows), bundleV:3, wip:{},
       dsoAlerts:this.initAlerts(), dsoAlEdit:false, dsoAlHit:null,
       dsoMtypeRows:null, dsoMtypeDet:{}, mtSel:null, mtEdit:null, mtMsg:'',
       dsoDefects:this.initDefects(), dsoDefLog:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'',
+      dsoPassLog:{},
+      dsoHistQ:'', dsoDefQ:'', dsoHandBulk:null,
+      finRecv:{}, finStage:{}, finQ:'', fsQ:'', fsEdit:null,
+      fgRows:[], fgSeeded:0, fgQ:'', fgEdit:null, fgMsg:'', snapMsg:'',
       files:[{name:'KH cắt-199-PO10848-CHOT.xlsx',sheets:2},{name:'KH cắt-199-PO10502-HANAM.xlsx',sheets:2},{name:'KH cắt-VW5159-M2-BLK-PO4446+4841.xlsx',sheets:8},{name:'KH cắt-1003117-PO10130.xlsx',sheets:6},{name:'KH cắt-VW5159-M11-CHOT.xlsx',sheets:8}],
     };
     this.state.capTurns=this.allocTurns();
@@ -254,7 +258,7 @@ class Component extends DCLogic {
   }
 
   SKEY='yic.sewplan.v2';
-  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','dsoDone','dsoDoneV','dsoHand','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog'];
+  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','mlvLine','mlvFs','dsoDone','dsoPassLog','dsoDoneV','dsoHand','dsoHandQ','dsoSlips','dsoHandWho','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog','finRecv','finStage','fgRows','fgSeeded'];
   // Mọi thay đổi dữ liệu được lưu lại — refresh vẫn giữ nguyên
   restore(){ const defPage=this.state.page; let saved=null;
     try{ const raw=window.localStorage.getItem(this.SKEY); if(!raw) return; const o=JSON.parse(raw)||{}; saved=o;
@@ -272,14 +276,27 @@ class Component extends DCLogic {
       Object.keys(dm).forEach(k=>{ dn[k.split('|').length===6?k:(td+'|'+k)]=dm[k]; });
       this.state.dsoDone=dn; }
     this.state.dsoDoneV=2;
+    // Ban luu cu chi danh dau CA DONG da giao; gio giao theo so luong ->
+    // coi nhu da giao dung bang so da lam cua dong do.
+    if(Object.keys(this.state.dsoHand||{}).length&&!Object.keys(this.state.dsoHandQ||{}).length){
+      const dn=this.state.dsoDone||{}, hd=this.state.dsoHand||{}, hq={};
+      Object.keys(dn).forEach(k=>{ const rk=k.slice(0,k.lastIndexOf('|')); if(hd[rk]) hq[k]=dn[k]; });
+      this.state.dsoHandQ=hq; }
     // Bản lưu cũ giữ thay đổi kế hoạch dạng overlay -> bỏ, lấy lại hạt giống từ data/psched.js
     if(!this.state.ps||!this.state.ps.groups) this.state.ps=this.psClone(window.PSCHED);
     // Ban luu cu co the dang o trang da bo khoi menu -> ve trang dau tien con trong menu
     const pgs=this.navPages();
     if(pgs.length&&pgs.indexOf(this.state.page)<0) this.state.page=(pgs.indexOf(defPage)>=0?defPage:pgs[0]); }
-  persist(){ try{ const o={}; this.PERSIST.forEach(k=>{ o[k]=this.state[k]; }); window.localStorage.setItem(this.SKEY,JSON.stringify(o)); }catch(e){} }
+  // _wiping: dang nap anh chup / dang xoa sach va cho reload. Khong duoc ghi
+  // de localStorage bang state CU nua, khong thi ban vua nap bi de mat.
+  persist(){ if(this._wiping) return;
+    try{ const o={}; this.PERSIST.forEach(k=>{ o[k]=this.state[k]; }); window.localStorage.setItem(this.SKEY,JSON.stringify(o)); }catch(e){} }
   queuePersist(){ clearTimeout(this._pt); this._pt=setTimeout(()=>this.persist(),250); }
-  resetSaved(){ if(!window.confirm(this.t('resetAsk'))) return; try{ window.localStorage.removeItem(this.SKEY); }catch(e){}
+  resetSaved(){ if(!window.confirm(this.t('resetAsk'))) return;
+    this._wiping=true; clearTimeout(this._pt);
+    // Co NOSEED -> lan mo sau khong nap lai data/state-seed.js nua; bam
+    // 'Ve anh chup goc' se xoa co nay va nap lai anh chup.
+    try{ window.localStorage.removeItem(this.SKEY); window.localStorage.setItem(this.NOSEED,'1'); }catch(e){}
     // xoa luon file am thanh trong IndexedDB, khong thi con blob mo coi
     const go=()=>window.location.reload();
     Promise.all([this.sndClear(),this.mlvClear()]).then(go,go); }
@@ -560,8 +577,35 @@ class Component extends DCLogic {
       dsoLines:'Chuyền may', dsoLinesSub:'Bấm 1 chuyền để đếm sản lượng theo size',
       dsoHist:'Lịch sử hoàn thành theo ngày', dsoHistSub:'Tổng hợp số hàng đã hoàn thành mỗi ngày', dsoHistEmpty:'Chưa ghi sản lượng nào — bấm vào card size ở trên để đếm.',
       dsoColDay:'NGÀY', dsoColPo:'PO', dsoColColor:'MÀU', dsoColQty:'SỐ LƯỢNG HOÀN THÀNH',
-      dsoAskPh:'Xác nhận tạm — form chuẩn sẽ thay sau', dsoAskOk:'Xác nhận giao',
-      dsoHandOver:'Giao sang hoàn thiện', dsoHanded:'Đã giao', dsoUndoHand:'Bỏ đánh dấu đã giao',
+      dsoAskOk:'Xác nhận giao',
+      bgTitle:'PHIẾU BÀN GIAO — May → Hoàn thiện', bgStyle:'Mã hàng', bgPo:'PO',
+      bgColor:'Màu', bgLine:'Chuyền', bgFrom:'Người giao', bgTo:'Người nhận', bgName:'Nhập tên…',
+      bgProdDay:'Ngày sản xuất', bgStatus:'Trạng thái', bgPending:'Chờ xác nhận',
+      bgSize:'Cỡ', bgQty:'Số lượng giao', bgTotal:'Tổng nhận', bgCum:'Lũy kế đến phiếu này',
+      bgCumTip:'Tổng đã giao sang hoàn thiện của mã hàng · PO · màu này, tính đến phiếu này',
+      bgSignFrom:'Người giao (May)', bgSignTo:'Người nhận (Hoàn thiện)',
+      bgPrint:'In / Lưu PDF', bgView:'Xem / in phiếu bàn giao',
+      dsoHandOver:'Giao sang hoàn thiện', dsoHanded:'Đã giao', dsoUndoHand:'Hủy phiếu bàn giao gần nhất của dòng này',
+      dsoReq:'CẦN LÀM', dsoHistSearch:'Tìm ngày, style, PO, màu, size…',
+      dsoFailOvw:'Tổng hợp hàng lỗi theo chuyền',
+      dsoFailOvwSub:'Số hàng lỗi và lỗi hay gặp nhất của từng chuyền — bấm 1 dòng để mở chuyền',
+      dsoFailRate:'TỈ LỆ LỖI', dsoTopDef:'LỖI NHIỀU NHẤT',
+      dsoFailOvwEmpty:'Chưa ghi sản lượng hay hàng lỗi ở chuyền nào.',
+      dsoHandAllSub:'Tổng hợp theo size — điền số lượng muốn giao cho từng size',
+      bkDays:'Ngày', bkPend:'CHƯA BÀN GIAO THEO SIZE',
+      bkGive:'SỐ LƯỢNG GIAO', bkLeft:'CHƯA GIAO', bkTot:'TỔNG',
+      bkAll:'Giao hết', bkNone:'Xóa số', bkSel:'sẽ giao', bkNext:'Tiếp tục',
+      bgBack:'Quay lại', bgReq:'Bắt buộc',
+      bgNeedWho:'Nhập người giao và người nhận trước khi xác nhận',
+      dsoNoUnhanded:'Không còn hàng nào chờ giao — tất cả đã giao sang hoàn thiện.',
+      dsoDefHist:'Lịch sử hàng lỗi theo ngày', dsoDefHistSub:'Mỗi lần bấm LỖI được ghi lại kèm lý do',
+      dsoDefHistEmpty:'Chưa ghi hàng lỗi nào — bấm LỖI ở card size để ghi.',
+      dsoColSize:'SIZE', dsoColReason:'LÝ DO', dsoColDefQty:'SỐ LƯỢNG LỖI',
+      mlvIncTip:'Thu nhập / 1 người theo giờ làm của chuyền',
+      mlvSwitch:'Đổi chuyền', mlvTeam:'TỔ', mlvPerHour:'SẢN LƯỢNG / GIỜ', mlvQual:'CHẤT LƯỢNG',
+      mlvFull:'Toàn màn hình', mlvExitFull:'Thoát toàn màn hình',
+      mlvHourTip:'Số lần bấm ĐẠT trong giờ này',
+      mlvRate:'Tỉ lệ lỗi', mlvTop3:'Top 3 lỗi nhiều nhất', mlvPick:'Chọn 1 chuyền để mở bảng điện tử M-level', mlvOpen:'Mở bảng M-level của chuyền này',
       dsoOpenLine:'Bấm để xem chi tiết theo size', dsoBack:'← Danh sách chuyền', dsoDoneNeed:'ĐÃ LÀM / CẦN LÀM',
       dsoTapAdd:'Bấm để ghi kết quả kiểm (ĐẠT / LỖI)', dsoTapSub:'Trủ 1 (bấm nhầm)', dsoNoCut:'Chuyền này chưa có tác nghiệp cắt',
       dsoTapTitle:'Ghi Kết Quả Kiểm', dsoTapTip:'Bấm ĐẠT để +1 thành phẩm, hoặc LỖI để chọn lý do',
@@ -576,12 +620,13 @@ class Component extends DCLogic {
       dfImportTip:'Nhập .xlsx/.xls/.csv — cột: Mã lỗi · Tên lỗi · Nhóm lỗi · Mức độ · Vị trí lỗi · Nguyên nhân gốc',
       dfCount:'lỗi trong thư viện',
       lsCol1:'CHUYỀN', lsCol2:'STYLE', lsCol3:'CÔNG NHÂN', lsCol4:'GIỜ LÀM', lsCol5:'NGÀY (DD/MM/YYYY)', lsCol6:'SMV', lsCol7:'LOẠI', lsCol8:'%TARGET', lsCol9:'FILE M-LEVEL ĐÃ NHẬP', lsCol10:'HÀNH ĐỘNG',
-      lsEdit:'Sửa', lsDone:'Xong', lsImport:'Nhập file', lsImportTip:'Chọn file M-level (.xlsx/.csv) — lưu trong IndexedDB', lsFileDel:'Xóa file', lsFileErr:'Không lưu được file vào IndexedDB', lsPctTip:'Số nguyên 0–100, không âm, không thập phân', lsTypeTip:'Tự động theo SMV — không sửa tay: SMV > 100 → loại 1, 60 < SMV ≤ 100 → loại 2, SMV ≤ 60 → loại 3',
+      lsEdit:'Sửa', lsDone:'Xong', lsImport:'Nhập file', lsImportTip:'Chọn file M-level (.xlsx/.csv) — lưu trong IndexedDB', lsFileDel:'Xóa file', lsFileErr:'Không lưu được file vào IndexedDB', lsPctTip:'Số nguyên 0–100, không âm, không thập phân', lsDec1Tip:'Không âm, tối đa 1 chữ số thập phân', lsTypeTip:'Tự động theo SMV — không sửa tay: SMV > 100 → loại 1, 60 < SMV ≤ 100 → loại 2, SMV ≤ 60 → loại 3',
       dsotab1:'Cài Đặt', dsotab2:'Sản Xuất', dsotab3:'Cảnh Báo', dsotab4:'M-level', dsosub1:'Cấu Hình Chuyền', dsosub2:'Cấu Hình Loại M-level', dsosub3:'Thư Viện Lỗi',
       dsoLinePanel:'Cấu Hình Chuyền', dsoLineSub:'Danh sách chuyền may — nhóm chuyền, định mức, ca làm việc',
       mtPanel:'Loại M-level', mtSub:'Danh mục loại — bấm 1 dòng để xem chi tiết',
       mtdPanel:'Chi Tiết Loại M-level', mtdSub:'Định mức và thu nhập theo từng bậc',
       mtName:'Tên', mtDesc:'Mô tả', mtAct:'Hành động', mtNo:'No', mtTgt:'%Target',
+      mtTgtTip:'Số nguyên, không âm — bậc M cao được vượt 100%',
       mtInc:'Thu nhập / 1 người (9.5h)(VND)',
       mtAdd:'Thêm', mtDel:'Xóa', mtImport:'Nhập file', mtImportTip:'Nhập .xlsx/.xls/.csv — thêm vào cuối danh sách chi tiết',
       mtImportOk:'Đã nhập', mtImportRows:'dòng', mtImportNone:'Không tìm thấy dòng nào có tên hợp lệ.',
@@ -659,6 +704,46 @@ class Component extends DCLogic {
       stRequested:'Đã yêu cầu', stWaiting:'Chờ nhận', stReceived:'Đã nhận', stCycleTip:'Bấm để đổi trạng thái: Đã yêu cầu → Chờ nhận → Đã nhận', mReceived:'Đã nhận',
       mTurnPool:'Bảng lượt cắt dùng chung cho mã hàng + màu cắt này — mỗi lượt chỉ cấp được 1 lần trong tuần',
       mTakenTip:'Lượt này đã cấp ở ô khác — bỏ ở đó trước nếu muốn dùng lại',
+      fiBc:'Nhận hàng hoàn thiện', fiTitle:'Nhận Hàng Sang Hoàn Thiện',
+      fiPanel:'Phiếu Bàn Giao Từ May', fiSub:'Mỗi phiếu bàn giao phát hành ở Sản lượng may hàng ngày về đây để hoàn thiện xác nhận đã nhận hàng',
+      fiK1:'CHỜ NHẬN', fiK1s:'phiếu bàn giao chưa xác nhận', fiK2:'SL CHỜ NHẬN', fiK2s:'pcs đang trên đường sang hoàn thiện',
+      fiK3:'NHẬN HÔM NAY', fiK3s:'pcs đã nhận trong ngày', fiK4:'TỔNG ĐÃ NHẬN', fiK4s:'pcs đã vào hoàn thiện',
+      fiNo:'SỐ PHIẾU', fiWhen:'PHÁT HÀNH LÚC', fiLine:'CHUYỀN', fiStyle:'MÃ HÀNG', fiPo:'PO', fiColor:'MÀU',
+      fiSizes:'SIZE', fiQty:'SL (PCS)', fiSt:'TRẠNG THÁI', fiBy:'NGƯỜI NHẬN', fiAct:'HÀNH ĐỘNG',
+      fiWait:'Chờ nhận', fiDone:'Đã nhận', fiRecv:'Nhận', fiUnrecv:'Bỏ nhận', fiView:'Xem phiếu',
+      fiRecvAll:'Nhận tất cả', fiWho:'Tên người nhận', fiCount:'phiếu bàn giao',
+      fiSearch:'Tìm số phiếu, chuyền, mã hàng, PO, màu…', fiNoHit:'Không có phiếu nào khớp từ khóa',
+      fiEmpty:'Chưa có phiếu bàn giao nào — sang MAY · Sản lượng may hàng ngày để phát hành phiếu.',
+      fsBc:'Tình trạng hoàn thiện', fsTitle:'Tình Trạng Hoàn Thiện',
+      fsPanel:'Tiến Độ Qua Các Công Đoạn', fsSub:'Hàng đã nhận chạy qua Ủi → Kiểm cuối → Đóng gói → Nhập kho TP — mỗi công đoạn không vượt được công đoạn trước',
+      fsK1:'ĐÃ NHẬN', fsK1s:'pcs hoàn thiện đã nhận', fsK2:'ĐANG LÀM', fsK2s:'pcs chưa nhập kho thành phẩm',
+      fsK3:'ĐÃ ĐÓNG GÓI', fsK3s:'pcs qua công đoạn đóng gói', fsK4:'NHẬP KHO TP', fsK4s:'pcs thành phẩm đã nhập kho',
+      fsIn:'ĐÃ NHẬN', fsIron:'ỦI', fsQc:'KIỂM CUỐI', fsPack:'ĐÓNG GÓI', fsFg:'NHẬP KHO TP',
+      fsWip:'ĐANG LÀM', fsPct:'TIẾN ĐỘ', fsAll:'Đẩy hết', fsClr:'Xóa số', fsCount:'nhóm hàng',
+      fsCapTip:'Tối đa theo công đoạn trước:',
+      fsSearch:'Tìm mã hàng, PO, màu, chuyền…', fsNoHit:'Không có dòng nào khớp từ khóa',
+      fsEmpty:'Chưa nhận hàng nào — sang Nhận hàng hoàn thiện để xác nhận phiếu bàn giao.',
+      fgBc:'Kế hoạch xuất hàng', fgTitle:'Kế Hoạch Xuất Hàng Thành Phẩm',
+      fgPanel:'Lô Xuất Theo Mã Hàng · PO', fgSub:'Gieo từ Kế hoạch sản xuất — cột SẴN SÀNG lấy thẳng từ số đã nhập kho thành phẩm ở Tình trạng hoàn thiện',
+      fgK1:'TỔNG ĐƠN', fgK1s:'pcs theo kế hoạch xuất', fgK2:'SẴN SÀNG', fgK2s:'pcs thành phẩm đã nhập kho',
+      fgK3:'ĐÃ XUẤT', fgK3s:'pcs đã lên container', fgK4:'TRỄ ETD', fgK4s:'lô đã quá ngày xuất dự kiến',
+      fgBrand:'THƯƠNG HIỆU', fgStyle:'MÃ HÀNG', fgPo:'PO', fgQty:'SL ĐƠN', fgEtd:'ETD',
+      fgReady:'SẴN SÀNG', fgShipped:'ĐÃ XUẤT', fgBal:'CÒN LẠI', fgPct:'%', fgSt:'TRẠNG THÁI', fgNote:'GHI CHÚ',
+      fgStPlan:'Kế hoạch', fgStReady:'Sẵn sàng', fgStShip:'Đã xuất', fgStLate:'Trễ ETD',
+      fgAdd:'Thêm lô xuất', fgCount:'lô xuất', fgReseed:'Nạp lại từ KHSX',
+      fgReseedAsk:'Nạp lại toàn bộ lô xuất từ Kế hoạch sản xuất? Mọi chỉnh sửa tay ở bảng này sẽ mất.',
+      fgReadyTip:'Số đã nhập kho thành phẩm của mã hàng · PO này (cộng mọi màu)',
+      fgSearch:'Tìm thương hiệu, mã hàng, PO, ETD, ghi chú…', fgNoHit:'Không có lô nào khớp từ khóa',
+      fgEmpty:'Chưa có lô xuất nào — bấm Nạp lại từ KHSX hoặc Thêm lô xuất.',
+      snapTitle:'DỮ LIỆU LOCAL', snapExport:'Xuất ảnh chụp', snapImport:'Nhập ảnh chụp',
+      snapExportTip:'Tải về state-seed.js gồm TOÀN BỘ localStorage + file trong IndexedDB. Chép vào app/data/ rồi gửi cả thư mục đi.',
+      snapImportTip:'Chọn 1 file state-seed.js (hoặc .json) để nạp đè dữ liệu hiện tại',
+      snapReset:'Về ảnh chụp gốc', snapResetTip:'Nạp lại đúng dữ liệu trong app/data/state-seed.js',
+      snapWipe:'Xóa sạch', snapWipeTip:'Xóa dữ liệu đã lưu và không nạp lại ảnh chụp nữa',
+      snapWork:'Đang gói dữ liệu…', snapOk:'Đã tải state-seed.js — chép vào app/data/',
+      snapErr:'Không gói được dữ liệu', snapBad:'File không phải ảnh chụp hợp lệ',
+      snapAsk:'Nạp ảnh chụp này sẽ GHI ĐÈ toàn bộ dữ liệu đang có trên máy. Tiếp tục?',
+      snapNow:'Đang lưu:', snapSeed:'Ảnh chụp gốc:', snapNone:'Chưa có ảnh chụp gốc',
       tipReceive:'Lưu ô này và đánh dấu đã nhận BTP', tipUnreceive:'Đã nhận — bấm để trả về Chờ nhận' },
     en:{ bcRoot:'Planning', bcPage:'Sewing Schedule', upload:'Upload cutting order', mes:'Manufacturing Execution System',
       pageTitle:'Sewing / Assemble Schedule', help:'Help',
@@ -668,8 +753,35 @@ class Component extends DCLogic {
       dsoLines:'Sewing lines', dsoLinesSub:'Tap a line to count output by size',
       dsoHist:'Daily completion history', dsoHistSub:'Completed pieces aggregated per day', dsoHistEmpty:'No output recorded yet — tap a size card above to count.',
       dsoColDay:'DATE', dsoColPo:'PO', dsoColColor:'COLOUR', dsoColQty:'COMPLETED QTY',
-      dsoAskPh:'Placeholder confirm — the real form comes later', dsoAskOk:'Confirm hand-over',
-      dsoHandOver:'Hand over to finishing', dsoHanded:'Handed over', dsoUndoHand:'Undo hand-over',
+      dsoAskOk:'Confirm hand-over',
+      bgTitle:'HANDOVER SLIP — Sewing → Finishing', bgStyle:'Style', bgPo:'PO',
+      bgColor:'Colour', bgLine:'Line', bgFrom:'Handed by', bgTo:'Received by', bgName:'Enter name…',
+      bgProdDay:'Production date', bgStatus:'Status', bgPending:'Awaiting confirmation',
+      bgSize:'Size', bgQty:'Qty handed', bgTotal:'Total received', bgCum:'Cumulative incl. this slip',
+      bgCumTip:'Total handed to finishing for this style · PO · colour, up to and including this slip',
+      bgSignFrom:'Handed by (Sewing)', bgSignTo:'Received by (Finishing)',
+      bgPrint:'Print / Save PDF', bgView:'View / print handover slip',
+      dsoHandOver:'Hand over to finishing', dsoHanded:'Handed over', dsoUndoHand:'Void the latest handover slip of this row',
+      dsoReq:'REQUIRED', dsoHistSearch:'Search date, style, PO, colour, size…',
+      dsoFailOvw:'Defect summary by line',
+      dsoFailOvwSub:'Defect count and most frequent defect per line — tap a row to open the line',
+      dsoFailRate:'DEFECT RATE', dsoTopDef:'TOP DEFECT',
+      dsoFailOvwEmpty:'No output or defect recorded on any line yet.',
+      dsoHandAllSub:'Aggregated by size — enter the qty to hand over for each size',
+      bkDays:'Dates', bkPend:'PENDING BY SIZE',
+      bkGive:'QTY TO HAND OVER', bkLeft:'PENDING', bkTot:'TOTAL',
+      bkAll:'All', bkNone:'Clear', bkSel:'to hand over', bkNext:'Next',
+      bgBack:'Back', bgReq:'Required',
+      bgNeedWho:'Enter both names before confirming',
+      dsoNoUnhanded:'Nothing left to hand over — everything has gone to finishing.',
+      dsoDefHist:'Daily defecting history', dsoDefHistSub:'Every FAIL tap is recorded with its reason',
+      dsoDefHistEmpty:'No defect recorded yet — tap FAIL on a size card to log one.',
+      dsoColSize:'SIZE', dsoColReason:'REASON', dsoColDefQty:'DEFECT QTY',
+      mlvIncTip:'Income per person at this line\u2019s work hours',
+      mlvSwitch:'Switch line', mlvTeam:'TEAM', mlvPerHour:'OUTPUT / HOUR', mlvQual:'QUALITY',
+      mlvFull:'Full screen', mlvExitFull:'Exit full screen',
+      mlvHourTip:'PASS taps recorded in this hour',
+      mlvRate:'Defect rate', mlvTop3:'Top 3 defects', mlvPick:'Pick a line to open its M-level board', mlvOpen:'Open this line\u2019s M-level board',
       dsoOpenLine:'Open size detail', dsoBack:'← All lines', dsoDoneNeed:'DONE / REQUIRED',
       dsoTapAdd:'Tap to record inspection (PASS / FAIL)', dsoTapSub:'Subtract 1 (mis-tap)', dsoNoCut:'No cutting plan for this line yet',
       dsoTapTitle:'Record Inspection', dsoTapTip:'Tap PASS to add 1 finished piece, or FAIL to pick a reason',
@@ -684,12 +796,13 @@ class Component extends DCLogic {
       dfImportTip:'Import .xlsx/.xls/.csv — columns: Defect Code · Defect Name · Category · Severity · Defect Location · Root Cause',
       dfCount:'defects in library',
       lsCol1:'LINE', lsCol2:'STYLE', lsCol3:'WORKERS', lsCol4:'WORK HOURS', lsCol5:'DATE (DD/MM/YYYY)', lsCol6:'SMV', lsCol7:'TYPE', lsCol8:'%TARGET', lsCol9:'M-LEVEL FILE IMPORTED', lsCol10:'ACTIONS',
-      lsEdit:'Edit', lsDone:'Done', lsImport:'Import file', lsImportTip:'Pick an M-level file (.xlsx/.csv) — stored in IndexedDB', lsFileDel:'Remove file', lsFileErr:'Could not store the file in IndexedDB', lsPctTip:'Whole number 0–100, no negatives, no decimals', lsTypeTip:'Derived from SMV — not editable: SMV > 100 → type 1, 60 < SMV ≤ 100 → type 2, SMV ≤ 60 → type 3',
+      lsEdit:'Edit', lsDone:'Done', lsImport:'Import file', lsImportTip:'Pick an M-level file (.xlsx/.csv) — stored in IndexedDB', lsFileDel:'Remove file', lsFileErr:'Could not store the file in IndexedDB', lsPctTip:'Whole number 0–100, no negatives, no decimals', lsDec1Tip:'No negatives, at most 1 decimal place', lsTypeTip:'Derived from SMV — not editable: SMV > 100 → type 1, 60 < SMV ≤ 100 → type 2, SMV ≤ 60 → type 3',
       dsotab1:'Settings', dsotab2:'Production', dsotab3:'Alerts', dsotab4:'M-level', dsosub1:'Line Setting', dsosub2:'M-level Type Setting', dsosub3:'Defect Library',
       dsoLinePanel:'Line Setting', dsoLineSub:'Sewing line master — line group, target, shift',
       mtPanel:'M-level Type', mtSub:'Type master — click a row to see its detail',
       mtdPanel:'M-level Type Detail', mtdSub:'Target and income per step',
       mtName:'Name', mtDesc:'Description', mtAct:'Action', mtNo:'No', mtTgt:'%Target',
+      mtTgtTip:'Whole number, no negatives — high M levels may exceed 100%',
       mtInc:'Income / person (9.5h)(VND)',
       mtAdd:'Add', mtDel:'Delete', mtImport:'Import', mtImportTip:'Import .xlsx/.xls/.csv — appended to the detail list',
       mtImportOk:'Imported', mtImportRows:'rows', mtImportNone:'No row with a usable name was found.',
@@ -767,12 +880,54 @@ class Component extends DCLogic {
       stRequested:'Requested', stWaiting:'Waiting', stReceived:'Received', stCycleTip:'Click to change status: Requested → Waiting → Received', mReceived:'Received',
       mTurnPool:'One cut-turn table shared by this style + cut colour — each turn can be issued once per week',
       mTakenTip:'Already issued in another cell — release it there first to reuse',
+      fiBc:'Finishing In', fiTitle:'Finishing In — Receiving',
+      fiPanel:'Handover Slips From Sewing', fiSub:'Every handover slip issued in Daily Sewing Output lands here for finishing to confirm receipt',
+      fiK1:'AWAITING', fiK1s:'slips not confirmed yet', fiK2:'QTY AWAITING', fiK2s:'pcs on the way to finishing',
+      fiK3:'RECEIVED TODAY', fiK3s:'pcs received today', fiK4:'TOTAL RECEIVED', fiK4s:'pcs taken into finishing',
+      fiNo:'SLIP NO.', fiWhen:'ISSUED AT', fiLine:'LINE', fiStyle:'STYLE #', fiPo:'PO', fiColor:'COLOUR',
+      fiSizes:'SIZES', fiQty:'QTY (PCS)', fiSt:'STATUS', fiBy:'RECEIVED BY', fiAct:'ACTIONS',
+      fiWait:'Awaiting', fiDone:'Received', fiRecv:'Receive', fiUnrecv:'Un-receive', fiView:'View slip',
+      fiRecvAll:'Receive all', fiWho:'Receiver name', fiCount:'handover slips',
+      fiSearch:'Search slip no., line, style, PO, colour…', fiNoHit:'No slip matches the search',
+      fiEmpty:'No handover slip yet — go to SEWING · Daily Sewing Output to issue one.',
+      fsBc:'Finishing Status', fsTitle:'Finishing Status',
+      fsPanel:'Progress Through The Stages', fsSub:'Received goods flow Iron → Final QC → Pack → FG warehouse — no stage can pass the one before it',
+      fsK1:'RECEIVED', fsK1s:'pcs received into finishing', fsK2:'IN PROGRESS', fsK2s:'pcs not yet in the FG warehouse',
+      fsK3:'PACKED', fsK3s:'pcs through the packing stage', fsK4:'FG WAREHOUSE', fsK4s:'pcs booked into finished goods',
+      fsIn:'RECEIVED', fsIron:'IRON', fsQc:'FINAL QC', fsPack:'PACK', fsFg:'FG WAREHOUSE',
+      fsWip:'IN PROGRESS', fsPct:'PROGRESS', fsAll:'Push all', fsClr:'Clear', fsCount:'groups',
+      fsCapTip:'Capped by the previous stage:',
+      fsSearch:'Search style, PO, colour, line…', fsNoHit:'No row matches the search',
+      fsEmpty:'Nothing received yet — go to Finishing In and confirm a handover slip.',
+      fgBc:'F.G Shipment Plan', fgTitle:'Finished Goods Shipment Plan',
+      fgPanel:'Shipments By Style · PO', fgSub:'Seeded from the Production Plan — the READY column reads straight from FG warehouse quantities in Finishing Status',
+      fgK1:'ORDERED', fgK1s:'pcs on the shipment plan', fgK2:'READY', fgK2s:'pcs booked into finished goods',
+      fgK3:'SHIPPED', fgK3s:'pcs already loaded', fgK4:'LATE', fgK4s:'shipments past their ETD',
+      fgBrand:'BRAND', fgStyle:'STYLE #', fgPo:'PO', fgQty:'ORDER QTY', fgEtd:'ETD',
+      fgReady:'READY', fgShipped:'SHIPPED', fgBal:'BALANCE', fgPct:'%', fgSt:'STATUS', fgNote:'NOTE',
+      fgStPlan:'Planned', fgStReady:'Ready', fgStShip:'Shipped', fgStLate:'Late',
+      fgAdd:'Add shipment', fgCount:'shipments', fgReseed:'Reseed from plan',
+      fgReseedAsk:'Reseed every shipment from the Production Plan? Manual edits in this table will be lost.',
+      fgReadyTip:'FG warehouse quantity for this style · PO (all colours)',
+      fgSearch:'Search brand, style, PO, ETD, note…', fgNoHit:'No shipment matches the search',
+      fgEmpty:'No shipment yet — hit Reseed from plan or Add shipment.',
+      snapTitle:'LOCAL DATA', snapExport:'Export snapshot', snapImport:'Import snapshot',
+      snapExportTip:'Download state-seed.js with ALL of localStorage plus the IndexedDB files. Drop it into app/data/ and ship the whole folder.',
+      snapImportTip:'Pick a state-seed.js (or .json) file to overwrite the current data',
+      snapReset:'Back to snapshot', snapResetTip:'Reload exactly the data in app/data/state-seed.js',
+      snapWipe:'Wipe', snapWipeTip:'Clear saved data and stop reloading the bundled snapshot',
+      snapWork:'Packing data…', snapOk:'state-seed.js downloaded — copy it into app/data/',
+      snapErr:'Could not pack the data', snapBad:'That file is not a valid snapshot',
+      snapAsk:'Loading this snapshot OVERWRITES all data currently on this machine. Continue?',
+      snapNow:'Stored now:', snapSeed:'Bundled snapshot:', snapNone:'No bundled snapshot',
       tipReceive:'Save this cell and mark bundles received', tipUnreceive:'Received — click to set back to Waiting' }
   };
   NAVVI = {'PRODUCTION PLAN':'KẾ HOẠCH SẢN XUẤT','DASHBOARD':'TỔNG QUAN','Production Dashboard':'Dashboard sản xuất','SEWING':'MAY',
     'Fabric':'Vải',
     'Cutting':'Cắt','Sewing Output':'Sản lượng may',
-    'Production Plan':'Kế hoạch sản xuất','Sewing Schedule':'Kế hoạch may','Daily Sewing Output':'Sản lượng may hàng ngày',};
+    'Production Plan':'Kế hoạch sản xuất','Sewing Schedule':'Kế hoạch may','Daily Sewing Output':'Sản lượng may hàng ngày',
+    'FINISHING':'HOÀN THIỆN','Finishing In':'Nhận hàng hoàn thiện','Finishing Status':'Tình trạng hoàn thiện',
+    'F.G Shipment Plan':'Kế hoạch xuất hàng',};
   t(k){ const d=this.L[this.state.lang]||this.L.vi; return d[k]!==undefined?d[k]:(this.L.en[k]||k); }
   tn(s){ return (this.state.lang==='vi'&&this.NAVVI[s])?this.NAVVI[s]:s; }
   dayLabel(d,i){ return this.state.lang==='vi'?['T2','T3','T4','T5','T6','T7'][i]:d.toUpperCase(); }
@@ -791,16 +946,29 @@ class Component extends DCLogic {
     this.dense = density==='Compact';
     return { noop:()=>{}, toggleSidebar:()=>this.set({sidebarOpen:!this.state.sidebarOpen}),
       sidebarEl:this.state.sidebarOpen?this.renderAside():null, langEl:this.renderLang(),
-      bcRoot:this.t('bcRoot'), bcPage:this.state.page==='gantt'?this.t('psBc'):this.state.page==='dash'?this.t('dashBc'):this.state.page==='dso'?this.t('dsoBc'):this.t('bcPage'),
-      bodyEl:this.state.page==='gantt'?this.renderGanttBody():this.state.page==='dash'?this.renderDashBody():this.state.page==='dso'?this.renderDsoBody():(this.state.tab==='weekly'?this.renderBody():(this.state.tab==='trim'?this.renderBundleBody():this.renderDemandBody())),
+      bcRoot:this.t('bcRoot'), bcPage:this.t(this.PAGE_BC[this.state.page]||'bcPage'),
+      bodyEl:this.renderPageBody(),
       modalEl:this.renderBForm(), addLineEl:this.renderPsAdd(), confEl:this.renderConflict(), qrModalEl:this.renderQrModal() };
   }
+
+  // Mot cho cho ca breadcrumb lan than trang -- them trang moi chi sua 2 bang nay.
+  PAGE_BC={gantt:'psBc',dash:'dashBc',dso:'dsoBc',finIn:'fiBc',finSt:'fsBc',fgShip:'fgBc'};
+  renderPageBody(){ const p=this.state.page;
+    if(p==='gantt') return this.renderGanttBody();
+    if(p==='dash') return this.renderDashBody();
+    if(p==='dso') return this.renderDsoBody();
+    if(p==='finIn') return this.renderFinInBody();
+    if(p==='finSt') return this.renderFinStBody();
+    if(p==='fgShip') return this.renderFgBody();
+    return this.state.tab==='weekly'?this.renderBody()
+      :(this.state.tab==='trim'?this.renderBundleBody():this.renderDemandBody()); }
 
   // Nguon duy nhat cho sidebar + guard trang khi khoi dong. Bo 1 nhom o day la bo khoi menu.
   NAVGROUPS=[
     ['DASHBOARD',[['Production Dashboard',1,'dash']]],
     ['PRODUCTION PLAN',[['Production Plan',1,'gantt']]],
     ['SEWING',[['Sewing Schedule',1,'sewing'],['Daily Sewing Output',1,'dso']]],
+    ['FINISHING',[['Finishing In',1,'finIn'],['Finishing Status',1,'finSt'],['F.G Shipment Plan',1,'fgShip']]],
   ];
   navPages(){ const out=[]; this.NAVGROUPS.forEach(([,items])=>items.forEach(([,,pg])=>{ if(pg) out.push(pg); })); return out; }
 
@@ -839,6 +1007,7 @@ class Component extends DCLogic {
         h('div',{onClick:()=>this.set({sidebarOpen:false}),title:'Hide sidebar',style:{width:22,height:22,border:'1px solid #e2e4de',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',color:C.faint,cursor:'pointer'}},
           h('svg',{width:12,height:12,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2.5},h('path',{d:'M15 6l-6 6 6 6'})))),
       this.renderSideNav(),
+      this.renderSnapBar(),
       h('div',{style:{padding:'14px 18px 0',marginTop:10,borderTop:'1px solid #eff0ec',color:C.faint,fontSize:11,fontWeight:600,letterSpacing:'.3px'}},'YIC Hanam MES')));
   }
 
@@ -1567,6 +1736,13 @@ class Component extends DCLogic {
     return T; }
 
   DSO_TABS=[['cfg','dsotab1'],['prod','dsotab2'],['alert','dsotab3'],['mlv','dsotab4']];
+  // Bang lich su chi cao toi da DSO_HIST_ROWS dong roi cuon TRONG bang, khong keo
+  // dai trang. Tieu de dinh o tren nen cuon van doc duoc ten cot.
+  // Chieu cao 1 dong KHAC nhau giua 2 bang (do thuc te tren Chrome): bang hoan thanh
+  // co nut Giao sang hoan thien nen dong cao hon, bang loi chi co chip ly do.
+  DSO_HIST_ROWS=6;
+  DSO_ROW_H={done:45,def:37};
+  dsoHistH(kind){ return this.DSO_HIST_ROWS*(this.DSO_ROW_H[kind]||38)+35; }
   DSO_SUBS=[['line','dsosub1'],['mtype','dsosub2'],['defect','dsosub3']];
   // Nhan KEY dich (khong nhan nhan da resolve) de nhan tu doi khi bam VI/EN.
   // sub=true -> preset nhe hon, giong segmented control trong renderPeriodBar.
@@ -1780,7 +1956,7 @@ class Component extends DCLogic {
         return h('tr',{key:r.id},
           h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
           h('td',{style:{...S.td,background:bg,fontWeight:600,wordBreak:'break-word'}},cell('name',null,this.t('mtName'))),
-          h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,fontWeight:700}},cell('tgt','lsPct','0','center')),
+          h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,fontWeight:700}},cell('tgt','mtPct','0','center')),
           h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},cell('inc','mtMoney','0','right')),
           h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
             h('div',{style:{display:'flex',gap:6}},
@@ -1795,7 +1971,7 @@ class Component extends DCLogic {
           h('thead',null,h('tr',null,
             h('th',{style:{...S.th,textAlign:'center',paddingLeft:8}},this.t('mtNo')),
             h('th',{style:S.th},this.t('mtName')),
-            h('th',{style:{...S.th,textAlign:'center'}},this.t('mtTgt')),
+            h('th',{title:this.t('mtTgtTip'),style:{...S.th,textAlign:'center'}},this.t('mtTgt')),
             h('th',{style:{...S.th,textAlign:'right'}},this.t('mtInc')),
             h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
           h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:5,
@@ -1901,13 +2077,13 @@ class Component extends DCLogic {
     }catch(e){ this.dfSay(this.t('mtImportErr')); } }
 
   // O tim dung chung: bang Cai Dat (nho) va hop chon ly do loi (to, tu focus)
-  dfSearchBox(q,onChange,big){
+  dfSearchBox(q,onChange,big,phKey){
     const h=React.createElement, C=this.C;
     return h('div',{style:{position:'relative',flex:big?1:'none',minWidth:0}},
       h('svg',{width:big?15:14,height:big?15:14,viewBox:'0 0 24 24',fill:'none',stroke:C.faint,strokeWidth:2,
         style:{position:'absolute',left:big?12:10,top:big?11:9,pointerEvents:'none'}},
         h('circle',{cx:11,cy:11,r:7}),h('path',{d:'M20 20l-4.5-4.5'})),
-      h('input',{autoFocus:!!big,value:q,placeholder:this.t('dfSearch'),onChange:e=>onChange(e.target.value),
+      h('input',{autoFocus:!!big,value:q,placeholder:this.t(phKey||'dfSearch'),onChange:e=>onChange(e.target.value),
         style:{width:big?'100%':240,border:'1px solid '+C.border,borderRadius:big?10:9,
           padding:big?'9px 32px 9px 36px':'7px 26px 7px 30px',fontSize:big?13.5:12.5,
           fontFamily:'inherit',color:C.ink,background:C.white,boxSizing:'border-box'}}),
@@ -2152,7 +2328,7 @@ class Component extends DCLogic {
     setTimeout(()=>{ if(this._mounted) this.set({mtEdit:'d:'+tid+':'+id}); },0); }
   mtDelDet(tid,did){ this.setMtDet(tid,l=>l.filter(x=>x.id!==did)); this.set({mtEdit:null}); }
   // Thu nhap: khong am (dau '-' bi loai luon vi khong nam trong [0-9.]), toi da 3 chu so thap phan.
-  // Giu nguyen dang chuoi khi dang nhap de con go duoc dau '.' o giua -- giong lsHrs.
+  // Giu nguyen dang chuoi khi dang nhap de con go duoc dau '.' o giua -- giong lsDec1.
   mtMoney(v){ const s=String(v==null?'':v).replace(/[^0-9.]/g,''); const p=s.split('.');
     return p.length>1?p[0]+'.'+p.slice(1).join('').slice(0,3):p[0]; }
   // Bam Xong: don '.' bi bo lung ('4500.' -> '4500') va '.5' -> '0.5'
@@ -2166,6 +2342,22 @@ class Component extends DCLogic {
   mtMoneyImp(v){ if(typeof v==='number'){ if(!isFinite(v)||v<0) return '';
       return String(Math.round(v*1000)/1000); }
     const n=parseInt(String(v==null?'':v).replace(/[^0-9]/g,''),10); return isNaN(n)?'':String(Math.max(0,n)); }
+  // Import %Target cua BAC M. O Excel/CSV dinh dang PHAN TRAM tra ve PHAN SO:
+  // 120% -> so 1.2, 60% -> 0.6. Truoc day dung lsPct: dau '.' bi XOA (1.2 -> 12)
+  // roi con bi kep tran 100 -> target tren board M-level sai dung 10 lan.
+  // disp = chuoi hien thi cua dung o do (raw:false), vd '120%' hay '130'.
+  // Tran 999 theo mtPct, KHONG kep 100 -- bac M cao thuong vuot 100%.
+  mtPctImp(v,disp){
+    if(typeof v==='number'){ if(!isFinite(v)||v<0) return '';
+      // Co '%' -> chac chan la phan so. So le nho (0.85) cung la phan so:
+      // khong bac M nao dat muc 0.85%, con 85% thi rat thuong.
+      const fr=/%/.test(String(disp==null?'':disp))||(v>0&&v<5&&v!==Math.floor(v));
+      return this.mtPct(String(Math.round(fr?v*100:v))); }
+    // O dang CHU: '120%' da la phan tram san, chi '0.85' moi phai nhan 100.
+    const s=String(v==null?'':v), n=parseFloat(s.replace(/,/g,'.').replace(/[^0-9.]/g,''));
+    if(!isFinite(n)||n<0) return '';
+    const fr=!/%/.test(s)&&n>0&&n<5&&n!==Math.floor(n);
+    return this.mtPct(String(Math.round(fr?n*100:n))); }
   mtMoneyFmt(v){ if(v===''||v==null) return '—';
     const s=String(v), i=s.indexOf('.');
     const g=(Number(i>=0?s.slice(0,i):s)||0).toLocaleString('en-US');
@@ -2178,7 +2370,9 @@ class Component extends DCLogic {
   mtSay(msg){ clearTimeout(this._mtT); this.set({mtMsg:msg});
     this._mtT=setTimeout(()=>{ if(this._mounted) this.set({mtMsg:''}); },4000); }
   // Doc header linh dong; khong co header thi doc theo vi tri No / Ten / %Target / Thu nhap
-  mtParse(aoa){
+  // dsp = CUNG sheet do nhung doc dang chuoi hien thi (raw:false). Chi dung de
+  // biet o %Target co dinh dang phan tram hay khong -- xem mtPctImp.
+  mtParse(aoa,dsp){
     const norm=s=>String(s==null?'':s).toLowerCase().replace(/\s+/g,' ').trim();
     let hi=-1, map={};
     for(let i=0;i<Math.min((aoa||[]).length,10);i++){ const r=aoa[i]||[], m={};
@@ -2188,14 +2382,16 @@ class Component extends DCLogic {
         else if(m.inc==null&&/(thu nhập|thu nhap|income|vnd)/.test(v)) m.inc=j; });
       if(m.name!=null){ hi=i; map=m; break; } }
     const out=[], start=hi>=0?hi+1:0, useMap=hi>=0;
-    for(let i=start;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
-      let name,tgt,inc;
-      if(useMap){ name=r[map.name]; tgt=map.tgt!=null?r[map.tgt]:''; inc=map.inc!=null?r[map.inc]:''; }
-      else if(r.length>=4){ name=r[1]; tgt=r[2]; inc=r[3]; }
-      else { name=r[0]; tgt=r[1]; inc=r[2]; }
+    // Giu CHI SO COT (tj/ij) chu khong giu gia tri: con phai doc dung o do trong dsp.
+    for(let i=start;i<(aoa||[]).length;i++){ const r=aoa[i]||[], dr=((dsp||[])[i])||[];
+      let name,tj,ij;
+      if(useMap){ name=r[map.name]; tj=map.tgt!=null?map.tgt:-1; ij=map.inc!=null?map.inc:-1; }
+      else if(r.length>=4){ name=r[1]; tj=2; ij=3; }
+      else { name=r[0]; tj=1; ij=2; }
       const nm=String(name==null?'':name).trim();
       if(!nm) continue;
-      out.push({name:nm,tgt:this.lsPct(tgt),inc:this.mtMoneyImp(inc)}); }
+      out.push({name:nm,tgt:this.mtPctImp(tj>=0?r[tj]:'',tj>=0?dr[tj]:''),
+        inc:this.mtMoneyImp(ij>=0?r[ij]:'')}); }
     return out; }
   async mtImport(file){
     const tid=this.mtSelId(); if(!tid||!file) return;
@@ -2204,7 +2400,12 @@ class Component extends DCLogic {
       const buf=await file.arrayBuffer();
       const wb=X.read(new Uint8Array(buf),{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
-      const got=this.mtParse(X.utils.sheet_to_json(ws,{header:1,blankrows:false}));
+      // Doc 2 lan cung 1 sheet: gia tri thuc (raw) + chuoi hien thi (raw:false).
+      // O %Target dinh dang phan tram cho ra 1.2 chu khong phai 120, phai co
+      // chuoi '120%' moi biet duong ma nhan lai 100 (mtPctImp).
+      const jopt={header:1,blankrows:false};
+      const got=this.mtParse(X.utils.sheet_to_json(ws,jopt),
+        X.utils.sheet_to_json(ws,{...jopt,raw:false}));
       if(!got.length){ this.mtSay(this.t('mtImportNone')); return; }
       this.setMtDet(tid,l=>{ let n=0; l.forEach(x=>{ const m=String(x.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
         return [...l,...got.map((g,i)=>({...g,id:'d'+(n+1+i)}))]; });
@@ -2222,21 +2423,48 @@ class Component extends DCLogic {
   // Type suy ra tu SMV, khong sua tay: >100 -> loai 1, 60<smv<=100 -> loai 2, <=60 -> loai 3.
   lsTypeIdx(smv){ if(smv===''||smv==null) return 0; const n=Number(smv);
     if(!isFinite(n)) return 0; return n>100?1:(n>60?2:3); }
-  // Tra ve dung '1'/'2'/'3' theo rule. Khong map theo vi tri trong danh muc M-level:
-  // danh muc sua duoc, map vi tri se cho ket qua lech han rule.
+  // Tra ve dung '1'/'2'/'3' theo rule (bac suy tu SMV, khong phai vi tri dong).
   lsType(r){ const i=this.lsTypeIdx(this.lsGet(r).smv); return i?String(i):''; }
+  // Dong trong DANH MUC M-level ung voi chuyen. Ba buoc, tu chac den lo:
+  //   ten dung bang '1'/'2'/'3'  ->  ten co chua chu so do ('M1','Loai 1')  ->  vi tri.
+  // Chi khop ten tuyet doi la doi ten danh muc mot cai board trong tron ngay.
+  mtypeOf(r){ const i=this.lsTypeIdx(this.lsGet(r).smv); if(!i) return null;
+    const list=this.mtypes()||[]; if(!list.length) return null;
+    const s=String(i), dg=x=>String(x==null?'':x).replace(/[^0-9]/g,'');
+    return list.find(m=>String(m.name||'').trim()===s)
+        || list.find(m=>dg(m.name)===s)
+        || list[i-1] || null; }
+  // Nhan hien o cot LOAI: TEN trong danh muc, de doi chieu duoc voi man M-level.
+  lsTypeLabel(r){ const m=this.mtypeOf(r);
+    const nm=m?String(m.name||'').trim():''; return nm||this.lsType(r); }
   lsSet(r,patch){ const k=this.lsKey(r);
     this.setState(st=>({lset:{...(st.lset||{}),[k]:{...((st.lset||{})[k]||{}),...patch}}})); }
+  // %Target cua BAC M-level: KHONG kep 100 nhu cot %Target cua chuyen -- bac M
+  // cao thuong vuot 100% hieu suat. Van la so nguyen khong am, tran 999.
+  mtPct(v){ const n=parseInt(String(v).replace(/[^0-9]/g,''),10);
+    return isNaN(n)?'':Math.max(0,Math.min(999,n)); }
   // %target: so nguyen 0..100, khong am, khong thap phan
   lsPct(v){ const n=parseInt(String(v).replace(/[^0-9]/g,''),10); return isNaN(n)?'':Math.max(0,Math.min(100,n)); }
   lsNum(v){ const n=parseInt(String(v).replace(/[^0-9]/g,''),10); return isNaN(n)?'':Math.max(0,n); }
-  // Gio lam: bo dau '-' va ky tu la, giu 1 dau '.' dau tien, toi da 1 chu so sau no.
+  // Khong am, toi da 1 chu so thap phan -- dung cho ca Gio lam va SMV.
+  // Bo dau '-' va ky tu la (khong nam trong [0-9.]), giu dau '.' dau tien.
   // Tra ve CHUOI de con go duoc trang thai trung gian '9.'
-  lsHrs(v){ const s=String(v==null?'':v).replace(/[^0-9.]/g,''); const p=s.split('.');
+  // Doi ',' -> '.' truoc khi loc: ban go tieng Viet hay dung dau phay lam dau
+  // thap phan; khong doi thi '95,5' thanh '955' (nhay han sang loai 1) khong ai biet.
+  lsDec1(v){ const s=String(v==null?'':v).replace(/,/g,'.').replace(/[^0-9.]/g,''); const p=s.split('.');
     return p.length>1?p[0]+'.'+p.slice(1).join('').slice(0,1):p[0]; }
-  // Bam Xong: don dau '.' bi bo lung ('9.' -> '9')
-  lsDone(r){ const v=this.lsGet(r);
-    if(typeof v.hrs==='string'&&/\.$/.test(v.hrs)) this.lsSet(r,{hrs:v.hrs.slice(0,-1)});
+  // Don dau vao con do dang: '9.' -> '9', '.5' -> '0.5', chi co '.' -> de trong
+  lsDec1Fix(v){ let s=this.lsDec1(v);
+    if(!/[0-9]/.test(s)) return '';
+    if(s.charAt(0)==='.') s='0'+s;
+    if(s.charAt(s.length-1)==='.') s=s.slice(0,-1);
+    return s; }
+  // Bam Xong: don ca 2 cot thap phan. Chi sua o da go tay (kieu string) --
+  // SMV chua sua la SO tu lsSeedSmv, khong duoc bien thanh chuoi o day.
+  lsDone(r){ const v=this.lsGet(r), p={};
+    ['hrs','smv'].forEach(f=>{ if(typeof v[f]!=='string') return;
+      const s=this.lsDec1Fix(v[f]); if(s!==v[f]) p[f]=s; });
+    if(Object.keys(p).length) this.lsSet(r,p);
     this.set({lsEdit:null}); }
   lsFileSize(n){ n=Number(n)||0; return n<1024?n+' B':(n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(1)+' MB'); }
   async lsImport(r,file){ if(!file) return;
@@ -2265,7 +2493,7 @@ class Component extends DCLogic {
       if(this.normName(o.line)!==line) return;
       const pl=this.psPlan(o); if(!pl) return;
       const style=this.psCode(o.code);
-      const po=String(pl.po||o.po||'').replace(/^PO\s*/i,'').trim()||'\u2014';
+      const po=this.orderPo(o,pl);
       (pl.sections||[]).forEach(sec=>{ if(sec.grp==='aux') return;
         (sec.demand||[]).forEach(([sz,qty])=>{ if(!(Number(qty)>0)) return;
           out.push({line,style,size:sz,need:Number(qty),po,color:sec.fab||'\u2014'}); }); }); });
@@ -2284,11 +2512,37 @@ class Component extends DCLogic {
   // Card size hien TONG luy ke -> cong het moi ngay
   dsoDoneOf(c){ const m=this.state.dsoDone||{}; const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
     let n=0; Object.keys(m).forEach(k=>{ if(k.slice(-tail.length)===tail) n+=Number(m[k])||0; }); return n; }
+  // 'HH:MM' -- NGAY da nam trong khoa nen moc chi can gio/phut
+  dsoHM(d){ const t=d||new Date(), p=n=>String(n).padStart(2,'0');
+    return p(t.getHours())+':'+p(t.getMinutes()); }
+  // Gio PASS cua tung san pham, theo dung thu tu bam. Bo trong 'day' -> gop MOI
+  // ngay cua o size do, sap tang dan. CO Y KHONG ve o bang Daily completion
+  // history -- bang do chi tong hop so luong; day la du lieu de truy nguoc.
+  dsoPassTimes(c,day){ const m=this.state.dsoPassLog||{}, out=[];
+    const push=k=>(m[k]||[]).forEach(t=>out.push({day:k.split('|')[0],at:t}));
+    if(day){ push(this.dsoDoneKey(c,day)); return out; }
+    const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
+    Object.keys(m).sort().forEach(k=>{ if(k.slice(-tail.length)===tail) push(k); });
+    return out; }
   // Chi ghi/sua san luong cua HOM NAY; so cua ngay truoc giu nguyen trong lich su
-  dsoBump(c,d){ const k=this.dsoDoneKey(c);
-    this.setState(st=>{ const m={...(st.dsoDone||{})}; m[k]=Math.max(0,(Number(m[k])||0)+d);
-      if(!m[k]) delete m[k];
-      return {dsoDone:m}; }); }
+  // 1 lan bam ghi vao 2 so tay dung CHUNG mot khoa: so luong ngay (dsoDone) va
+  // moc gio PASS tung san pham (dsoPassLog). Bang M-level lay SAN LUONG / GIO
+  // tu chinh dsoPassLog -- khong con so tay thu ba de co the lech voi lich su.
+  // Doc new Date() MOT lan roi dung chung: doc 2 lan, bam dung luc doi ngay ->
+  // so luong vao ngay nay ma moc gio vao ngay kia.
+  dsoBump(c,d){ const now=new Date(), day=this.psFmtD(now);
+    const k=this.dsoDoneKey(c,day), at=this.dsoHM(now);
+    this.setState(st=>{ const m={...(st.dsoDone||{})};
+      const pv=Number(m[k])||0, nx=Math.max(0,pv+d), dd=nx-pv;
+      m[k]=nx; if(!m[k]) delete m[k];
+      // dd>0: moi san pham PASS them 1 moc HH:MM. dd<0 (bam nham): bo bot tu
+      // cuoi -- moc bi xoa la lan bam gan nhat, dung voi y nghia 'tru 1 vua bam'.
+      // Vi tru dung moc do nen cot gio cua no giam theo, khong phai cot gio hien tai.
+      const pm={...(st.dsoPassLog||{})}, ls=(pm[k]||[]).slice();
+      if(dd>0){ for(let i=0;i<dd;i++) ls.push(at); }
+      else if(dd<0){ ls.length=Math.max(0,ls.length+dd); }
+      if(ls.length) pm[k]=ls; else delete pm[k];
+      return {dsoDone:m,dsoPassLog:pm}; }); }
   // Tong hop theo (ngay, style, PO, mau). Bo trong 'line' -> lay MOI chuyen,
   // day la duong dung cho bang tong hop o cap Daily Sewing Output sau nay.
   dsoHistory(line){ const m=this.state.dsoDone||{}, at={}, out=[];
@@ -2301,15 +2555,199 @@ class Component extends DCLogic {
     return out.sort((a,b)=>String(b.day).localeCompare(String(a.day))
       ||String(a.line).localeCompare(String(b.line))||String(a.style).localeCompare(String(b.style))
       ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color))); }
+  // ==== Da giao sang hoan thien =========================================
+  // Giao theo SO LUONG chu khong con la co bat/tat:
+  //   dsoHandQ  cung khoa voi dsoDone (ngay|chuyen|style|PO|mau|size) -> da giao bao nhieu
+  //   dsoHand   moc gio 1 DONG duoc giao XONG (bang lich su van hien 'Da giao ...')
+  //   dsoSlips  cac to phieu da phat hanh, de mo xem / in lai
+  dsoHandQOf(k){ return Number((this.state.dsoHandQ||{})[k])||0; }
+  // Con lai chua giao cua 1 dong lich su
+  dsoRemain(row){ const o=row.sizes||{}, out={}; let n=0;
+    Object.keys(o).forEach(z=>{ const q=(Number(o[z])||0)-this.dsoHandQOf(row.key+'|'+z);
+      if(q>0){ out[z]=q; n+=q; } });
+    return {sizes:out,qty:n}; }
+  dsoHandedQty(row){ return Math.max(0,row.qty-this.dsoRemain(row).qty); }
   dsoHandAt(row){ return (this.state.dsoHand||{})[row.key]||0; }
-  dsoHandOver(row,on){ this.setState(st=>{ const m={...(st.dsoHand||{})};
-    if(on) m[row.key]=Date.now(); else delete m[row.key];
-    return {dsoHand:m}; }); }
+  // Da DAT nhung chua giao het -- TAT CA cac ngay, khong chi hom nay
+  dsoUnhanded(line){ return this.dsoHistory(line).filter(r=>this.dsoRemain(r).qty>0); }
+  // Tat ca hang con cho giao trong pham vi dang xem, gop LAM MOT theo size.
+  // Khong tach theo ma hang -- 1 lan nhap so luong la giao chung; ma hang \u00b7 PO \u00b7
+  // mau nao thuc su di theo phieu thi doc ra tu phan bo ben duoi.
+  dsoHandPool(line){ const rows=[], sizes={}; let qty=0;
+    this.dsoUnhanded(line).forEach(r=>{ const rem=this.dsoRemain(r);
+      rows.push({row:r,rem:rem.sizes});
+      Object.keys(rem.sizes).forEach(z=>{ sizes[z]=(sizes[z]||0)+rem.sizes[z]; });
+      qty+=rem.qty; });
+    // ngay cu di truoc, cung ngay thi theo chuyen roi ma hang
+    rows.sort((a,b)=>String(a.row.day).localeCompare(String(b.row.day))
+      ||String(a.row.line).localeCompare(String(b.row.line))
+      ||String(a.row.style).localeCompare(String(b.row.style)));
+    const uniq=f=>{ const o=[]; rows.forEach(x=>{ const v=f(x.row); if(o.indexOf(v)<0) o.push(v); }); return o; };
+    return {rows:rows,sizes:sizes,qty:qty,lines:uniq(r=>r.line).sort(),days:uniq(r=>r.day).sort()}; }
+  // Chia so luong muon giao ve tung dong lich su: ngay cu di truoc (FIFO)
+  dsoAlloc(pool,want){ const out=[], left={...(want||{})};
+    (pool.rows||[]).forEach(({row,rem})=>{ const take={}; let n=0;
+      Object.keys(rem).forEach(z=>{ const w=Math.max(0,Math.min(Number(left[z])||0,rem[z]));
+        if(w>0){ take[z]=w; left[z]=(Number(left[z])||0)-w; n+=w; } });
+      if(n) out.push({key:row.key,day:row.day,line:row.line,style:row.style,po:row.po,color:row.color,
+        sizes:take,qty:n}); });
+    return out; }
+
+  // ---- To phieu ban giao (BG-YYYYMMDD-NNN) ------------------------------
+  // So phieu chay theo ngay phat hanh; phieu chua chot lay so ke tiep cua hom nay.
+  dsoSlipDay(ts){ const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+    return String(d.getFullYear())+p(d.getMonth()+1)+p(d.getDate()); }
+  dsoSlipWhen(ts){ const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+    return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()
+      +' \u00b7 '+p(d.getHours())+':'+p(d.getMinutes()); }
+  dsoSlipList(){ return this.state.dsoSlips||[]; }
+  dsoSlipNo(s){ if(s.no) return s.no;
+    const day=this.dsoSlipDay(s.ts||Date.now());
+    const n=this.dsoSlipList().filter(x=>this.dsoSlipDay(x.ts)===day).length+1;
+    return 'BG-'+day+'-'+String(n).padStart(3,'0'); }
+  // Tong da giao (moi chuyen, moi ngay) cua 1 ma hang \u00b7 PO \u00b7 mau
+  dsoHandedTot(style,po,color){ let n=0;
+    this.dsoHistory(null).forEach(r=>{ if(r.style===style&&r.po===po&&r.color===color)
+      n+=this.dsoHandedQty(r); });
+    return n; }
+  // Luy ke den to phieu nay -- chot lai luc phat hanh, phieu sau khong lam doi
+  dsoSlipCum(s){ return s.cum!=null?s.cum
+    :(this.dsoHandedTot(s.style,s.po,s.color)+(s.ts?0:s.qty)); }
+  // Phieu moi cho 1 dong lich su: giao het phan con lai cua dong do
+  dsoRowSlipNew(row){ const rem=this.dsoRemain(row);
+    return {id:'row|'+row.key,ts:0,style:row.style,po:row.po,color:row.color,line:row.line,
+      dayTxt:this.dsoDay(row.day),sizes:rem.sizes,qty:rem.qty,
+      alloc:[{key:row.key,day:row.day,line:row.line,sizes:rem.sizes,qty:rem.qty}]}; }
+  // To phieu gan nhat da di qua dong nay -- bam badge 'Da giao' de xem / in lai.
+  // Ban luu cu chi co moc gio, khong co phieu -> dung tam so lieu cua dong.
+  dsoRowSlipLast(row){ const hit=this.dsoSlipList().filter(s=>(s.alloc||[]).some(a=>a.key===row.key));
+    if(hit.length) return hit[hit.length-1];
+    const at=this.dsoHandAt(row); if(!at) return null;
+    return {id:'row|'+row.key,ts:at,style:row.style,po:row.po,color:row.color,line:row.line,
+      dayTxt:this.dsoDay(row.day),sizes:row.sizes,qty:row.qty,
+      alloc:[{key:row.key,day:row.day,line:row.line,sizes:row.sizes,qty:row.qty}]}; }
+  // Phat hanh phieu: ghi so da giao vao so, danh dau dong nao da giao xong,
+  // luu phieu lai roi mo chinh to phieu do ra.
+  dsoSlipCommit(slip){ const ts=Date.now(), id='BG'+ts;
+    const rec={...slip,id:id,ts:ts,no:this.dsoSlipNo({ts}),
+      cum:slip.cum!=null?slip.cum:(this.dsoHandedTot(slip.style,slip.po,slip.color)+slip.qty)};
+    delete rec.back;
+    this.setState(st=>{ const q={...(st.dsoHandQ||{})}, hd={...(st.dsoHand||{})}, done=st.dsoDone||{};
+      (rec.alloc||[]).forEach(a=>Object.keys(a.sizes||{}).forEach(z=>{
+        const k=a.key+'|'+z; q[k]=(Number(q[k])||0)+(Number(a.sizes[z])||0); }));
+      (rec.alloc||[]).forEach(a=>{ let full=true;
+        Object.keys(done).forEach(k=>{ if(k.indexOf(a.key+'|')!==0) return;
+          if((Number(q[k])||0)<(Number(done[k])||0)) full=false; });
+        if(full&&!hd[a.key]) hd[a.key]=ts; });
+      // ten da go o ban nhap chuyen sang so phieu chinh thuc
+      const who={...(st.dsoHandWho||{})};
+      if(slip.id&&slip.id!==id){ if(who[slip.id]) who[id]=who[slip.id]; delete who[slip.id]; }
+      return {dsoHandQ:q,dsoHand:hd,dsoSlips:[...(st.dsoSlips||[]),rec],dsoHandWho:who,
+        dsoHandAsk:rec,dsoHandBulk:null}; });
+    document.body.classList.add('bg-slip-open');
+    return rec; }
+  // Huy 1 to phieu: tra lai so luong cho tat ca cac dong tren phieu
+  dsoSlipVoid(id){ this.setState(st=>{ const list=st.dsoSlips||[];
+    const s=list.find(x=>x.id===id); if(!s) return null;
+    const q={...(st.dsoHandQ||{})}, hd={...(st.dsoHand||{})};
+    (s.alloc||[]).forEach(a=>{ Object.keys(a.sizes||{}).forEach(z=>{ const k=a.key+'|'+z;
+        const n=(Number(q[k])||0)-(Number(a.sizes[z])||0); if(n>0) q[k]=n; else delete q[k]; });
+      delete hd[a.key]; });
+    return {dsoHandQ:q,dsoHand:hd,dsoSlips:list.filter(x=>x.id!==id),dsoHandAsk:null}; });
+    document.body.classList.remove('bg-slip-open'); }
+  // Bo danh dau da giao o 1 dong: huy to phieu da di qua dong do
+  dsoRowUndo(row){ const s=this.dsoRowSlipLast(row);
+    if(s&&this.dsoSlipList().some(x=>x.id===s.id)) return this.dsoSlipVoid(s.id);
+    this.setState(st=>{ const q={...(st.dsoHandQ||{})}, hd={...(st.dsoHand||{})};
+      Object.keys(st.dsoDone||{}).forEach(k=>{ if(k.indexOf(row.key+'|')===0) delete q[k]; });
+      delete hd[row.key]; return {dsoHandQ:q,dsoHand:hd}; }); }
+  // Ten nguoi giao / nguoi nhan go tay tren phieu, luu theo tung to phieu
+  dsoWho(s){ return (this.state.dsoHandWho||{})[s.id]||{}; }
+  dsoWhoSet(s,patch){ this.setState(st=>{ const m={...(st.dsoHandWho||{})};
+    m[s.id]={...(m[s.id]||{}),...patch}; return {dsoHandWho:m}; }); }
+  // Class tren <body> de @media print chi in ra to phieu (xem style.css)
+  dsoSlipOpen(slip){ if(!slip) return; this.set({dsoHandAsk:slip});
+    document.body.classList.add('bg-slip-open'); }
+  // Tro ve hop chon so luong, giu nguyen so vua go
+  dsoSlipBack(slip){ this.set({dsoHandAsk:null,dsoHandBulk:(slip&&slip.back)||null});
+    document.body.classList.remove('bg-slip-open'); }
+  dsoSlipClose(){ this.set({dsoHandAsk:null}); document.body.classList.remove('bg-slip-open'); }
+  // [size, so luong] theo thu tu size chuan (XXS..6XL), size la xep cuoi
+  dsoSizeList(sizes){ const o=sizes||{}, zs=this.SORDER.filter(z=>o[z]);
+    Object.keys(o).forEach(z=>{ if(zs.indexOf(z)<0) zs.push(z); });
+    return zs.map(z=>[z,o[z]]); }
+
+  // 'XS 3 \u00b7 M 5' theo thu tu size chuan
+  dsoSizeText(sizes){ return this.dsoSizeList(sizes)
+    .map(([z,q])=>z+' '+this.fmt(q)).join(' \u00b7 '); }
+  // Tim khong dau tren dung nhung truong dang hien tren bang. Ngay khop ca 2 dang
+  // ('22/08/2026' va '2026-08-22') nen go kieu nao cung ra.
+  dsoRowHit(r,q,extra){ const k=this.dfFold(q); if(!k) return true;
+    const parts=[this.dsoDay(r.day),r.day,r.line,r.style,r.po,r.color];
+    if(r.sizes) parts.push(Object.keys(r.sizes).join(' '));
+    if(r.size) parts.push(r.size);
+    if(extra) parts.push(extra);
+    const hay=this.dfFold(parts.join(' '));
+    return k.split(/\s+/).every(w=>hay.indexOf(w)>=0); }
+  // Ten loi tra ve tu Thu Vien Loi theo ma. Sua ten trong thu vien thi lich su
+  // doi theo -- thu vien la nguon su that duy nhat cho danh muc loi.
+  dsoDefName(code){ const c=String(code||'').trim();
+    const d=this.defects().find(x=>String(x.code||'').trim()===c);
+    return d?String(d.name||'').trim():''; }
+  // 1 dong = 1 (ngay, chuyen, style, PO, mau, size, ma loi). Bo trong 'line' -> moi chuyen.
+  dsoDefHistory(line){ const m=this.state.dsoDefLog||{}, out=[];
+    const oi=z=>{ const i=this.SORDER.indexOf(z); return i<0?99:i; };
+    Object.keys(m).forEach(k=>{ const p=k.split('|'); if(p.length!==6) return;
+      if(line&&p[1]!==line) return;
+      const o=m[k]||{};
+      Object.keys(o).forEach(code=>{ const q=Number(o[code])||0; if(q<=0) return;
+        out.push({key:k+'|'+code,day:p[0],line:p[1],style:p[2],po:p[3],color:p[4],
+          size:p[5],code:code,qty:q}); }); });
+    return out.sort((a,b)=>String(b.day).localeCompare(String(a.day))
+      ||String(a.line).localeCompare(String(b.line))||String(a.style).localeCompare(String(b.style))
+      ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color))
+      ||oi(a.size)-oi(b.size)||String(a.code).localeCompare(String(b.code))); }
+
+  // ---- Hop chon so luong giao (mo tu nut 'Giao sang hoan thien (n)') ----
+  dsoBulkOpen(line){ const p=this.dsoHandPool(line||null);
+    this.set({dsoHandBulk:{line:line||'',qty:{...p.sizes}}}); }
+  dsoBulkPool(){ const b=this.state.dsoHandBulk; if(!b) return null;
+    return this.dsoHandPool(b.line||null); }
+  // Go so: chi nhan so nguyen 0..con lai
+  dsoBulkSet(z,v,max){ const n=Math.max(0,Math.min(Number(String(v).replace(/[^\d]/g,''))||0,max||0));
+    this.setState(st=>{ const b=st.dsoHandBulk; if(!b) return null;
+      const q={...(b.qty||{})}; q[z]=n; return {dsoHandBulk:{...b,qty:q}}; }); }
+  dsoBulkFill(on){ this.setState(st=>{ const b=st.dsoHandBulk; if(!b) return null;
+    const p=this.dsoHandPool(b.line||null);
+    return {dsoHandBulk:{...b,qty:on?{...p.sizes}:{}}}; }); }
+  dsoBulkQty(){ const b=this.state.dsoHandBulk, p=this.dsoBulkPool(); if(!b||!p) return 0;
+    return Object.keys(p.sizes).reduce((a,z)=>a+Math.min(Number((b.qty||{})[z])||0,p.sizes[z]),0); }
+  // Chot: chia so luong ve cac dong roi phat hanh phieu. Ma hang \u00b7 PO \u00b7 mau \u00b7
+  // chuyen \u00b7 ngay tren phieu lay tu dung nhung dong da bi tru.
+  dsoBulkOk(){ const b=this.state.dsoHandBulk, p=this.dsoBulkPool(); if(!b||!p) return;
+    const want={}; let n=0;
+    Object.keys(p.sizes).forEach(z=>{ const v=Math.max(0,Math.min(Number((b.qty||{})[z])||0,p.sizes[z]));
+      if(v>0){ want[z]=v; n+=v; } });
+    if(!n) return;
+    const alloc=this.dsoAlloc(p,want);
+    const pick=f=>{ const o=[]; alloc.forEach(a=>{ const v=f(a); if(o.indexOf(v)<0) o.push(v); }); return o; };
+    const days=pick(a=>a.day).sort(), seen={};
+    // Luy ke: cong don cua tung ma hang \u00b7 PO \u00b7 mau co mat tren phieu
+    const cum=alloc.reduce((s,a)=>{ const k=a.style+'|'+a.po+'|'+a.color;
+      if(seen[k]) return s; seen[k]=1; return s+this.dsoHandedTot(a.style,a.po,a.color); },0)+n;
+    this.set({dsoHandBulk:null});
+    this.dsoSlipOpen({id:'draft|'+(b.line||''),ts:0,back:{line:b.line||'',qty:{...(b.qty||{})}},
+      style:pick(a=>a.style).join(' + '),po:pick(a=>a.po).join(' + '),
+      color:pick(a=>a.color).join(' + '),line:pick(a=>a.line).sort().join(' + '),
+      dayTxt:days.length>1?(this.dsoDay(days[0])+' \u2192 '+this.dsoDay(days[days.length-1]))
+        :this.dsoDay(days[0]),
+      sizes:want,qty:n,cum:cum,alloc:alloc}); }
 
   renderDsoLineDetail(line){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const cards=this.dsoSizeCards(line), styles=this.dsoStyles(line);
     const need=cards.reduce((a,c)=>a+c.need,0), done=cards.reduce((a,c)=>a+this.dsoDoneOf(c),0);
+    const fail=cards.reduce((a,c)=>a+this.dsoDefOf(c),0);
     const back=h('button',{onClick:()=>this.set({dsoLine:null}),
       style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:9,padding:'6px 13px',
         fontSize:12.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',marginBottom:14},
@@ -2322,10 +2760,17 @@ class Component extends DCLogic {
         h('div',{style:{fontSize:22,fontWeight:700,color:C.primary,fontFamily:mono,lineHeight:1.1}},line),
         h('div',{style:{fontSize:13,color:C.sub,marginTop:4,wordBreak:'break-all'}},
           styles.length?styles.join(' \u00b7 '):'\u2014')),
-      h('div',{style:{flex:'none',textAlign:'right'}},
-        h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('dsoDoneNeed')),
-        h('div',{style:{fontSize:19,fontWeight:700,fontFamily:mono,marginTop:2,color:need&&done>=need?'#2f7d32':C.ink}},
-          this.fmt(done)+' / '+this.fmt(need))));
+      // 3 o rieng: DAT / LOI / CAN LAM -- truoc day gop 'da lam / can lam' vao 1 o
+      h('div',{style:{flex:'none',display:'flex',gap:10,flexWrap:'wrap'}},
+        [[this.t('dsoPass'),done,'#2f7d32','#eff7e9','#cfe3b4'],
+         [this.t('dsoFail'),fail,'#a3271b','#fdeeec','#eccfca'],
+         [this.t('dsoReq'),need,C.ink,C.white,C.border]].map(([lb,v,fg,bg,bd])=>
+          h('div',{key:lb,style:{flex:'none',minWidth:96,border:'1px solid '+bd,background:bg,
+              borderRadius:12,padding:'9px 14px'}},
+            h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint,
+              whiteSpace:'nowrap'}},lb),
+            h('div',{style:{fontSize:21,fontWeight:700,fontFamily:mono,color:fg,marginTop:3,
+              lineHeight:1}},this.fmt(v))))));
     if(!cards.length) return h('div',{style:{padding:'18px 20px 24px'}},back,summary,
       h('div',{style:{padding:'48px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('dsoNoCut')));
     // ---- Ma tran: 1 dong = 1 mau (theo tung PO), cot = size tang dan --------
@@ -2374,71 +2819,152 @@ class Component extends DCLogic {
       h('div',{className:'yscroll',style:{overflowX:'auto',paddingBottom:4}},
         h('div',{style:{minWidth:(cols.length*160)+'px'}},grid)),
       this.renderDsoHistory(line),
+      this.renderDsoDefHistory(line),
       this.renderDsoTap());
+  }
+  // ==== PHIEU BAN GIAO: May -> Hoan thien ==================================
+  // Nhan 1 'slip': {id, no, ts, style, po, color, line, dayTxt, sizes, qty, alloc}.
+  // ts = 0 -> phieu chua chot, nut la 'Xac nhan giao'; da chot -> in / luu PDF.
+  // Portal ra <body> nen khi in chi con to phieu tren giay, va khong phai
+  // them slot moi vao shell().
+  renderDsoHandAsk(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const s=this.state.dsoHandAsk; if(!s) return null;
+    const close=()=>this.dsoSlipClose();
+    const at=s.ts||0, who=this.dsoWho(s), brand=this.brandForStyle(s.style);
+    const sizes=this.dsoSizeList(s.sizes);
+    // Phieu chua chot: phai co ten nguoi giao VA nguoi nhan moi xac nhan duoc
+    const need=!at&&!(String(who.from||'').trim()&&String(who.to||'').trim());
+    // 'Nhan: gia tri' -- khoi thong tin dau phieu
+    const fld=(lb,v,ex)=>h('div',{key:lb,style:{display:'flex',alignItems:'baseline',gap:7,minWidth:0}},
+      h('span',{style:{flex:'none',fontSize:12.5,color:C.sub}},lb+':'),
+      h('span',{style:{minWidth:0,fontSize:13.5,fontWeight:700,color:C.ink,wordBreak:'break-word',...(ex||{})}},v));
+    // Ten nguoi giao / nguoi nhan: go truc tiep tren phieu, bat buoc khi chua chot
+    const nameFld=(lb,k)=>{ const v=String(who[k]||''), miss=!at&&!v.trim();
+      return h('div',{key:k,style:{display:'flex',alignItems:'baseline',gap:7,minWidth:0}},
+        h('span',{style:{flex:'none',fontSize:12.5,color:C.sub}},lb,
+          at?null:h('span',{key:'r',title:this.t('bgReq'),style:{color:'#c0392b'}},' *'),':'),
+        h('input',{type:'text',value:v,placeholder:this.t('bgName'),
+          onChange:e=>this.dsoWhoSet(s,{[k]:e.target.value}),
+          style:{flex:1,minWidth:0,width:'100%',border:'none',background:'none',padding:'0 0 2px',
+            borderBottom:'1px dashed '+(v?'transparent':(miss?'#d99b93':'#c8ccc2')),fontFamily:'inherit',
+            fontSize:13.5,fontWeight:700,color:C.ink}})); };
+    const head=h('div',{style:{padding:'21px 26px 15px',borderBottom:'1px solid '+C.line}},
+      h('div',{style:{display:'flex',alignItems:'baseline',gap:14}},
+        h('div',{style:{flex:1,minWidth:0,fontSize:16,fontWeight:700,letterSpacing:'.2px',lineHeight:1.3,
+          color:C.ink}},this.t('bgTitle')),
+        h('div',{style:{flex:'none',fontSize:12.5,fontWeight:700,fontFamily:mono,letterSpacing:'.2px',
+          color:C.dark}},this.dsoSlipNo(s))),
+      h('div',{style:{display:'flex',alignItems:'baseline',gap:14,marginTop:5}},
+        h('div',{style:{flex:1,minWidth:0,fontSize:12,color:C.faint}},
+          'YIC Hà Nam'+(brand?' \u00b7 '+brand:'')),
+        h('div',{style:{flex:'none',fontSize:12,fontFamily:mono,color:C.faint}},
+          this.dsoSlipWhen(at||Date.now()))));
+    const meta=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',columnGap:26,rowGap:10,
+        padding:'16px 26px 0'}},
+      fld(this.t('bgStyle'),s.style,{fontFamily:mono}),
+      fld(this.t('bgPo'),s.po,{fontFamily:mono}),
+      fld(this.t('bgColor'),s.color),
+      fld(this.t('bgLine'),s.line,{color:C.dark}),
+      nameFld(this.t('bgFrom'),'from'),
+      nameFld(this.t('bgTo'),'to'),
+      fld(this.t('bgProdDay'),s.dayTxt||'\u2014',{fontFamily:mono}),
+      fld(this.t('bgStatus'),at?(this.t('dsoHanded')+' \u00b7 '+this.recvTime(at)):this.t('bgPending'),
+        {color:at?'#2f7d32':C.sub,fontWeight:at?700:600,fontSize:12.5}));
+    // Bang giao: 1 dong = 1 size, roi Tong nhan va Luy ke den phieu nay
+    const tdC={padding:'9px 12px',fontSize:13,textAlign:'center',borderTop:'1px solid '+C.line};
+    const th={padding:'9px 12px',fontSize:11.5,fontWeight:700,letterSpacing:'.3px',color:C.sub,
+      textAlign:'center',background:'#f8faf3',borderBottom:'1px solid '+C.border};
+    const table=h('div',{style:{margin:'18px 26px 0',border:'1px solid '+C.border,borderRadius:11,
+        overflow:'hidden'}},
+      h('table',{style:{width:'100%',borderCollapse:'collapse'}},
+        h('thead',null,h('tr',null,
+          h('th',{style:{...th,borderRight:'1px solid '+C.border}},this.t('bgSize')),
+          h('th',{style:th},this.t('bgQty')))),
+        h('tbody',null,
+          sizes.map(([z,q],i)=>h('tr',{key:'z'+z},
+            h('td',{style:{...tdC,...(i?{}:{borderTop:'none'}),borderRight:'1px solid '+C.line,
+              fontWeight:600}},z),
+            h('td',{style:{...tdC,...(i?{}:{borderTop:'none'}),fontFamily:mono}},this.fmt(q)))),
+          h('tr',{key:'tot'},
+            h('td',{style:{...tdC,borderTop:'1px solid '+C.border,borderRight:'1px solid '+C.line,
+              background:C.tint,fontWeight:700}},this.t('bgTotal')),
+            h('td',{style:{...tdC,borderTop:'1px solid '+C.border,background:C.tint,fontFamily:mono,
+              fontWeight:700,fontSize:15}},this.fmt(s.qty))),
+          h('tr',{key:'cum',title:this.t('bgCumTip')},
+            h('td',{style:{...tdC,borderRight:'1px solid '+C.line,fontSize:12.5,color:C.sub}},
+              this.t('bgCum')),
+            h('td',{style:{...tdC,fontFamily:mono,color:C.sub}},this.fmt(this.dsoSlipCum(s)))))));
+    // Cho ky tay khi in ra giay
+    const sign=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:26,padding:'0 26px',
+        marginTop:30}},
+      ['bgSignFrom','bgSignTo'].map(k=>h('div',{key:k,style:{textAlign:'center'}},
+        h('div',{style:{height:42}}),
+        h('div',{style:{borderTop:'1px solid '+C.border,paddingTop:7,fontSize:12,color:C.faint}},
+          this.t(k)))));
+    const foot=h('div',{'data-noprint':'',style:{display:'flex',alignItems:'center',gap:10,marginTop:24,
+        padding:'13px 20px',borderTop:'1px solid '+C.line,background:'#f8faf3',flexWrap:'wrap'}},
+      need?h('span',{style:{fontSize:11.5,color:'#a3271b',whiteSpace:'nowrap'}},this.t('bgNeedWho')):null,
+      h('div',{style:{flex:1,minWidth:8}}),
+      // Di ra tu hop chon so luong -> nut trai la 'Quay lai' de sua so
+      h('button',{onClick:s.back?()=>this.dsoSlipBack(s):close,style:this.btn('ghost')},
+        s.back?this.t('bgBack'):this.t('dsoClose')),
+      at
+        ? h('button',{onClick:()=>window.print(),style:this.btn('primary')},
+            h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9},
+              h('path',{d:'M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v7H8z'})),this.t('bgPrint'))
+        : h('button',{disabled:need,onClick:()=>{ if(!need) this.dsoSlipCommit(s); },
+            style:{...this.btn('primary'),...(need?{opacity:.45,cursor:'not-allowed'}:{})}},
+            h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+              h('path',{d:'M5 12h14M13 6l6 6-6 6'})),this.t('dsoAskOk')));
+    const panel=h('div',{'data-bg-panel':'',className:'yscroll',onClick:ev=>ev.stopPropagation(),
+        style:{width:'min(560px,94vw)',maxHeight:'92vh',overflow:'auto',background:C.white,borderRadius:16,
+          boxShadow:'0 30px 70px rgba(0,0,0,.32)'}},
+      head,meta,table,sign,foot);
+    const over=h('div',{'data-bg-overlay':'',onClick:close,style:{position:'fixed',inset:0,
+        background:'rgba(24,28,22,.5)',backdropFilter:'blur(2px)',display:'flex',alignItems:'center',
+        justifyContent:'center',zIndex:88,padding:24}},panel);
+    return (RD&&RD.createPortal)?RD.createPortal(over,document.body):over;
   }
 
   // Bang lich su: 1 dong = 1 (ngay, style, PO, mau) da hoan thanh bao nhieu.
-  // Hop xac nhan giao sang hoan thien -- PLACEHOLDER, form chuan se thay sau.
-  // Render tu trong renderDsoHistory nen dung duoc o ca man detail va man tong,
-  // khong phai them slot moi vao shell().
-  renderDsoHandAsk(){
-    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const r=this.state.dsoHandAsk; if(!r) return null;
-    const close=()=>this.set({dsoHandAsk:null});
-    const row=(k,v)=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:14,
-      padding:'7px 0',borderBottom:'1px solid '+C.line}},
-      h('span',{style:{fontSize:11.5,fontWeight:700,letterSpacing:'.3px',color:C.faint,whiteSpace:'nowrap'}},k),
-      h('span',{style:{fontSize:13,fontWeight:600,fontFamily:mono,color:C.ink,textAlign:'right',wordBreak:'break-all'}},v));
-    return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
-        backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:24}},
-      h('div',{onClick:ev=>ev.stopPropagation(),style:{width:'min(430px,94vw)',background:C.white,
-          borderRadius:16,boxShadow:'0 30px 70px rgba(0,0,0,.32)',overflow:'hidden'}},
-        h('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'16px 20px',borderBottom:'1px solid '+C.line}},
-          h('div',{style:{width:36,height:36,borderRadius:10,background:C.tint,color:C.dark,flex:'none',
-              display:'flex',alignItems:'center',justifyContent:'center'}},
-            h('svg',{width:19,height:19,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
-              h('path',{d:'M5 12h14M13 6l6 6-6 6'}))),
-          h('div',{style:{minWidth:0}},
-            h('div',{style:{fontSize:15.5,fontWeight:700}},this.t('dsoHandOver')),
-            h('div',{style:{fontSize:11.5,color:C.faint,marginTop:2}},this.t('dsoAskPh')))),
-        h('div',{style:{padding:'12px 20px 4px'}},
-          row(this.t('dsoColDay'),this.dsoDay(r.day)),
-          row(this.t('lsCol1'),r.line),
-          row(this.t('lsCol2'),r.style),
-          row(this.t('dsoColPo'),r.po),
-          row(this.t('dsoColColor'),r.color),
-          h('div',{style:{display:'flex',justifyContent:'space-between',gap:14,padding:'11px 0 3px'}},
-            h('span',{style:{fontSize:11.5,fontWeight:700,letterSpacing:'.3px',color:C.faint}},this.t('dsoColQty')),
-            h('span',{style:{fontSize:19,fontWeight:700,fontFamily:mono,color:C.dark}},this.fmt(r.qty)))),
-        h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'14px 20px',
-            borderTop:'1px solid '+C.line,background:'#f8faf3'}},
-          h('div',{style:{flex:1}}),
-          h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel')),
-          h('button',{onClick:()=>{ this.dsoHandOver(r,true); close(); },style:this.btn('primary')},
-            this.t('dsoAskOk')))));
-  }
-
   renderDsoHistory(line){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const rows=this.dsoHistory(line);
+    // dsoHistory tra ve MOI ngay (khong loc hom nay); o tim loc them tren client
+    const all=this.dsoHistory(line), q=this.state.dsoHistQ||'';
+    const rows=all.filter(r=>this.dsoRowHit(r,q));
+    const un=all.filter(r=>this.dsoRemain(r).qty>0);
     const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
       color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,
-      background:'#f8faf3',whiteSpace:'nowrap'};
+      background:'#f8faf3',whiteSpace:'nowrap',position:'sticky',top:0,zIndex:1};
     const td={padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line,verticalAlign:'middle'};
-    const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:10,marginTop:22}},
+    // Nut giao TONG: chi hien khi con dong chua giao, kem so dong dang cho
+    const bulk=un.length?h('button',{onClick:()=>this.dsoBulkOpen(line),
+      style:{...this.btn('primary'),padding:'7px 13px',fontSize:12.5},title:this.t('dsoHandAllSub')},
+      h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+        h('path',{d:'M5 12h14M13 6l6 6-6 6'})),
+      this.t('dsoHandOver')+' ('+this.fmt(un.length)+')'):null;
+    const head=h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:10,marginTop:22,
+        flexWrap:'wrap'}},
       h('div',{style:{minWidth:0}},
         h('div',{style:{fontSize:15,fontWeight:700}},this.t('dsoHist')),
         h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('dsoHistSub'))),
-      h('div',{style:{flex:1}}),
+      h('div',{style:{flex:1,minWidth:8}}),
+      this.dfSearchBox(q,v=>this.set({dsoHistQ:v}),false,'dsoHistSearch'),
       h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:C.dark,background:C.tint,borderRadius:999,padding:'4px 11px',whiteSpace:'nowrap'}},
-        this.fmt(rows.reduce((a,r)=>a+r.qty,0))+' pcs'));
-    if(!rows.length) return h('div',null,head,
-      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,background:C.white,padding:'34px 20px',textAlign:'center',color:C.faint,fontSize:13}},this.t('dsoHistEmpty')),
-      this.renderDsoHandAsk());
+        this.fmt(rows.reduce((a,r)=>a+r.qty,0))+' pcs'),
+      bulk);
+    const note=t=>h('div',{style:{border:'1px solid '+C.border,borderRadius:13,background:C.white,
+      padding:'34px 20px',textAlign:'center',color:C.faint,fontSize:13}},this.t(t));
+    if(!all.length) return h('div',null,head,note('dsoHistEmpty'),
+      this.renderDsoHandAsk(),this.renderDsoHandBulk());
+    if(!rows.length) return h('div',null,head,note('dfNoHit'),
+      this.renderDsoHandAsk(),this.renderDsoHandBulk());
     // Cot size = hop cac size co trong bang, xep theo SORDER; size la xep cuoi.
     const zs=this.SORDER.filter(z=>rows.some(r=>r.sizes&&r.sizes[z]));
     rows.forEach(r=>Object.keys(r.sizes||{}).forEach(z=>{ if(zs.indexOf(z)<0) zs.push(z); }));
     const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white, at=this.dsoHandAt(r);
+      const hq=this.dsoHandedQty(r), rem=r.qty-hq;
       return h('tr',{key:r.key},
         h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:600,whiteSpace:'nowrap'}},this.dsoDay(r.day)),
         line?null:h('td',{style:{...td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},r.line),
@@ -2448,19 +2974,27 @@ class Component extends DCLogic {
         ...zs.map(z=>h('td',{key:'z'+z,style:{...td,background:bg,textAlign:'right',fontFamily:mono,
           color:r.sizes[z]?C.ink:'#dfe3da',whiteSpace:'nowrap'}}, r.sizes[z]?this.fmt(r.sizes[z]):'')),
         h('td',{style:{...td,background:bg,textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,whiteSpace:'nowrap'}},this.fmt(r.qty)),
-        h('td',{style:{...td,background:bg,borderRight:'none',whiteSpace:'nowrap'}}, at
-          ? h('span',{style:{display:'inline-flex',alignItems:'center',gap:7}},
-              h('span',{style:{fontSize:11,fontWeight:700,color:'#2f7d32',background:'#e6f2e2',border:'1px solid #cfe3b4',borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},
-                this.t('dsoHanded')+' \u00b7 '+this.recvTime(at)),
-              h('button',{title:this.t('dsoUndoHand'),onClick:()=>this.dsoHandOver(r,false),
-                style:{border:'none',background:'none',color:'#c0392b',cursor:'pointer',padding:0,fontSize:14,lineHeight:1,fontFamily:'inherit'}},'\u00d7'))
-          : h('button',{onClick:()=>this.set({dsoHandAsk:r}),
+        // Chua giao -> nut giao; giao mot phan -> the vang + nut giao not; giao xong -> the xanh
+        h('td',{style:{...td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('span',{style:{display:'inline-flex',alignItems:'center',gap:7}},
+            hq?h('button',{title:this.t('bgView'),onClick:()=>this.dsoSlipOpen(this.dsoRowSlipLast(r)),
+              style:{fontSize:11,fontWeight:700,borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap',
+                cursor:'pointer',fontFamily:'inherit',color:at?'#2f7d32':'#8a6d1f',
+                background:at?'#e6f2e2':'#fdf6e8',border:'1px solid '+(at?'#cfe3b4':'#f0e3c8')},
+              'style-hover':{background:at?'#d9ecd2':'#f8eed6'}},
+              at?(this.t('dsoHanded')+' \u00b7 '+this.recvTime(at))
+                :(this.t('dsoHanded')+' '+this.fmt(hq)+'/'+this.fmt(r.qty))):null,
+            rem?h('button',{onClick:()=>this.dsoSlipOpen(this.dsoRowSlipNew(r)),
               style:{border:'1px solid '+C.primary,background:C.white,color:C.dark,borderRadius:8,padding:'5px 11px',
                 fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'},
-              'style-hover':{background:C.tint}},this.t('dsoHandOver')))); });
+              'style-hover':{background:C.tint}},
+              hq?(this.t('dsoHandOver')+' \u00b7 '+this.fmt(rem)):this.t('dsoHandOver')):null,
+            hq?h('button',{title:this.t('dsoUndoHand'),onClick:()=>this.dsoRowUndo(r),
+              style:{border:'none',background:'none',color:'#c0392b',cursor:'pointer',padding:0,fontSize:14,
+                lineHeight:1,fontFamily:'inherit'}},'\u00d7'):null))); });
     return h('div',null,head,
       h('div',{style:{border:'1px solid '+C.border,borderRadius:13,overflow:'hidden'}},
-        h('div',{className:'yscroll',style:{overflowX:'auto'}},
+        h('div',{className:'yscroll',style:{overflow:'auto',maxHeight:this.dsoHistH('done')}},
           h('table',{style:{width:'100%',minWidth:((line?760:860)+zs.length*54)+'px',borderCollapse:'collapse'}},
             h('thead',null,h('tr',null,
               h('th',{style:{...th,paddingLeft:14}},this.t('dsoColDay')),
@@ -2472,23 +3006,215 @@ class Component extends DCLogic {
               h('th',{style:{...th,textAlign:'right'}},this.t('dsoColQty')),
               h('th',{style:{...th,borderRight:'none'}},this.t('lsCol10')))),
             h('tbody',null,body)))),
-      this.renderDsoHandAsk());
+      this.renderDsoHandAsk(),this.renderDsoHandBulk());
+  }
+
+  // ==== Chon so luong giao sang hoan thien ==================================
+  // Tren: con lai CHUA GIAO gop theo SIZE (moi ngay, moi ma hang trong pham vi
+  // dang xem). Duoi: dien so luong muon giao cho tung size -> Xac nhan -> phieu.
+  renderDsoHandBulk(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const b=this.state.dsoHandBulk; if(!b) return null;
+    const close=()=>this.set({dsoHandBulk:null});
+    const p=this.dsoBulkPool(), has=!!(p&&p.qty);
+    const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'15px 20px',flex:'none',
+        borderBottom:'1px solid '+C.line}},
+      h('div',{style:{width:36,height:36,borderRadius:10,background:C.tint,color:C.dark,flex:'none',
+          display:'flex',alignItems:'center',justifyContent:'center'}},
+        h('svg',{width:19,height:19,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M5 12h14M13 6l6 6-6 6'}))),
+      h('div',{style:{minWidth:0,marginRight:'auto'}},
+        h('div',{style:{fontSize:16,fontWeight:700}},this.t('dsoHandOver')),
+        h('div',{style:{fontSize:11.5,color:C.faint,marginTop:2}},this.t('dsoHandAllSub'))),
+      h('button',{title:this.t('dsoClose'),onClick:close,
+        style:{border:'1px solid '+C.border,background:C.white,color:C.sub,borderRadius:9,width:30,height:30,
+          flex:'none',cursor:'pointer',fontSize:17,lineHeight:1,padding:0,fontFamily:'inherit'},
+        'style-hover':{background:C.tint}},'\u00d7'));
+    let bodyEl;
+    if(!has) bodyEl=h('div',{style:{padding:'52px 24px',textAlign:'center',color:C.faint,
+      fontSize:13.5}},this.t('dsoNoUnhanded'));
+    else {
+      const zs=this.dsoSizeList(p.sizes), gTot=this.dsoBulkQty();
+      const got=z=>{ const v=(b.qty||{})[z]; return v==null?'':String(v); };
+      // Con lai theo size + pham vi dang gom (chuyen / ngay)
+      const cards=h('div',{style:{padding:'18px 20px 0'}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:9,flexWrap:'wrap'}},
+          h('div',{style:{fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('bkPend')),
+          h('div',{style:{flex:1,minWidth:8}}),
+          h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:C.dark,background:C.tint,
+            borderRadius:999,padding:'4px 11px',whiteSpace:'nowrap'}},this.fmt(p.qty)+' pcs')),
+        h('div',{style:{display:'flex',gap:9,flexWrap:'wrap'}},
+          zs.map(([z,q])=>h('div',{key:'c'+z,style:{flex:'none',minWidth:66,border:'1px solid '+C.border,
+              borderRadius:11,background:C.white,padding:'8px 12px',textAlign:'center'}},
+            h('div',{style:{fontSize:11,fontWeight:700,letterSpacing:'.4px',color:C.sub}},z),
+            h('div',{style:{fontSize:19,fontWeight:700,fontFamily:mono,color:C.ink,marginTop:2,
+              lineHeight:1}},this.fmt(q))))),
+        h('div',{style:{fontSize:11.5,color:C.faint,marginTop:10}},
+          this.t('bgLine')+': '+p.lines.join(' + ')+'  \u00b7  '+this.t('bkDays')+': '
+          +(p.days.length>1?(this.dsoDay(p.days[0])+' \u2192 '+this.dsoDay(p.days[p.days.length-1]))
+            :this.dsoDay(p.days[0]))));
+      // Bang nhap so luong giao
+      const th={padding:'9px 12px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',color:C.sub,
+        textAlign:'center',background:'#f8faf3',borderBottom:'1px solid '+C.border,whiteSpace:'nowrap'};
+      const td={padding:'7px 12px',fontSize:13,textAlign:'center',borderTop:'1px solid '+C.line};
+      const inp={width:92,padding:'6px 8px',textAlign:'center',fontFamily:mono,fontSize:13.5,fontWeight:700,
+        color:C.ink,border:'1px solid '+C.border,borderRadius:8,background:C.white};
+      const grid=h('div',{style:{padding:'18px 20px 4px'}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:9}},
+          h('div',{style:{fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:C.faint}},this.t('bkGive')),
+          h('div',{style:{flex:1,minWidth:8}}),
+          h('button',{onClick:()=>this.dsoBulkFill(true),
+            style:{...this.btn('ghost'),padding:'5px 10px',fontSize:11.5},
+            'style-hover':{background:C.tint}},this.t('bkAll')),
+          h('button',{onClick:()=>this.dsoBulkFill(false),
+            style:{...this.btn('ghost'),padding:'5px 10px',fontSize:11.5},
+            'style-hover':{background:C.tint}},this.t('bkNone'))),
+        h('div',{style:{border:'1px solid '+C.border,borderRadius:12,overflow:'hidden'}},
+          h('table',{style:{width:'100%',borderCollapse:'collapse'}},
+            h('thead',null,h('tr',null,
+              h('th',{style:{...th,borderRight:'1px solid '+C.border,width:'34%'}},this.t('dsoColSize')),
+              h('th',{style:{...th,borderRight:'1px solid '+C.border,width:'33%'}},this.t('bkLeft')),
+              h('th',{style:th},this.t('bkGive')))),
+            h('tbody',null,
+              zs.map(([z,q],i)=>h('tr',{key:'r'+z},
+                h('td',{style:{...td,...(i?{}:{borderTop:'none'}),borderRight:'1px solid '+C.line,
+                  fontWeight:700,fontSize:14}},z),
+                h('td',{style:{...td,...(i?{}:{borderTop:'none'}),borderRight:'1px solid '+C.line,
+                  fontFamily:mono,color:C.sub}},this.fmt(q)),
+                h('td',{style:{...td,...(i?{}:{borderTop:'none'})}},
+                  h('input',{type:'text',inputMode:'numeric',value:got(z),placeholder:'0',
+                    onChange:e=>this.dsoBulkSet(z,e.target.value,q),style:inp})))),
+              h('tr',{key:'tot'},
+                h('td',{style:{...td,borderTop:'1px solid '+C.border,borderRight:'1px solid '+C.line,
+                  background:C.tint,fontWeight:700,fontSize:12.5}},this.t('bkTot')),
+                h('td',{style:{...td,borderTop:'1px solid '+C.border,borderRight:'1px solid '+C.line,
+                  background:C.tint,fontFamily:mono,color:C.sub}},this.fmt(p.qty)),
+                h('td',{style:{...td,borderTop:'1px solid '+C.border,background:C.tint,fontFamily:mono,
+                  fontWeight:700,fontSize:15,color:gTot?C.dark:C.faint}},this.fmt(gTot)))))));
+      bodyEl=h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:130}},cards,grid);
+    }
+    const sel=has?this.dsoBulkQty():0;
+    const foot=h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 20px',flex:'none',
+        borderTop:'1px solid '+C.line,background:'#f8faf3',flexWrap:'wrap'}},
+      has?h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:sel?C.dark:C.faint,
+        whiteSpace:'nowrap'}},this.fmt(sel)+' pcs '+this.t('bkSel')):null,
+      h('div',{style:{flex:1,minWidth:8}}),
+      h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel')),
+      has?h('button',{disabled:!sel,onClick:()=>this.dsoBulkOk(),
+        style:{...this.btn('primary'),...(sel?{}:{opacity:.45,cursor:'not-allowed'})}},
+        this.t('bkNext'),
+        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M9 6l6 6-6 6'}))):null);
+    return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
+        backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',
+        zIndex:86,padding:24}},
+      h('div',{onClick:ev=>ev.stopPropagation(),style:{width:'min(680px,96vw)',maxHeight:'92vh',
+          display:'flex',flexDirection:'column',background:C.white,borderRadius:18,
+          boxShadow:'0 30px 70px rgba(0,0,0,.34)',overflow:'hidden'}},
+        head,bodyEl,foot));
+  }
+
+  // ==== Bang lich su hang loi: 1 dong = 1 lan ghi (ngay/size/ma loi) ====
+  // Size la 1 COT rieng (khong bung ra nhieu cot nhu bang hoan thanh) vi con
+  // phai cho cot Ly do -- bung size ra nua thi bang qua rong.
+  renderDsoDefHistory(line){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const all=this.dsoDefHistory(line), q=this.state.dsoDefQ||'';
+    const rows=all.filter(r=>this.dsoRowHit(r,q,r.code+' '+this.dsoDefName(r.code)));
+    const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+      color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,
+      background:'#f8faf3',whiteSpace:'nowrap',position:'sticky',top:0,zIndex:1};
+    const td={padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,
+      borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    const head=h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:10,marginTop:26,
+        flexWrap:'wrap'}},
+      h('div',{style:{minWidth:0}},
+        h('div',{style:{fontSize:15,fontWeight:700}},this.t('dsoDefHist')),
+        h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('dsoDefHistSub'))),
+      h('div',{style:{flex:1,minWidth:8}}),
+      all.length?this.dfSearchBox(q,v=>this.set({dsoDefQ:v}),false,'dsoHistSearch'):null,
+      h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:'#a3271b',background:'#fdecea',
+        border:'1px solid #eccfca',borderRadius:999,padding:'4px 11px',whiteSpace:'nowrap'}},
+        this.fmt(rows.reduce((a,r)=>a+r.qty,0))+' pcs'));
+    const note=t=>h('div',{style:{border:'1px solid '+C.border,borderRadius:13,background:C.white,
+      padding:'34px 20px',textAlign:'center',color:C.faint,fontSize:13}},this.t(t));
+    if(!all.length) return h('div',null,head,note('dsoDefHistEmpty'));
+    if(!rows.length) return h('div',null,head,note('dfNoHit'));
+    const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white, nm=this.dsoDefName(r.code);
+      return h('tr',{key:r.key},
+        h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:600,whiteSpace:'nowrap'}},this.dsoDay(r.day)),
+        line?null:h('td',{style:{...td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},r.line),
+        h('td',{style:{...td,background:bg,fontFamily:mono,wordBreak:'break-all'}},r.style),
+        h('td',{style:{...td,background:bg,fontFamily:mono,whiteSpace:'nowrap'}},r.po),
+        h('td',{style:{...td,background:bg,fontWeight:700,color:C.dark,whiteSpace:'nowrap'}},r.color),
+        h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:700,whiteSpace:'nowrap'}},r.size),
+        h('td',{style:{...td,background:bg}},
+          h('span',{style:{display:'inline-flex',alignItems:'center',gap:8,flexWrap:'wrap'}},
+            h('span',{style:{fontSize:11,fontWeight:700,fontFamily:mono,color:'#a3271b',background:'#fdecea',
+              border:'1px solid #eccfca',borderRadius:999,padding:'2px 8px',whiteSpace:'nowrap'}},r.code),
+            h('span',{style:{fontWeight:600,wordBreak:'break-word'}},nm||'\u2014'))),
+        h('td',{style:{...td,background:bg,borderRight:'none',textAlign:'right',fontFamily:mono,
+          fontWeight:700,fontSize:14,whiteSpace:'nowrap'}},this.fmt(r.qty))); });
+    return h('div',null,head,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,overflow:'hidden'}},
+        h('div',{className:'yscroll',style:{overflow:'auto',maxHeight:this.dsoHistH('def')}},
+          h('table',{style:{width:'100%',minWidth:(line?840:940)+'px',borderCollapse:'collapse'}},
+            h('thead',null,h('tr',null,
+              h('th',{style:{...th,paddingLeft:14}},this.t('dsoColDay')),
+              line?null:h('th',{style:th},this.t('lsCol1')),
+              h('th',{style:th},this.t('lsCol2')),
+              h('th',{style:th},this.t('dsoColPo')),
+              h('th',{style:th},this.t('dsoColColor')),
+              h('th',{style:th},this.t('dsoColSize')),
+              h('th',{style:th},this.t('dsoColReason')),
+              h('th',{style:{...th,borderRight:'none',textAlign:'right'}},this.t('dsoColDefQty')))),
+            h('tbody',null,body)))));
   }
 
   dsoSummary(){ const at={}, out=[];
     this.dsoHistory().forEach(r=>{ const k=r.day+'|'+r.line;
       if(!at[k]){ at[k]={key:k,day:r.day,line:r.line,done:0,handed:0}; out.push(at[k]); }
       at[k].done+=r.qty;
-      if(this.dsoHandAt(r)) at[k].handed+=r.qty; });
+      at[k].handed+=this.dsoHandedQty(r); });
     return out; }   // dsoHistory da sap ngay giam dan, chuyen tang dan
 
   // Bang tong hop o cap Daily Sewing Output (truoc khi chon chuyen)
+  // ==== Bang tong hop: chi hien 5 dong, con lai cuon ====================
+  // Chieu cao 1 dong KHONG doan theo padding duoc: bang hang loi co chip ma loi
+  // nen dong cao hon bang san luong, lai con doi theo font/zoom cua may. Nen do
+  // that 5 dong dau + dau bang + dong TONG tu DOM.
+  // Do xong nho vao _tblH roi ve lai dung 1 lan; lan sau do ra so cu -> dung,
+  // khong lap vo han. Bo qua chenh lech <= 1px cho khoi rung khi hien thanh cuon.
+  DSO_MAXROWS=5;
+  _tblH={};
+  // ref gan TRUOC componentDidMount -> _mounted van false, goi forceUpdate thang
+  // se bi bo qua va so do vua do khong bao gio duoc dung. Hoan 1 tick, tien the
+  // gop ca 2 bang vao chung mot lan ve lai.
+  tblSync(){ clearTimeout(this._tblT);
+    this._tblT=setTimeout(()=>{ if(this._mounted) this.forceUpdate(); },0); }
+  dsoTblRef(key,nRows){ return el=>{
+    if(!el) return;
+    const cur=this._tblH[key];
+    if(nRows<=this.DSO_MAXROWS){            // it dong -> bo gioi han, hien het
+      if(cur!==undefined){ delete this._tblH[key]; this.tblSync(); }
+      return; }
+    const hd=el.querySelector('thead tr'), ft=el.querySelector('tfoot tr'), tb=el.querySelector('tbody');
+    if(!hd||!ft||!tb) return;
+    const rows=[].slice.call(tb.children,0,this.DSO_MAXROWS);
+    if(rows.length<this.DSO_MAXROWS) return;
+    const H=Math.ceil(hd.getBoundingClientRect().height+ft.getBoundingClientRect().height
+      +rows.reduce((a,r)=>a+r.getBoundingClientRect().height,0));
+    if(H>0&&(cur===undefined||Math.abs(cur-H)>1)){
+      this._tblH[key]=H; this.tblSync(); } }; }
+
   renderDsoOverview(){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const sum=this.dsoSummary();
     const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
       color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,
-      background:'#f8faf3',whiteSpace:'nowrap'};
+      background:'#f8faf3',whiteSpace:'nowrap',position:'sticky',top:0,zIndex:2};
+    // Dong TONG ghim day khung: cuon giua bang van doc duoc tong so
+    const tf={position:'sticky',bottom:0,zIndex:2};
     const td={padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,borderRight:'1px solid '+C.line,verticalAlign:'middle'};
     const tDone=sum.reduce((a,r)=>a+r.done,0), tHand=sum.reduce((a,r)=>a+r.handed,0);
     const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:10}},
@@ -2513,13 +3239,14 @@ class Component extends DCLogic {
           color:left?'#946200':C.faint,whiteSpace:'nowrap'}},this.fmt(left))); });
     const foot=h('tr',null,
       h('td',{colSpan:2,style:{padding:'10px 12px',fontSize:11,fontWeight:700,letterSpacing:'.4px',
-        color:'#cfe0be',background:C.dark,whiteSpace:'nowrap'}},this.t('colTotal')),
-      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,color:'#e6efdb',background:C.dark}},this.fmt(tDone)),
-      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,color:'#fff',background:C.dark}},this.fmt(tHand)),
-      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,color:'#e6efdb',background:C.dark}},this.fmt(tDone-tHand)));
+        color:'#cfe0be',background:C.dark,whiteSpace:'nowrap',...tf}},this.t('colTotal')),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,color:'#e6efdb',background:C.dark,...tf}},this.fmt(tDone)),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,color:'#fff',background:C.dark,...tf}},this.fmt(tHand)),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,color:'#e6efdb',background:C.dark,...tf}},this.fmt(tDone-tHand)));
     return h('div',null,head,
       h('div',{style:{border:'1px solid '+C.border,borderRadius:13,overflow:'hidden'}},
-        h('div',{className:'yscroll',style:{overflowX:'auto'}},
+        h('div',{className:'yscroll',ref:this.dsoTblRef('ovw',body.length),
+            style:{overflowX:'auto',overflowY:'auto',maxHeight:this._tblH['ovw']}},
           h('table',{style:{width:'100%',minWidth:'620px',borderCollapse:'collapse'}},
             h('thead',null,h('tr',null,
               h('th',{style:{...th,paddingLeft:14}},this.t('dsoColDay')),
@@ -2527,6 +3254,353 @@ class Component extends DCLogic {
               h('th',{style:{...th,textAlign:'right'}},this.t('dsoOvwDone')),
               h('th',{style:{...th,textAlign:'right'}},this.t('dsoOvwHanded')),
               h('th',{style:{...th,borderRight:'none',textAlign:'right'}},this.t('dsoOvwLeft')))),
+            h('tbody',null,body),
+            h('tfoot',null,foot)))));
+  }
+
+  // ================= M-level board (andon toan man hinh) =================
+  // target = gio lam * 60 * cong nhan / SMV * %Target cua bac M
+  MLV_SLOTS=5;          // man hinh luon danh 5 o, bac hien tai o giua
+  // Cung quy tac chon dong nhu prodLines(): uu tien dong DA co cau hinh trong
+  // Line Setting. Lay dong dau vo dieu kien thi chuyen 2 style se doc cfg mac
+  // dinh trong khi nguoi dung sua dong thu hai -> board lech han Line Setting.
+  mlvRowOf(line){ const rows=this.getWeek().rows.filter(r=>this.normName(r.line)===line);
+    if(!rows.length) return null; const st=this.state.lset||{};
+    return rows.find(r=>st[this.lsKey(r)])||rows[0]; }
+  // Cong thuc chinh; tra null khi thieu du lieu de o hien ': ()'
+  mlvTarget(cfg,pct){ const hrs=parseFloat(cfg.hrs), w=Number(cfg.w), smv=parseFloat(cfg.smv);
+    if(!(hrs>0)||!(w>0)||!(smv>0)||!(pct>0)) return null;
+    return Math.floor(hrs*60*w/smv*(pct/100)); }
+  mlvNum(v){ const n=parseFloat(String(v==null?'':v).replace(/[^0-9.]/g,'')); return isNaN(n)?0:n; }
+  // Tong da lam cua ca chuyen (dung de xac dinh bac dang dat duoc)
+  mlvDone(line){ let n=0; this.dsoSizeCards(line).forEach(c=>{ n+=this.dsoDoneOf(c); }); return n; }
+  // K = (thu nhap 1 nguoi 9.5h / 9.5) * WORK HOURS cua line. Hien theo nghin.
+  mlvK(inc,hrs){ const i=this.mlvNum(inc), h=this.mlvNum(hrs);
+    return (i>0&&h>0)?(i/9.5*h):0; }
+  // 5 o quanh bac dang dat duoc; thieu bac thi o do hien ': ()'.
+  mlvSlots(line){ const r=this.mlvRowOf(line); if(!r) return {cfg:{},slots:[],cur:null};
+    const cfg=this.lsGet(r);
+    // Loai M cua chuyen = cot LOAI trong Line Setting (lsType suy tu SMV).
+    // Cac BAC (Ms/M1/M2...) la cac dong chi tiet cua loai do: moi dong co %Target
+    // rieng + thu nhap/1 nguoi (9.5h). Khong tim thay loai thi de trong, o hien
+    // ': ()' -- tot hon la lay bua loai dau danh muc roi bao ra so sai.
+    const ty=this.mtypeOf(r);
+    const det=ty?this.mtDet(ty.id):[];
+    let tiers=det.map(dd=>{ const nm=String(dd.name||'').trim();
+      return {key:dd.id,name:nm?(/^m/i.test(nm)?nm:'M'+nm):'\u2014',
+        pct:this.mlvNum(dd.tgt),inc:this.mlvNum(dd.inc),
+        target:this.mlvTarget(cfg,this.mlvNum(dd.tgt)),kraw:this.mlvK(dd.inc,cfg.hrs)}; });
+    // Sap tang dan theo %Target: no luon la so, con target co the null khi thieu
+    // SMV/cong nhan -- sap theo target se day cac bac thieu du lieu len dau thang.
+    tiers.sort((a,b)=>a.pct-b.pct);
+    const done=this.mlvDone(line);
+    let ci=-1; tiers.forEach((t,i)=>{ if(t.target!=null&&done>=t.target) ci=i; });
+    if(ci<0) ci=0;                       // chua vuot bac nao -> dang o bac thap nhat
+    const half=Math.floor(this.MLV_SLOTS/2), out=[];
+    // tren xuong duoi: bac cao nhat truoc (giong anh: M2 tren, Ms duoi)
+    for(let d=half;d>=-half;d--){ const t=tiers[ci+d];
+      if(!t){ out.push({empty:true,key:'e'+d}); continue; }
+      out.push({...t,cur:d===0}); }
+    const cu=out.find(x=>x.cur)||null;
+    return {cfg:cfg,row:r,type:ty,tiers:tiers,slots:out,cur:cu,done:done}; }
+  // Chat luong tu dsoDefLog: don vi dat = da lam, loi = so lan ghi loi
+  mlvQuality(line){ let def=0; const done=this.mlvDone(line), top={};
+    const m=this.state.dsoDefLog||{};
+    Object.keys(m).forEach(k=>{ const p=k.split('|'); if(p.length!==6||p[1]!==line) return;
+      const o=m[k]||{}; Object.keys(o).forEach(code=>{ const n=Number(o[code])||0;
+        def+=n; top[code]=(top[code]||0)+n; }); });
+    const units=done+def;
+    const t3=Object.keys(top).map(c=>({code:c,n:top[c]})).sort((a,b)=>b.n-a.n).slice(0,3);
+    return {done:done,def:def,
+      rate:units?(def/units*100):0,        // ti le loi tren tong don vi da kiem
+      dhu:done?(def/done*100):0,           // loi tren 100 san pham dat
+      top3:t3}; }
+  // SAN LUONG / GIO lay thang tu LICH SU HOAN THANH cua chuyen: moi ban ghi
+  // hoan thanh (ngay|chuyen|style|PO|mau|size) deu kem danh sach moc gio PASS
+  // trong dsoPassLog, gom lai theo gio la ra bieu do. Cung nguon voi bang lich
+  // su va voi so DA LAM -> khong bao gio lech nhau.
+  // Loc chuyen giong mlvQuality: khoa 6 doan, doan[1] la ten chuyen.
+  mlvHoursMap(line){ const m=this.state.dsoPassLog||{}, at={};
+    Object.keys(m).forEach(key=>{ const p=key.split('|');
+      if(p.length!==6||p[1]!==line) return;
+      (m[key]||[]).forEach(t=>{ const b=p[0]+'|'+String(t).slice(0,2);   // 'YYYY-MM-DD|HH'
+        at[b]=(at[b]||0)+1; }); });
+    return at; }
+  // 5 gio gan nhat, ke ca gio dang chay. Lui theo MOC THOI GIAN chu khong tru
+  // so gio: qua nua dem van tra ve dung ngay cua gio do.
+  mlvHours(line,n){ const at=this.mlvHoursMap(line), out=[], now=new Date();
+    const k=n||this.MLV_SLOTS;
+    for(let i=k-1;i>=0;i--){ const d=new Date(now.getTime()-i*3600000);
+      const hh=String(d.getHours()).padStart(2,'0');
+      out.push({h:d.getHours(),label:hh+':00',n:at[this.psFmtD(d)+'|'+hh]||0}); }
+    return out; }
+  // Roi khoi board thi PHAI tat: dong ho goi forceUpdate ca app moi giay, de chay
+  // tiep thi moi trang khac cua app cung bi ve lai 1 lan/giay.
+  mlvClockOff(){ if(this._mlvT){ clearInterval(this._mlvT); this._mlvT=null; } }
+  mlvClock(){ if(!this._mlvT) this._mlvT=setInterval(()=>{ if(this._mounted) this.forceUpdate(); },1000);
+    const d=new Date(), p=n=>String(n).padStart(2,'0');
+    return {t:p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()),
+      d:p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()}; }
+  // ---- Che do TV (toan man hinh) ----
+  // Khong dua vao Fullscreen API mot minh: no bi chan trong kha nhieu tinh huong
+  // (iframe khong co allow=fullscreen, cua so khong duoc focus, policy cua may) va
+  // khi chan thi nem 'TypeError: not granted' -> bam nut khong ra gi ca.
+  // Nen: che do TV la CSS phu kin viewport (luon chay duoc), con Fullscreen API
+  // chi la them -- duoc thi an luon thanh dia chi cua trinh duyet.
+  mlvIsFs(){ return !!this.state.mlvFs; }
+  mlvNativeFs(){ const d=document; return !!(d.fullscreenElement||d.webkitFullscreenElement); }
+  // Thoat fullscreen bang Esc/F11 -> tat luon che do TV cho khop trang thai
+  mlvFsWatch(){ if(this._mlvFsH) return;
+    this._mlvFsH=()=>{ if(!this._mounted) return;
+      if(!this.mlvNativeFs()&&this.state.mlvFs) this.set({mlvFs:false});
+      else this.forceUpdate(); };
+    document.addEventListener('fullscreenchange',this._mlvFsH);
+    document.addEventListener('webkitfullscreenchange',this._mlvFsH); }
+  mlvFsOff(){ if(!this._mlvFsH) return;
+    document.removeEventListener('fullscreenchange',this._mlvFsH);
+    document.removeEventListener('webkitfullscreenchange',this._mlvFsH);
+    this._mlvFsH=null; }
+  mlvFsToggle(){ const on=!this.state.mlvFs, d=document, el=this._mlvEl;
+    try{
+      if(on){ const rq=el&&(el.requestFullscreen||el.webkitRequestFullscreen);
+        if(rq){ const p=rq.call(el); if(p&&p.catch) p.catch(()=>{}); } }
+      else if(this.mlvNativeFs()){ const ex=d.exitFullscreen||d.webkitExitFullscreen;
+        if(ex){ const p=ex.call(d); if(p&&p.catch) p.catch(()=>{}); } }
+    }catch(e){}
+    this.set({mlvFs:on}); }
+  mlvExit(){ this.mlvClockOff();
+    if(this.mlvNativeFs()) this.mlvFsToggle();
+    this.mlvFsOff(); this.set({mlvLine:null,mlvFs:false}); }
+
+  // ================= Bang andon M-level =================
+  // Bo cuc va TI LE lay theo anh mau 1690x887: moi co chu / khoang cach ben duoi
+  // deu la so do trong anh, roi nhan he so k = be rong that / 1690. Nho vay ti le
+  // giu nguyen du treo TV 4K hay xem trong cua so, khong phai keo gian cho day man.
+  MLV_REF_W=1690; MLV_REF_H=887;
+  // Khung noi dung luon dung ti le anh mau.
+  //  - Toan man hinh: vua khit trong viewport, thua ra thanh vien den tren/duoi.
+  //  - Trong cua so: an het be rong, cao suy ra tu ti le -> khong co vien den hai ben.
+  mlvBox(fs){ const W0=this.MLV_REF_W, R=this.MLV_REF_H/W0, PADX=fs?0:14;
+    const outer=(this._mlvEl&&this._mlvEl.clientWidth)||(fs?(window.innerWidth||W0):W0);
+    const wMax=Math.max(520,outer-PADX*2);
+    const w=fs?Math.min(wMax,Math.round((window.innerHeight||Math.round(W0*R))/R)):wMax;
+    return {w:w,h:Math.round(w*R),k:w/W0,pad:PADX}; }
+  renderMlvBoard(line){
+    const h=React.createElement, mono="'IBM Plex Mono',monospace";
+    const Y='#f5c518', R='#ff2d2d', W='#fff', G='#8b9099';
+    const {cfg,row,slots,cur}=this.mlvSlots(line);
+    const q=this.mlvQuality(line), ck=this.mlvClock();
+    const fs=this.mlvIsFs(); this.mlvFsWatch();
+    const B=this.mlvBox(fs), k=B.k;
+    const px=n=>Math.max(9,Math.round(n*k));   // co chu
+    const sp=n=>Math.max(1,Math.round(n*k));   // khoang cach
+    const tgt=cur&&cur.target!=null?cur.target:null;
+    const big=(v,c,sz)=>h('span',{style:{fontSize:px(sz),fontWeight:800,color:c,lineHeight:.92,
+      letterSpacing:'-0.03em',fontFamily:'inherit'}},v);
+    const btn=(label,fn)=>h('button',{key:label,onClick:fn,
+      style:{background:'#1b1b1b',color:W,border:'1px solid #4a4a4a',borderRadius:sp(9),
+        padding:sp(7)+'px '+sp(15)+'px',fontSize:px(20),fontWeight:700,fontFamily:'inherit',
+        cursor:'pointer',whiteSpace:'nowrap'}},label);
+    // ---- SAN LUONG / GIO ----
+    // Khong ve vach dinh muc nua, nhung dinh muc/gio VAN dung de:
+    //   - to mau cot: vang = dat nhip gio, do = duoi nhip
+    //   - lam thang do: cot duoi dinh muc thi phai thap that, khong phong len cho day
+    const wh=this.mlvNum(cfg.hrs), pace=(tgt!=null&&wh>0)?Math.round(tgt/wh):null;
+    const bars=this.mlvHours(line);
+    const peak=Math.max(pace||0,...bars.map(x=>x.n),1);
+    const BODY=sp(292), NUM=px(20), AVAIL=BODY-NUM-sp(6), GAP=sp(14);
+    const chart=h('div',{style:{flex:'1 1 0',minWidth:0}},
+      h('div',{style:{fontSize:px(27),fontWeight:800,letterSpacing:'2px',color:G,
+        marginBottom:sp(16)}},this.t('mlvPerHour')),
+      h('div',{style:{display:'flex',gap:GAP,alignItems:'flex-end',height:BODY}},
+        bars.map(x=>{ const ok=pace!=null?x.n>=pace:x.n>0;
+          return h('div',{key:x.label,title:this.t('mlvHourTip'),
+              style:{flex:1,minWidth:0,display:'flex',flexDirection:'column',
+                justifyContent:'flex-end',gap:sp(6)}},
+            h('div',{style:{fontSize:NUM,fontWeight:800,fontFamily:mono,textAlign:'center',
+              lineHeight:1,color:x.n?(ok?Y:R):W}},this.fmt(x.n)),
+            h('div',{style:{height:x.n?Math.max(3,Math.round(x.n/peak*AVAIL)):0,
+              background:ok?Y:R,borderRadius:sp(3)+'px '+sp(3)+'px 0 0'}})); })),
+      h('div',{style:{height:2,background:'#e8e8e8',margin:'0 0 '+sp(6)+'px'}}),
+      h('div',{style:{display:'flex',gap:GAP}},
+        bars.map(x=>h('div',{key:x.label,style:{flex:1,minWidth:0,textAlign:'center',
+          fontSize:px(19),fontWeight:700,color:W,fontFamily:mono}},x.label))));
+    // ---- CHAT LUONG ----
+    const qRow=(label,val,mb)=>h('div',{key:label,style:{display:'flex',
+        justifyContent:'space-between',alignItems:'baseline',gap:sp(12),marginBottom:sp(mb)}},
+      h('span',{style:{fontSize:px(28),fontWeight:700,color:W}},label),
+      h('span',{style:{fontSize:px(36),fontWeight:800,color:Y,fontFamily:mono}},val));
+    const qual=h('div',{style:{flex:'1 1 0',minWidth:0}},
+      h('div',{style:{fontSize:px(27),fontWeight:800,letterSpacing:'2px',color:G,
+        marginBottom:sp(16)}},this.t('mlvQual')),
+      qRow(this.t('mlvRate'),q.rate.toFixed(1)+'%',14),
+      qRow('DHU',q.dhu.toFixed(1),18),
+      h('div',{style:{fontSize:px(27),fontWeight:800,color:W,marginBottom:sp(8)}},this.t('mlvTop3')),
+      q.top3.length
+        ? q.top3.map((x,i)=>h('div',{key:x.code,style:{fontSize:px(27),fontWeight:800,color:Y,
+            fontFamily:mono,lineHeight:1.45}},(i+1)+'. '+x.code+' ('+this.fmt(x.n)+')'))
+        : h('div',{style:{fontSize:px(27),color:G}},'\u2014'));
+    // ---- khung noi dung: header + hero ben trai, target + bac M ben phai, day la 2 o duoi ----
+    const box=h('div',{style:{width:B.w,height:B.h,margin:'0 auto',position:'relative',
+        display:'flex',flexDirection:'column',padding:sp(20)+'px '+sp(30)+'px '+sp(18)+'px'}},
+      h('div',{style:{position:'absolute',top:0,right:0,zIndex:2,display:'flex',gap:sp(8)}},
+        btn(this.t(fs?'mlvExitFull':'mlvFull'),()=>this.mlvFsToggle()),
+        btn(this.t('mlvSwitch'),()=>this.mlvExit())),
+      h('div',{style:{display:'flex',alignItems:'flex-start',gap:sp(24)}},
+        // cot trai: gio / to+style / DA LAM - TARGET
+        h('div',{style:{flex:'1 1 0',minWidth:0}},
+          h('div',{style:{display:'flex',alignItems:'baseline',gap:sp(16)}},
+            h('span',{style:{fontSize:px(44),fontWeight:800,color:Y,fontFamily:mono}},ck.t),
+            h('span',{style:{fontSize:px(34),fontWeight:700,color:W,fontFamily:mono}},ck.d)),
+          h('div',{style:{display:'flex',alignItems:'baseline',gap:sp(22),marginTop:sp(10),
+              flexWrap:'wrap'}},
+            h('span',{style:{fontSize:px(46),fontWeight:800,color:Y}},
+              this.t('mlvTeam')+' '+String(line).replace(/^LINE\s*/i,'')+' / '+line),
+            h('span',{style:{fontSize:px(44),fontWeight:800,color:Y,fontFamily:mono}},
+              (row&&row.style)||'\u2014')),
+          // DA LAM / TARGET la so quan trong nhat cua bang -> to nhat, to hon
+          // ca so target do ben phai. 168 la muc con du cho ca truong hop
+          // 4 chu so ca 2 ben ('1,234 / 1,234') ma khong dam vao cot bac M.
+          h('div',{style:{textAlign:'center',marginTop:sp(52)}},
+            h('span',{style:{display:'inline-flex',alignItems:'baseline',gap:sp(30),
+                whiteSpace:'nowrap'}},
+              big(this.fmt(q.done),R,168), big('/',W,112),
+              big(tgt==null?'\u2014':this.fmt(tgt),W,168)))),
+        // cot phai: target lon + 5 bac M
+        h('div',{style:{flex:'0 0 auto',textAlign:'right',marginTop:sp(56)}},
+          h('div',null,big(tgt==null?'\u2014':this.fmt(tgt),R,132)),
+          h('div',{style:{marginTop:sp(14)}},
+            slots.map(sl=>sl.empty
+              ? h('div',{key:sl.key,style:{fontSize:px(32),fontWeight:800,color:W,
+                  fontFamily:mono,lineHeight:1.4}},': ()')
+              : h('div',{key:sl.key,
+                  title:sl.kraw?(this.t('mlvIncTip')+': '+this.fmt(Math.round(sl.kraw))+' VND'):undefined,
+                  style:{fontSize:px(32),fontWeight:800,fontFamily:mono,lineHeight:1.4,
+                    color:sl.cur?W:R}},
+                  (sl.cur?(this.fmt(Number(cfg.w)||0)+'\u00a0\u00a0'):'')+sl.name+' : '
+                    // chua khai bao thu nhap -> '\u2014', khong phai 'K' tro tron
+                    +(sl.kraw?(this.fmt(Math.round(sl.kraw/1000))+'K'):'\u2014')
+                    +' ('+(sl.target==null?'':this.fmt(sl.target))+')'))))),
+      // KHONG ep chieu cao hang duoi: ep 440 thi noi dung chi cao ~362, phan
+      // thua nam BEN TRONG hang -> hut mot dai den ngay duoi chart. De hang tu
+      // co theo noi dung, marginTop:'auto' day no xuong sat day khung.
+      h('div',{style:{display:'flex',gap:sp(30),marginTop:'auto'}},chart,qual));
+    return h('div',{ref:el=>{ this._mlvEl=el; },'data-screen-label':'DSO M-level Board',
+      style:{background:'#000',color:W,overflow:'hidden',
+        ...(fs
+          ? {position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:9999,borderRadius:0,
+             display:'flex',alignItems:'center',justifyContent:'center',padding:0}
+          : {position:'relative',borderRadius:14,padding:B.pad})}},
+      box);
+  }
+
+  // Chia theo tung line giong man Production
+  renderDsoMlv(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const list=this.prodLines();
+    if(this.state.mlvLine&&list.some(x=>x.line===this.state.mlvLine)) return this.renderMlvBoard(this.state.mlvLine);
+    this.mlvClockOff();
+    if(!list.length) return h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('demandEmpty'));
+    return h('div',{style:{padding:'16px 18px 20px'}},
+      h('div',{style:{fontSize:12,color:C.faint,marginBottom:11}},this.t('mlvPick')),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(238px,1fr))',gap:12}},
+        list.map(x=>{ const {cfg,cur}=this.mlvSlots(x.line);
+          const tg=cur&&cur.target!=null?cur.target:null;
+          return h('div',{key:x.line,onClick:()=>this.set({mlvLine:x.line}),title:this.t('mlvOpen'),
+            style:{border:'1px solid '+C.border,borderRadius:14,background:'#101010',color:'#fff',cursor:'pointer',
+              padding:'13px 15px',minHeight:104,display:'flex',flexDirection:'column',justifyContent:'space-between',gap:12},
+            'style-hover':{borderColor:C.primary}},
+            h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}},
+              h('div',{style:{fontSize:16,fontWeight:800,color:'#f5c518',fontFamily:mono}},x.line),
+              h('div',{style:{fontSize:11,fontWeight:700,color:'#8b9099'}},cur?cur.name:'\u2014')),
+            h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:10}},
+              h('div',{style:{fontSize:22,fontWeight:800,color:'#ff2d2d',fontFamily:mono}},
+                this.fmt(this.mlvQuality(x.line).done)),
+              h('div',{style:{fontSize:15,fontWeight:700,color:'#fff',fontFamily:mono}},
+                '/ '+(tg==null?'\u2014':this.fmt(tg))))); })));
+  }
+
+  // ==== Tong hop hang loi theo CHUYEN -- cho trang Daily Sewing Output ====
+  // Gop MOI ngay lai. 'Da kiem' = pass + fail, ti le loi tinh tren tong da kiem.
+  dsoFailByLine(){ const at={}, out=[];
+    const get=n=>{ if(!at[n]){ at[n]={line:n,pass:0,fail:0,by:{}}; out.push(at[n]); } return at[n]; };
+    const dm=this.state.dsoDone||{};
+    Object.keys(dm).forEach(k=>{ const q=Number(dm[k])||0; if(q<=0) return;
+      const p=k.split('|'); if(p.length===6) get(p[1]).pass+=q; });
+    const fm=this.state.dsoDefLog||{};
+    Object.keys(fm).forEach(k=>{ const p=k.split('|'); if(p.length!==6) return;
+      const a=get(p[1]), o=fm[k]||{};
+      Object.keys(o).forEach(c=>{ const q=Number(o[c])||0; if(q<=0) return;
+        a.fail+=q; a.by[c]=(a.by[c]||0)+q; }); });
+    out.forEach(a=>{ const u=a.pass+a.fail; a.rate=u?(a.fail/u*100):0;
+      a.top=Object.keys(a.by).map(c=>({code:c,n:a.by[c]}))
+        .sort((x,y)=>y.n-x.n||String(x.code).localeCompare(String(y.code)))[0]||null; });
+    // Chuyen loi NHIEU NHAT len dau -- bang nay de soi chat luong, khong phai tra cuu
+    return out.sort((a,b)=>b.fail-a.fail||String(a.line).localeCompare(String(b.line))); }
+  dsoPct1(v){ return (Math.round((Number(v)||0)*10)/10).toFixed(1)+'%'; }
+
+  renderDsoFailOverview(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const rows=this.dsoFailByLine();
+    const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+      color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,
+      background:'#f8faf3',whiteSpace:'nowrap',position:'sticky',top:0,zIndex:2};
+    // Dong TONG ghim day khung: cuon giua bang van doc duoc tong so
+    const tf={position:'sticky',bottom:0,zIndex:2};
+    // Mau nen dat o <tr> de :hover ca dong hien duoc (bam 1 dong -> mo chuyen)
+    const td={padding:'8px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,
+      borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    const tPass=rows.reduce((a,r)=>a+r.pass,0), tFail=rows.reduce((a,r)=>a+r.fail,0);
+    const tRate=(tPass+tFail)?(tFail/(tPass+tFail)*100):0;
+    const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:10,marginTop:26}},
+      h('div',{style:{minWidth:0}},
+        h('div',{style:{fontSize:15,fontWeight:700}},this.t('dsoFailOvw')),
+        h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('dsoFailOvwSub'))),
+      h('div',{style:{flex:1}}),
+      h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:'#a3271b',background:'#fdecea',
+        border:'1px solid #eccfca',borderRadius:999,padding:'4px 11px',whiteSpace:'nowrap'}},
+        this.t('dsoFail')+' '+this.fmt(tFail)+' \u00b7 '+this.dsoPct1(tRate)));
+    if(!rows.length) return h('div',null,head,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,background:C.white,padding:'30px 20px',
+        textAlign:'center',color:C.faint,fontSize:13}},this.t('dsoFailOvwEmpty')));
+    const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white, nm=r.top?this.dsoDefName(r.top.code):'';
+      return h('tr',{key:r.line,onClick:()=>this.set({dsoLine:r.line}),title:this.t('dsoOpenLine'),
+          style:{cursor:'pointer',background:bg},'style-hover':{background:C.tint}},
+        h('td',{style:{...td,paddingLeft:14,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},r.line),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:600,whiteSpace:'nowrap'}},this.fmt(r.pass)),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,
+          color:r.fail?'#a3271b':'#c3c8bf',whiteSpace:'nowrap'}},this.fmt(r.fail)),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
+          color:r.rate?'#946200':C.faint,whiteSpace:'nowrap'}},this.dsoPct1(r.rate)),
+        h('td',{style:{...td,borderRight:'none'}}, r.top
+          ? h('span',{style:{display:'inline-flex',alignItems:'center',gap:8,flexWrap:'wrap'}},
+              h('span',{style:{fontSize:11,fontWeight:700,fontFamily:mono,color:'#a3271b',background:'#fdecea',
+                border:'1px solid #eccfca',borderRadius:999,padding:'2px 8px',whiteSpace:'nowrap'}},r.top.code),
+              h('span',{style:{fontWeight:600,wordBreak:'break-word'}},nm||'\u2014'),
+              h('span',{style:{fontSize:11.5,fontFamily:mono,color:C.faint,whiteSpace:'nowrap'}},
+                '\u00d7'+this.fmt(r.top.n)))
+          : h('span',{style:{color:C.faint}},'\u2014'))); });
+    const foot=h('tr',null,
+      h('td',{style:{padding:'10px 12px',fontSize:11,fontWeight:700,letterSpacing:'.4px',
+        color:'#cfe0be',background:C.dark,whiteSpace:'nowrap',...tf}},this.t('colTotal')),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,
+        color:'#e6efdb',background:C.dark,...tf}},this.fmt(tPass)),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:14,
+        color:'#fff',background:C.dark,...tf}},this.fmt(tFail)),
+      h('td',{style:{padding:'10px 10px',textAlign:'right',fontFamily:mono,fontWeight:700,fontSize:12.5,
+        color:'#e6efdb',background:C.dark,...tf}},this.dsoPct1(tRate)),
+      h('td',{style:{background:C.dark,...tf}}));
+    return h('div',null,head,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:13,overflow:'hidden'}},
+        h('div',{className:'yscroll',ref:this.dsoTblRef('fail',body.length),
+            style:{overflowX:'auto',overflowY:'auto',maxHeight:this._tblH['fail']}},
+          h('table',{style:{width:'100%',minWidth:'660px',borderCollapse:'collapse'}},
+            h('thead',null,h('tr',null,
+              h('th',{style:{...th,paddingLeft:14}},this.t('lsCol1')),
+              h('th',{style:{...th,textAlign:'right'}},this.t('dsoPass')),
+              h('th',{style:{...th,textAlign:'right'}},this.t('dsoFail')),
+              h('th',{style:{...th,textAlign:'right'}},this.t('dsoFailRate')),
+              h('th',{style:{...th,borderRight:'none'}},this.t('dsoTopDef')))),
             h('tbody',null,body),
             h('tfoot',null,foot)))));
   }
@@ -2554,6 +3628,7 @@ class Component extends DCLogic {
           corner(this.t('lsCol6'),show(x.cfg.smv),true)))));
     return h('div',{style:{padding:'16px 18px 20px'}},
       this.renderDsoOverview(),
+      this.renderDsoFailOverview(),
       h('div',{style:{fontSize:15,fontWeight:700,margin:'24px 0 4px'}},this.t('dsoLines')),
       h('div',{style:{fontSize:12,color:C.faint,marginBottom:11}},this.t('dsoLinesSub')),
       cardGrid);
@@ -2578,14 +3653,14 @@ class Component extends DCLogic {
         h('td',{title:this.t('tipPlanCol'),style:{...lock,background:C.tint,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},this.normName(r.line)),
         h('td',{title:this.t('tipPlanCol'),style:{...lock,background:bg,fontFamily:mono,wordBreak:'break-all'}},r.style||'\u2014'),
         h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('w','0')),
-        h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('hrs','9.5','lsHrs')),
+        h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('hrs','9.5','lsDec1')),
         h('td',{style:{...td,background:bg,textAlign:'center',color:C.faint,fontFamily:mono}},v.date||'\u2014'),
-        h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('smv','0')),
+        h('td',{title:this.t('lsDec1Tip'),style:{...td,background:bg,textAlign:'center',fontFamily:mono}},num('smv','0','lsDec1')),
         h('td',{title:this.t('lsTypeTip'),style:{...td,background:bg,textAlign:'center'}}, ed
-          ? h('select',{value:this.lsType(r),disabled:true,onChange:()=>{},
+          ? h('select',{value:this.lsTypeLabel(r),disabled:true,onChange:()=>{},
               style:{...inp,border:'1px solid '+C.border,color:C.sub,background:'#f1f2ef',cursor:'not-allowed',appearance:'auto'}},
-              h('option',{value:this.lsType(r)},this.lsType(r)||'\u2014'))
-          : (this.lsType(r)||'\u2014')),
+              h('option',{value:this.lsTypeLabel(r)},this.lsTypeLabel(r)||'\u2014'))
+          : (this.lsTypeLabel(r)||'\u2014')),
         h('td',{style:{...td,background:bg,textAlign:'center',fontFamily:mono,fontWeight:700}}, ed
           ? h('input',{type:'text',inputMode:'numeric',value:v.tgt==null?'':v.tgt,placeholder:'0',
               title:this.t('lsPctTip'),onChange:e=>this.lsSet(r,{tgt:this.lsPct(e.target.value)}),style:{...inp,textAlign:'center'}})
@@ -2624,12 +3699,13 @@ class Component extends DCLogic {
 
   renderDsoBody(){
     const h=React.createElement; const tab=this.state.dsoTab||'cfg';
+    if(tab!=='mlv') this.mlvClockOff();
     return h('div',{ref:this.scrollRef,className:'yscroll',style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
       this.renderTitle('dsoTitle','S-05-SEWOUT-DAILY · UI Proto'),
       this.tabBar(this.DSO_TABS,tab,id=>this.set({dsoTab:id,edit:null}),false),
       tab==='prod'?this.dsoCard('dsoProdPanel','dsoProdSub','DSO Production',this.renderDsoProd())
       :tab==='alert'?this.renderDsoAlerts()
-      :tab==='mlv'?this.dsoCard('dsoMlvPanel','dsoMlvSub','DSO M-level')
+      :tab==='mlv'?this.renderDsoMlv()
       :this.renderDsoSettings());
   }
 
@@ -3425,18 +4501,24 @@ class Component extends DCLogic {
       if(e.key==='Escape'&&this.state.psAdd) this.set({psAdd:null});
       if(e.key==='Escape'&&this.state.conf) this.set({conf:null});
       if(e.key==='Escape'&&this.state.dsoTap) this.dsoTapClose();
+      if(e.key==='Escape'&&this.state.mlvFs) this.set({mlvFs:false});
+      if(e.key==='Escape'&&this.state.dsoHandBulk) this.set({dsoHandBulk:null});
+      if(e.key==='Escape'&&this.state.dsoHandAsk) this.dsoSlipClose();
       if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')&&(this.state.psTrash||[]).length){ e.preventDefault(); this.psUndo(); } };
     document.addEventListener('keydown',this._esc);
+    // May moi (localStorage rong) da duoc nap localStorage o seedStorage();
+    // blob trong IndexedDB la bat dong bo nen nap o day.
+    if(window.MES_SEED_FIRST&&window.MES_SEED) this.snapPutIdb(window.MES_SEED,true).catch(()=>{});
     this.awaitData();
     setTimeout(()=>this.psGoToday(),160); }
   // Bản HTML rời nạp data/psched.js & data/khc.js không đồng bộ — chờ có dữ liệu rồi vẽ lại
-  awaitData(){ this.ensureSeed(); this.reconcileWeeks(); let n=0;
+  awaitData(){ this.ensureSeed(); this.reconcileWeeks(); this.fgEnsure(); let n=0;
     this._dataT=setInterval(()=>{ n++;
       const ready=window.PSCHED&&window.KHC&&window.KHC.__seed&&window.PSCHED.__seed;
       if(window.PSCHED&&window.KHC) this.ensureSeed();
-      if(ready){ clearInterval(this._dataT); this._dataT=null; this.reconcileWeeks(); this.psGoToday(); }
+      if(ready){ clearInterval(this._dataT); this._dataT=null; this.reconcileWeeks(); this.fgEnsure(); this.psGoToday(); }
       else if(n>240){ clearInterval(this._dataT); this._dataT=null; } },50); }
-  componentWillUnmount(){ clearTimeout(this._pt); clearInterval(this._dataT); this.persist(); if(this._esc) document.removeEventListener('keydown',this._esc); document.body.classList.remove('kc-qr-open'); }
+  componentWillUnmount(){ clearTimeout(this._pt); clearTimeout(this._tblT); clearTimeout(this._snT); clearTimeout(this._fgT); clearInterval(this._dataT); this.mlvClockOff(); this.mlvFsOff(); this.persist(); if(this._esc) document.removeEventListener('keydown',this._esc); document.body.classList.remove('kc-qr-open'); document.body.classList.remove('bg-slip-open'); }
 
   renderKhcBody(hidePicker){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
@@ -3582,6 +4664,565 @@ class Component extends DCLogic {
         h('div',{'data-qr-grid':'',style:{padding:18,display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(360px,1fr))',gap:13,maxHeight:'calc(100vh - 175px)',overflowY:'auto'}},cards)));
   }
 
+  // ==========================================================================
+  // HOÀN THIỆN (FINISHING)
+  // --------------------------------------------------------------------------
+  // Đầu vào duy nhất: tờ phiếu bàn giao BG-… phát hành ở MAY · Sản lượng may
+  // hàng ngày (state.dsoSlips). Hoàn thiện XÁC NHẬN NHẬN từng tờ phiếu; số lượng
+  // đã nhận chảy tiếp qua 4 công đoạn rồi lên Kế hoạch xuất hàng thành phẩm.
+  //
+  //   Finishing In     -> nhận phiếu bàn giao   (state.finRecv)
+  //   Finishing Status -> Ủi → Kiểm cuối → Đóng gói → Nhập kho TP (state.finStage)
+  //   F.G Shipment     -> lô xuất theo mã hàng · PO (state.fgRows)
+  //
+  // Không có bảng dữ liệu riêng: mọi con số đều dẫn ngược được về phiếu bàn giao.
+  // ==========================================================================
+  FIN_STAGES=[['iron','fsIron'],['qc','fsQc'],['pack','fsPack'],['fg','fsFg']];
+  // PO cua 1 don, doc DUY NHAT o day: uu tien PO ghi tren tac nghiep cat roi moi
+  // den PO cua don. dsoSizeCards (phia may) va fgSeed (ke hoach xuat) cung goi
+  // ham nay -> khoa (ma hang | PO) cua 2 ben luon khop, cot SAN SANG chay dung.
+  orderPo(o,pl){ if(pl===undefined) pl=this.psPlan(o);
+    return String((pl&&pl.po)||(o&&o.po)||'').replace(/^PO\s*/i,'').trim()||'\u2014'; }
+
+  // Dải KPI dùng chung cho cả 3 màn Hoàn thiện — cùng ngôn ngữ với Dashboard
+  finKpis(cards){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    return h('div',{style:{display:'grid',gridTemplateColumns:'repeat('+cards.length+',minmax(0,1fr))',gap:12,marginBottom:16}},
+      cards.map(([label,val,sub,warn],i)=>h('div',{key:i,title:sub||'',
+        style:{background:C.white,border:'1px solid '+C.border,borderRadius:13,padding:'10px 14px',
+          boxShadow:C.shadow,display:'flex',alignItems:'center',gap:10}},
+        h('div',{style:{width:26,height:26,borderRadius:8,background:warn?'#fbf3df':C.tint,
+          color:warn?'#b0791b':C.dark,display:'flex',alignItems:'center',justifyContent:'center',flex:'none'}},this.finIc(i)),
+        h('div',{style:{flex:1,minWidth:0,fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:C.sub,
+          whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},label),
+        h('div',{style:{fontSize:19,fontWeight:700,letterSpacing:'-.4px',lineHeight:1,
+          fontVariantNumeric:'tabular-nums',flex:'none',fontFamily:mono,color:warn?'#b0791b':C.ink}},val))));
+  }
+  finIc(i){ const h=React.createElement, p={width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8};
+    const d=[['M3 7h18v13H3z','M8 7V4h8v3'],
+             ['M12 2 2 7l10 5 10-5-10-5z','M2 17l10 5 10-5M2 12l10 5 10-5'],
+             ['M20 6 9 17l-5-5'],
+             ['M22 12h-4l-3 9L9 3l-3 9H2']];
+    return h('svg',p,d[i%4].map((x,j)=>h('path',{key:j,d:x}))); }
+  // 'XS:12  S:30  M:44' — theo đúng thứ tự size chuẩn, size lạ xếp cuối
+  finSizeTxt(sizes){ const o=sizes||{};
+    const std=this.SORDER.filter(z=>Number(o[z])>0);
+    const rest=Object.keys(o).filter(z=>this.SORDER.indexOf(z)<0&&Number(o[z])>0).sort();
+    return std.concat(rest).map(z=>z+':'+this.fmt(o[z])).join('  '); }
+  finChip(on){ const h=React.createElement, C=this.C;
+    const c=on?{fg:C.dark,bg:C.tint,bd:'#cfe3a6'}:{fg:'#b0791b',bg:'#fbf3df',bd:'#ecdcb4'};
+    return h('span',{style:{fontSize:11,fontWeight:700,color:c.fg,background:c.bg,border:'1px solid '+c.bd,
+      borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},this.t(on?'fiDone':'fiWait')); }
+
+  // ---- Finishing In: sổ nhận phiếu bàn giao --------------------------------
+  finRecvMap(){ return this.state.finRecv||{}; }
+  // Chỉ phiếu ĐÃ CHỐT (có ts) mới về hoàn thiện — bản nháp chưa phát hành thì không
+  finSlips(){ return this.dsoSlipList().filter(s=>s&&s.id&&s.ts); }
+  // 1 dong cua to phieu -> (ma hang | PO | mau) THAT. Uu tien a.key vi do la
+  // dung khoa lich su may (ngay|chuyen|ma hang|PO|mau); phieu cu khong co alloc
+  // thi lui ve chinh cac truong cua to phieu.
+  finPart(a,s){ const p=String((a&&a.key)||'').split('|'), k5=p.length===5;
+    const g=(i,alt,sv)=>{ const v=(k5?p[i]:'')||alt||sv; return (v==null||v==='')?'—':String(v); };
+    return {style:g(2,a&&a.style,s.style), po:g(3,a&&a.po,s.po), color:g(4,a&&a.color,s.color),
+      line:String((k5?p[1]:'')||(a&&a.line)||s.line||'').trim(),
+      qty:Number(a&&a.qty)||0, sizes:(a&&a.sizes)||{}}; }
+  finParts(s){ const al=(s.alloc||[]).filter(a=>a&&(Number(a.qty)||0)>0);
+    return al.length?al.map(a=>this.finPart(a,s))
+      :[{style:s.style||'—',po:s.po||'—',color:s.color||'—',line:s.line||'',
+         qty:Number(s.qty)||0,sizes:s.sizes||{}}]; }
+  finList(q){ const list=this.finSlips().slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
+    q=String(q||'').trim().toLowerCase(); if(!q) return list;
+    return list.filter(s=>[this.dsoSlipNo(s),s.line,s.style,s.po,s.color].join(' ').toLowerCase().indexOf(q)>=0); }
+  finRecvSet(id,on){ this.setState(st=>{ const m={...(st.finRecv||{})};
+    if(on) m[id]={ts:Date.now(),by:(m[id]&&m[id].by)||''}; else delete m[id];
+    return {finRecv:m}; }); }
+  finRecvWho(id,by){ this.setState(st=>{ const m={...(st.finRecv||{})};
+    if(!m[id]) return null; m[id]={...m[id],by}; return {finRecv:m}; }); }
+  finRecvAll(){ const ids=this.finSlips().map(s=>s.id);
+    this.setState(st=>{ const m={...(st.finRecv||{})}, ts=Date.now();
+      ids.forEach(id=>{ if(!m[id]) m[id]={ts,by:''}; }); return {finRecv:m}; }); }
+
+  renderFinInBody(){
+    const h=React.createElement;
+    return h('div',{ref:this.scrollRef,className:'yscroll','data-screen-label':'Finishing In',
+      style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
+      this.renderTitle('fiTitle','S-06-FINISH-IN · UI Proto'),
+      this.renderFinInKpis(),
+      this.renderFinInTable(),
+      this.renderDsoHandAsk());
+  }
+  renderFinInKpis(){
+    const rec=this.finRecvMap(), today=this.dsoToday();
+    let waitN=0, waitQ=0, todayQ=0, allQ=0;
+    this.finSlips().forEach(s=>{ const q=Number(s.qty)||0, r=rec[s.id];
+      if(r){ allQ+=q; if(this.psFmtD(new Date(r.ts||0))===today) todayQ+=q; }
+      else { waitN++; waitQ+=q; } });
+    return this.finKpis([
+      [this.t('fiK1'),this.fmtn(waitN),this.t('fiK1s'),waitN>0],
+      [this.t('fiK2'),this.fmtn(waitQ),this.t('fiK2s'),waitQ>0],
+      [this.t('fiK3'),this.fmtn(todayQ),this.t('fiK3s')],
+      [this.t('fiK4'),this.fmtn(allQ),this.t('fiK4s')]]);
+  }
+  renderFinInTable(){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const q=this.state.finQ||'', all=this.finSlips(), rows=this.finList(q), rec=this.finRecvMap();
+    const wait=all.filter(s=>!rec[s.id]).length;
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+      h('span',{style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:999,padding:'4px 10px',whiteSpace:'nowrap'}},
+        this.fmt(all.length)+' '+this.t('fiCount')),
+      this.dfSearchBox(q,v=>this.set({finQ:v}),false,'fiSearch'),
+      wait?this.mtBtn(this.t('fiRecvAll'),()=>this.finRecvAll(),
+        {color:C.primary,borderColor:C.border,padding:'6px 12px',fontSize:12}):null);
+    const body=rows.map((s,i)=>{
+      const r=rec[s.id], on=!!r, bg=i%2?'#f7f9f3':C.white;
+      return h('tr',{key:s.id},
+        h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
+        h('td',{style:{...S.td,background:bg,whiteSpace:'nowrap'}},
+          h('span',{title:this.t('fiView'),onClick:()=>this.dsoSlipOpen(s),
+            style:{fontFamily:S.mono,fontWeight:700,color:C.primary,cursor:'pointer',borderBottom:'1px dotted '+C.primary}},
+            this.dsoSlipNo(s))),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontSize:11.5,color:C.sub,whiteSpace:'nowrap'}},this.dsoSlipWhen(s.ts)),
+        h('td',{style:{...S.td,background:bg,fontWeight:600,whiteSpace:'nowrap'}},s.line||'—'),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700}},s.style||'—'),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},s.po||'—'),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},s.color||'—'),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontSize:11,color:C.sub,wordBreak:'break-word'}},
+          this.finSizeTxt(s.sizes)||'—'),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700,textAlign:'right'}},this.fmt(s.qty)),
+        h('td',{style:{...S.td,background:bg,whiteSpace:'nowrap'}},this.finChip(on)),
+        h('td',{style:{...S.td,background:bg}},
+          on?h('input',{value:r.by||'',placeholder:this.t('fiWho'),onChange:e=>this.finRecvWho(s.id,e.target.value),
+                style:{...S.inp,fontFamily:'inherit'}})
+            :h('span',{style:{color:C.faint}},'—')),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('div',{style:{display:'flex',gap:6}},
+            on?this.mtBtn(this.t('fiUnrecv'),()=>this.finRecvSet(s.id,false),{color:'#c0392b',borderColor:'#eccfca'})
+              :this.mtBtn(this.t('fiRecv'),()=>this.finRecvSet(s.id,true),{border:'1px solid '+C.primary,background:C.tint}),
+            this.mtBtn(this.t('fiView'),()=>this.dsoSlipOpen(s)))));
+    });
+    const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1240px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'46px'}}),h('col',{style:{width:'132px'}}),
+          h('col',{style:{width:'126px'}}),h('col',{style:{width:'82px'}}),h('col',{style:{width:'118px'}}),
+          h('col',{style:{width:'82px'}}),h('col',{style:{width:'120px'}}),h('col',{style:{width:'auto'}}),
+          h('col',{style:{width:'84px'}}),h('col',{style:{width:'92px'}}),h('col',{style:{width:'132px'}}),
+          h('col',{style:{width:'150px'}})),
+        h('thead',null,h('tr',null,
+          h('th',{style:{...S.th,textAlign:'center',paddingLeft:8}},this.t('mtNo')),
+          ...['fiNo','fiWhen','fiLine','fiStyle','fiPo','fiColor','fiSizes'].map(k=>h('th',{key:k,style:S.th},this.t(k))),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fiQty')),
+          h('th',{style:S.th},this.t('fiSt')), h('th',{style:S.th},this.t('fiBy')),
+          h('th',{style:{...S.th,borderRight:'none'}},this.t('fiAct')))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:12,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
+          this.t(all.length?'fiNoHit':'fiEmpty'))))));
+    return this.dsoCard('fiPanel','fiSub','Finishing In',tbl,{full:true,action});
+  }
+
+  // ---- Finishing Status: WIP qua 4 công đoạn -------------------------------
+  // Gom hàng ĐÃ NHẬN theo (mã hàng | PO | màu) — đúng cấp mà tờ phiếu mang theo.
+  // Nho lai theo dung 2 mieng state ma ham nay doc — fgReadyQty goi lai cho
+  // tung lo xuat nen khong the tinh lai moi lan.
+  finGroups(){ const rec=this.finRecvMap(), sl=this.state.dsoSlips;
+    const c=this._finGC; if(c&&c.rec===rec&&c.sl===sl) return c.out;
+    const at={}, out=[];
+    this.finSlips().forEach(s=>{ const r=rec[s.id]; if(!r) return;
+      this.finParts(s).forEach(p=>{
+        const k=[p.style,p.po,p.color].join('|'); let g=at[k];
+        if(!g){ g=at[k]={key:k,style:p.style,po:p.po,color:p.color,
+          in:0,sizes:{},lines:[],at:0}; out.push(g); }
+        g.in+=p.qty; g.at=Math.max(g.at,r.ts||0);
+        Object.keys(p.sizes||{}).forEach(z=>{ g.sizes[z]=(g.sizes[z]||0)+(Number(p.sizes[z])||0); });
+        const ln=String(p.line||'').trim(); if(ln&&g.lines.indexOf(ln)<0) g.lines.push(ln); }); });
+    out.sort((a,b)=>String(a.style).localeCompare(String(b.style))
+      ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color)));
+    this._finGC={rec,sl,out}; return out; }
+  finGroupList(q){ const list=this.finGroups(); q=String(q||'').trim().toLowerCase();
+    if(!q) return list;
+    return list.filter(g=>[g.style,g.po,g.color,g.lines.join(' ')].join(' ').toLowerCase().indexOf(q)>=0); }
+  // So THO da go, chua kep tran
+  finRawQ(key,st){ return Math.max(0,Number((this.state.finStage||{})[key+'|'+st])||0); }
+  // So HIEN THI cua cong doan i: khong vuot duoc DA NHAN, cung khong vuot duoc
+  // bat ky cong doan nao truoc no. Kep luc doc nen so da go khong bi pha, va
+  // khi DA NHAN tut xuong thi cac cong doan tu dung theo.
+  finStageQ(g,i){ let v=g.in;
+    for(let j=0;j<=i;j++) v=Math.min(v,this.finRawQ(g.key,this.FIN_STAGES[j][0]));
+    return Math.max(0,v); }
+  finStageId(g,id){ const i=this.FIN_STAGES.findIndex(x=>x[0]===id); return i<0?0:this.finStageQ(g,i); }
+  finLast(g){ return this.finStageQ(g,this.FIN_STAGES.length-1); }
+  // Trần của 1 công đoạn = số của công đoạn liền trước (công đoạn đầu = đã nhận)
+  finCap(g,i){ return i<=0?g.in:this.finStageQ(g,i-1); }
+  finWip(g){ return Math.max(0,g.in-this.finLast(g)); }
+  finPct(g){ return g.in?Math.min(100,Math.round(this.finLast(g)/g.in*100)):0; }
+  // Sửa 1 công đoạn: chỉ ghi đúng ô đó, không đụng vào các công đoạn sau
+  finStageSet(g,i,v){
+    const n=Math.max(0,Math.min(g.in,parseInt(String(v).replace(/[^0-9]/g,''),10)||0));
+    this.setState(s=>{ const m={...(s.finStage||{})}; m[g.key+'|'+this.FIN_STAGES[i][0]]=n;
+      return {finStage:m}; }); }
+  finPushAll(g){ this.setState(s=>{ const m={...(s.finStage||{})};
+    this.FIN_STAGES.forEach(([id])=>{ m[g.key+'|'+id]=g.in; }); return {finStage:m}; }); }
+  finClear(g){ this.setState(s=>{ const m={...(s.finStage||{})};
+    this.FIN_STAGES.forEach(([id])=>{ delete m[g.key+'|'+id]; }); return {finStage:m}; }); }
+  // Thành phẩm đã nhập kho của 1 mã hàng · PO (cộng mọi màu) — nguồn cho F.G Shipment
+  finFgQty(style,po){ let n=0;
+    this.finGroups().forEach(g=>{ if(g.style===style&&g.po===po) n+=this.finLast(g); });
+    return n; }
+
+  renderFinStBody(){
+    const h=React.createElement;
+    return h('div',{ref:this.scrollRef,className:'yscroll','data-screen-label':'Finishing Status',
+      style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
+      this.renderTitle('fsTitle','S-07-FINISH-STATUS · UI Proto'),
+      this.renderFinStKpis(),
+      this.renderFinStTable());
+  }
+  renderFinStKpis(){
+    const list=this.finGroups(); let inQ=0,fgQ=0,packQ=0;
+    list.forEach(g=>{ inQ+=g.in; fgQ+=this.finLast(g); packQ+=this.finStageId(g,'pack'); });
+    const wip=Math.max(0,inQ-fgQ);
+    return this.finKpis([
+      [this.t('fsK1'),this.fmtn(inQ),this.t('fsK1s')],
+      [this.t('fsK2'),this.fmtn(wip),this.t('fsK2s'),wip>0],
+      [this.t('fsK3'),this.fmtn(packQ),this.t('fsK3s')],
+      [this.t('fsK4'),this.fmtn(fgQ),this.t('fsK4s')]]);
+  }
+  renderFinStTable(){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const q=this.state.fsQ||'', all=this.finGroups(), rows=this.finGroupList(q);
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+      h('span',{style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:999,padding:'4px 10px',whiteSpace:'nowrap'}},
+        this.fmt(all.length)+' '+this.t('fsCount')),
+      this.dfSearchBox(q,v=>this.set({fsQ:v}),false,'fsSearch'));
+    const bar=(pct)=>h('div',{style:{display:'flex',alignItems:'center',gap:7}},
+      h('div',{style:{flex:'1 1 60px',minWidth:44,height:6,borderRadius:99,background:'#edefe9',overflow:'hidden'}},
+        h('div',{style:{height:'100%',width:Math.min(100,pct)+'%',
+          background:pct>=100?C.primary:(pct>=60?'#8fb35e':'#d9a13c'),borderRadius:99}})),
+      h('span',{style:{width:34,textAlign:'right',fontSize:11.5,fontFamily:S.mono,fontWeight:700,
+        color:pct>=100?C.primary:C.ink,flex:'none'}},pct+'%'));
+    const body=rows.map((g,i)=>{
+      const ed=this.state.fsEdit===g.key, bg=i%2?'#f7f9f3':C.white, pct=this.finPct(g);
+      const cells=this.FIN_STAGES.map(([id],si)=>{
+        const v=this.finStageQ(g,si), cap=this.finCap(g,si);
+        return h('td',{key:id,style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
+          fontWeight:700,color:v?(v>=cap?C.dark:C.ink):C.faint}},
+          ed?h('input',{value:v||'',placeholder:'0',inputMode:'numeric',title:this.t('fsCapTip')+' '+this.fmt(cap),
+              onChange:e=>this.finStageSet(g,si,e.target.value),
+              style:{...S.inp,textAlign:'right'}})
+            :h('span',{title:this.fmt(v)+' / '+this.fmt(cap)},this.fmt(v)));
+      });
+      return h('tr',{key:g.key},
+        h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700,color:C.primary}},g.style),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},g.po),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},g.color),
+        h('td',{style:{...S.td,background:bg,fontSize:11.5,color:C.sub,wordBreak:'break-word'}},g.lines.join(', ')||'—'),
+        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},this.fmt(g.in)),
+        ...cells,
+        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+          color:this.finWip(g)?'#b0791b':C.faint}},this.fmt(this.finWip(g))),
+        h('td',{style:{...S.td,background:bg,minWidth:110}},bar(pct)),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('div',{style:{display:'flex',gap:6}},
+            ed?this.mtBtn(this.t('lsDone'),()=>this.set({fsEdit:null}),{border:'1px solid '+C.primary,background:C.tint})
+              :this.mtBtn(this.t('lsEdit'),()=>this.set({fsEdit:g.key})),
+            this.mtBtn(this.t('fsAll'),()=>this.finPushAll(g),{color:C.primary,borderColor:C.border}),
+            this.mtBtn(this.t('fsClr'),()=>this.finClear(g),{color:'#c0392b',borderColor:'#eccfca'}))));
+    });
+    const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1280px',borderCollapse:'collapse'}},
+        h('thead',null,h('tr',null,
+          h('th',{style:{...S.th,textAlign:'center',paddingLeft:8,width:46}},this.t('mtNo')),
+          h('th',{style:S.th},this.t('fiStyle')), h('th',{style:S.th},this.t('fiPo')),
+          h('th',{style:S.th},this.t('fiColor')), h('th',{style:S.th},this.t('fiLine')),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fsIn')),
+          ...this.FIN_STAGES.map(([id,k])=>h('th',{key:id,style:{...S.th,textAlign:'right'}},this.t(k))),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fsWip')),
+          h('th',{style:S.th},this.t('fsPct')),
+          h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:9+this.FIN_STAGES.length,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
+          this.t(all.length?'fsNoHit':'fsEmpty'))))));
+    return this.dsoCard('fsPanel','fsSub','Finishing Status',tbl,{full:true,action});
+  }
+
+  // ---- F.G Shipment Plan ---------------------------------------------------
+  // Hạt giống lấy thẳng từ Kế hoạch sản xuất: mỗi (mã hàng · PO) = 1 lô xuất,
+  // ETD = ngày kết thúc chuyền + FG_LEAD ngày cho hoàn thiện + kiểm + đóng cont.
+  FG_LEAD=7;
+  FG_ST={plan:['fgStPlan','#69707a','#f2f4ee','#e4e7de'],
+         ready:['fgStReady','#4A7A0B','#eef7dc','#cfe3a6'],
+         ship:['fgStShip','#1c6b52','#e3f5ee','#b6ddcd'],
+         late:['fgStLate','#c0392b','#fdecea','#eccfca']};
+  fgSeed(){ const out=[], seen={};
+    (this.PS().groups||[]).forEach(g=>(g.rows||[]).forEach(r=>(r.orders||[]).forEach(o=>{
+      const style=this.psCode(o.code); if(!style) return;
+      const po=this.orderPo(o);
+      const k=style+'|'+po; if(seen[k]) return; seen[k]=1;
+      const e=this.pd(o.end), etd=new Date(e.getFullYear(),e.getMonth(),e.getDate()+this.FG_LEAD);
+      out.push({id:'fg'+(out.length+1),brand:this.brandOf(o)||'',style,po,
+        qty:this.psQty(o)||0,etd:this.psFmtD(etd),ship:0,note:''}); })));
+    return out.sort((a,b)=>String(a.etd).localeCompare(String(b.etd))
+      ||String(a.style).localeCompare(String(b.style))||String(a.po).localeCompare(String(b.po))); }
+  // Gieo 1 lần khi có Kế hoạch sản xuất; sau đó bảng là dữ liệu người dùng sửa được.
+  // Gọi ngoài render (componentDidMount / awaitData) nên setState ở đây là an toàn.
+  fgEnsure(){ if(this.state.fgSeeded||(this.state.fgRows||[]).length) return false;
+    const rows=this.fgSeed(); if(!rows.length) return false;
+    this.set({fgRows:rows,fgSeeded:1}); return true; }
+  fgReseed(){ if(!window.confirm(this.t('fgReseedAsk'))) return;
+    const rows=this.fgSeed(); this.set({fgRows:rows,fgSeeded:1,fgEdit:null,fgQ:''}); }
+  fgAll(){ return this.state.fgRows||[]; }
+  // ETD go vao duoc ca 2 dang: '2026-09-10' (trong state) va '10/09/2026' (tren bang)
+  fgList(q){ const l=this.fgAll(); q=String(q||'').trim().toLowerCase(); if(!q) return l;
+    return l.filter(r=>[r.brand,r.style,r.po,r.etd,this.dsoDay(r.etd),r.note]
+      .join(' ').toLowerCase().indexOf(q)>=0); }
+  fgSet(id,patch){ this.setState(s=>({fgRows:(s.fgRows||[]).map(r=>r.id===id?{...r,...patch}:r)})); }
+  fgDel(id){ this.setState(s=>({fgRows:(s.fgRows||[]).filter(r=>r.id!==id),
+    fgEdit:s.fgEdit===id?null:s.fgEdit})); }
+  fgAdd(){ this.setState(s=>{ const l=s.fgRows||[]; let n=0;
+      l.forEach(r=>{ const m=String(r.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
+      const id='fg'+(n+1); this._fgNew=id;
+      return {fgRows:[...l,{id,brand:'',style:'',po:'',qty:0,etd:this.dsoToday(),ship:0,note:''}],fgSeeded:1}; });
+    setTimeout(()=>{ if(this._mounted&&this._fgNew) this.set({fgEdit:this._fgNew,fgQ:''}); },0); }
+  fgNum(v){ return Math.max(0,parseInt(String(v).replace(/[^0-9]/g,''),10)||0); }
+  fgReadyQty(r){ return this.finFgQty(r.style,r.po); }
+  fgBal(r){ return Math.max(0,(Number(r.qty)||0)-(Number(r.ship)||0)); }
+  fgPct(r){ const q=Number(r.qty)||0; return q?Math.min(100,Math.round((Number(r.ship)||0)/q*100)):0; }
+  fgStatus(r){ const q=Number(r.qty)||0, sh=Number(r.ship)||0;
+    if(q>0&&sh>=q) return 'ship';
+    if(r.etd&&String(r.etd)<this.dsoToday()) return 'late';
+    if(q>0&&this.fgReadyQty(r)>=q) return 'ready';
+    return 'plan'; }
+  fgExport(){ const X=window.XLSX; if(!X||!X.utils){ this.fgSay(this.t('mtNoXlsx')); return; }
+    const rows=this.fgList(this.state.fgQ||'');
+    const head=['fgBrand','fgStyle','fgPo','fgQty','fgEtd','fgReady','fgShipped','fgBal','fgPct','fgSt','fgNote'];
+    const aoa=[[this.t('fgTitle')],['YIC HÀ NAM · '+this.todayStamp()],[],head.map(k=>this.t(k))];
+    rows.forEach(r=>aoa.push([r.brand||'',r.style||'',r.po||'',Number(r.qty)||0,r.etd||'',
+      this.fgReadyQty(r),Number(r.ship)||0,this.fgBal(r),this.fgPct(r)+'%',
+      this.t(this.FG_ST[this.fgStatus(r)][0]),r.note||'']));
+    const ws=X.utils.aoa_to_sheet(aoa); ws['!cols']=[14,18,12,12,13,12,12,12,9,13,26].map(w=>({wch:w}));
+    const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'FG Shipment');
+    X.writeFile(wb,'YIC-HaNam_FG-Shipment-Plan.xlsx'); }
+  fgSay(m){ this.set({fgMsg:m}); clearTimeout(this._fgT);
+    this._fgT=setTimeout(()=>{ if(this._mounted) this.set({fgMsg:''}); },4000); }
+
+  renderFgBody(){
+    const h=React.createElement;
+    return h('div',{ref:this.scrollRef,className:'yscroll','data-screen-label':'F.G Shipment Plan',
+      style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
+      this.renderTitle('fgTitle','S-08-FG-SHIPMENT · UI Proto'),
+      this.renderFgKpis(),
+      this.renderFgTable());
+  }
+  renderFgKpis(){
+    const l=this.fgAll(); let qty=0,ship=0,ready=0,late=0;
+    l.forEach(r=>{ qty+=Number(r.qty)||0; ship+=Number(r.ship)||0; ready+=this.fgReadyQty(r);
+      if(this.fgStatus(r)==='late') late++; });
+    return this.finKpis([
+      [this.t('fgK1'),this.fmtn(qty),this.t('fgK1s')],
+      [this.t('fgK2'),this.fmtn(ready),this.t('fgK2s')],
+      [this.t('fgK3'),this.fmtn(ship),this.t('fgK3s')],
+      [this.t('fgK4'),this.fmtn(late),this.t('fgK4s'),late>0]]);
+  }
+  renderFgTable(){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const q=this.state.fgQ||'', all=this.fgAll(), rows=this.fgList(q);
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+      this.state.fgMsg?h('span',{style:{fontSize:11.5,fontWeight:600,color:C.primary,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:99,padding:'4px 10px',whiteSpace:'nowrap'}},this.state.fgMsg):null,
+      h('span',{style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:999,padding:'4px 10px',whiteSpace:'nowrap'}},
+        this.fmt(all.length)+' '+this.t('fgCount')),
+      this.dfSearchBox(q,v=>this.set({fgQ:v}),false,'fgSearch'),
+      this.mtBtn(this.t('fgReseed'),()=>this.fgReseed(),{padding:'6px 12px',fontSize:12}),
+      this.mtBtn(this.t('exportXls'),()=>this.fgExport(),{color:C.primary,borderColor:C.border,padding:'6px 12px',fontSize:12}));
+    const body=rows.map((r,i)=>{
+      const ed=this.state.fgEdit===r.id, bg=i%2?'#f7f9f3':C.white;
+      const st=this.FG_ST[this.fgStatus(r)], rd=this.fgReadyQty(r), qty=Number(r.qty)||0;
+      const txt=(f,mono)=>ed
+        ? h('input',{value:r[f]==null?'':r[f],onChange:e=>this.fgSet(r.id,{[f]:e.target.value}),
+            style:{...S.inp,...(mono?{}:{fontFamily:'inherit'})}})
+        : (String(r[f]||'').trim()||'—');
+      const num=(f)=>ed
+        ? h('input',{value:r[f]||'',inputMode:'numeric',onChange:e=>this.fgSet(r.id,{[f]:this.fgNum(e.target.value)}),
+            style:{...S.inp,textAlign:'right'}})
+        : this.fmt(r[f]);
+      return h('tr',{key:r.id},
+        h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
+        h('td',{style:{...S.td,background:bg,fontWeight:600}},txt('brand')),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700,color:C.primary}},txt('style',true)),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},txt('po',true)),
+        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},num('qty')),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,whiteSpace:'nowrap'}},
+          ed?h('input',{type:'date',value:r.etd||'',onChange:e=>this.fgSet(r.id,{etd:e.target.value}),
+                style:{...S.inp}})
+            :this.dsoDay(r.etd)),
+        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+          color:qty&&rd>=qty?C.primary:(rd?C.ink:C.faint)},title:this.t('fgReadyTip')},this.fmt(rd)),
+        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},num('ship')),
+        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
+          color:this.fgBal(r)?C.ink:C.faint}},this.fmt(this.fgBal(r))),
+        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+          color:this.fgPct(r)>=100?C.primary:C.sub}},this.fgPct(r)+'%'),
+        h('td',{style:{...S.td,background:bg,whiteSpace:'nowrap'}},
+          h('span',{style:{fontSize:11,fontWeight:700,color:st[1],background:st[2],border:'1px solid '+st[3],
+            borderRadius:999,padding:'3px 9px'}},this.t(st[0]))),
+        h('td',{style:{...S.td,background:bg,color:C.sub,wordBreak:'break-word'}},txt('note')),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('div',{style:{display:'flex',gap:6}},
+            ed?this.mtBtn(this.t('lsDone'),()=>this.set({fgEdit:null}),{border:'1px solid '+C.primary,background:C.tint})
+              :this.mtBtn(this.t('lsEdit'),()=>this.set({fgEdit:r.id})),
+            this.mtBtn(this.t('mtDel'),()=>this.fgDel(r.id),{color:'#c0392b',borderColor:'#eccfca'}))));
+    });
+    const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1320px',borderCollapse:'collapse'}},
+        h('thead',null,h('tr',null,
+          h('th',{style:{...S.th,textAlign:'center',paddingLeft:8,width:46}},this.t('mtNo')),
+          h('th',{style:S.th},this.t('fgBrand')), h('th',{style:S.th},this.t('fgStyle')),
+          h('th',{style:S.th},this.t('fgPo')),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgQty')),
+          h('th',{style:S.th},this.t('fgEtd')),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgReady')),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgShipped')),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgBal')),
+          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgPct')),
+          h('th',{style:S.th},this.t('fgSt')), h('th',{style:S.th},this.t('fgNote')),
+          h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:13,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
+          this.t(all.length?'fgNoHit':'fgEmpty'))))));
+    const bodyEl=h('div',null, tbl,
+      h('div',{style:{padding:'11px 13px',borderTop:'1px solid '+C.line}},
+        this.mtBtn('+ '+this.t('fgAdd'),()=>this.fgAdd(),{color:C.primary,borderColor:C.border})));
+    return this.dsoCard('fgPanel','fgSub','F.G Shipment Plan',bodyEl,{full:true,action});
+  }
+
+  // ==========================================================================
+  // ẢNH CHỤP DỮ LIỆU (localStorage + IndexedDB)
+  // --------------------------------------------------------------------------
+  // Toàn bộ dữ liệu người dùng của bản prototype nằm ở đúng 2 chỗ:
+  //   localStorage['yic.sewplan.v2'] — mọi field trong PERSIST, 1 chuỗi JSON
+  //   IndexedDB 'yic.mes'            — store 'alertSound' + 'mlvFile' (Blob/File)
+  // snapExport() gói CẢ HAI thành 1 file data/state-seed.js. Thả file đó vào
+  // app/data/ rồi gửi nguyên thư mục đi: máy khác mở lên lần đầu sẽ được nạp
+  // đúng dữ liệu này (xem seedStorage() ở cuối script.js).
+  // ==========================================================================
+  SNAP_V=1;
+  NOSEED='yic.mes.noseed';
+  snapB64(blob){ return new Promise(res=>{ try{ const r=new FileReader();
+      r.onload=()=>res(String(r.result||'').split(',')[1]||''); r.onerror=()=>res('');
+      r.readAsDataURL(blob); }catch(e){ res(''); } }); }
+  snapBlob(b64,type){ try{ const bin=window.atob(b64||'');
+      const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
+      return new Blob([a],{type:type||''}); }catch(e){ return new Blob([]); } }
+  idbAll(store){ return Promise.all([
+      this.idbTx('readonly',st=>st.getAllKeys(),store),
+      this.idbTx('readonly',st=>st.getAll(),store)])
+    .then(([ks,vs])=>(ks||[]).map((k,i)=>({k,v:(vs||[])[i]}))).catch(()=>[]); }
+  snapStores(){ return [this.IDB_STORE,this.IDB_STORE2]; }
+  // Đọc SẠCH localStorage (mọi khóa, không chỉ SKEY) + mọi bản ghi trong 2 store
+  async snapCollect(){
+    const ls={};
+    try{ for(let i=0;i<window.localStorage.length;i++){ const k=window.localStorage.key(i);
+      if(k!=null&&k!==this.NOSEED) ls[k]=window.localStorage.getItem(k); } }catch(e){}
+    const idb={}; const stores=this.snapStores();
+    for(let si=0;si<stores.length;si++){ const store=stores[si];
+      const list=await this.idbAll(store), out=[];
+      for(let i=0;i<list.length;i++){ const it=list[i], b=it.v;
+        if(b&&typeof b.arrayBuffer==='function')
+          out.push({k:String(it.k),name:b.name||'',type:b.type||'',size:b.size||0,b64:await this.snapB64(b)});
+        else out.push({k:String(it.k),json:1,val:it.v===undefined?null:it.v}); }
+      idb[store]=out; }
+    return {v:this.SNAP_V,stamp:new Date().toISOString(),app:'YIC MES',
+      key:this.SKEY,db:this.IDB_NAME,dbv:this.IDB_VER,ls,idb};
+  }
+  snapCount(s){ let n=0; this.snapStores().forEach(st=>{ n+=(((s&&s.idb)||{})[st]||[]).length; }); return n; }
+  snapDownload(name,text,mime){
+    try{ const b=new Blob([text],{type:mime||'text/plain;charset=utf-8'});
+      const u=URL.createObjectURL(b), a=document.createElement('a');
+      a.href=u; a.download=name; document.body.appendChild(a); a.click();
+      setTimeout(()=>{ try{ document.body.removeChild(a); }catch(e){} URL.revokeObjectURL(u); },0);
+      return true; }catch(e){ return false; } }
+  async snapExport(){
+    this.snapSay(this.t('snapWork'));
+    try{ const s=await this.snapCollect();
+      const js='/* YIC MES — ảnh chụp dữ liệu (localStorage + IndexedDB).\n'
+        +' * Sinh tự động từ chính ứng dụng — '+s.stamp+'\n'
+        +' * '+Object.keys(s.ls).length+' khóa localStorage · '+this.snapCount(s)+' file trong IndexedDB\n'
+        +' *\n'
+        +' * Đặt file này ở app/data/state-seed.js. Máy nào mở app lần đầu (localStorage\n'
+        +' * chưa có dữ liệu) sẽ được nạp đúng dữ liệu trong file này.\n'
+        +' */\n'
+        +'window.MES_SEED = '+JSON.stringify(s)+';\n';
+      this.snapDownload('state-seed.js',js,'text/javascript;charset=utf-8');
+      this.snapSay(this.t('snapOk')+' · '+this.kb(js.length));
+    }catch(e){ this.snapSay(this.t('snapErr')); } }
+  async snapPutIdb(s,wipe){
+    const idb=(s&&s.idb)||{}, stores=this.snapStores();
+    for(let si=0;si<stores.length;si++){ const store=stores[si], list=idb[store];
+      if(!list) continue;
+      try{ if(wipe) await this.idbTx('readwrite',st=>st.clear(),store);
+        for(let i=0;i<list.length;i++){ const it=list[i];
+          const val=it.json?it.val:this.snapBlob(it.b64,it.type);
+          await this.idbTx('readwrite',st=>st.put(val,it.k),store); }
+      }catch(e){} } }
+  async snapApply(s){
+    if(!s||!s.ls) return false;
+    // Ghi de xong moi reload; chan persist() cua ban cu chen vao giua
+    this._wiping=true; clearTimeout(this._pt);
+    try{ window.localStorage.clear(); }catch(e){}
+    try{ Object.keys(s.ls).forEach(k=>window.localStorage.setItem(k,s.ls[k])); }catch(e){}
+    await this.snapPutIdb(s,true);
+    window.location.reload(); return true; }
+  async snapImport(file){ if(!file) return;
+    try{ const txt=await file.text();
+      const i=txt.indexOf('{'), j=txt.lastIndexOf('}');
+      if(i<0||j<i){ this.snapSay(this.t('snapBad')); return; }
+      const s=JSON.parse(txt.slice(i,j+1));
+      if(!s||!s.ls){ this.snapSay(this.t('snapBad')); return; }
+      if(!window.confirm(this.t('snapAsk'))) return;
+      this.snapSay(this.t('snapWork'));
+      await this.snapApply(s);
+    }catch(e){ this.snapSay(this.t('snapBad')); } }
+  snapReset(){ const s=window.MES_SEED;
+    if(!s||!s.ls){ this.snapSay(this.t('snapNone')); return; }
+    if(!window.confirm(this.t('snapAsk'))) return;
+    this.snapApply(s); }
+  snapSay(m){ this.set({snapMsg:m}); clearTimeout(this._snT);
+    this._snT=setTimeout(()=>{ if(this._mounted) this.set({snapMsg:''}); },6000); }
+  snapSize(){ let n=0;
+    try{ for(let i=0;i<window.localStorage.length;i++){ const k=window.localStorage.key(i);
+      n+=(k||'').length+((window.localStorage.getItem(k)||'').length); } }catch(e){}
+    return n; }
+  // Khối cuối sidebar: xuất / nhập / về ảnh chụp gốc / xóa sạch
+  renderSnapBar(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const seed=window.MES_SEED;
+    const b=(label,on,title,extra)=>h('button',{onClick:on,title:title||'',
+      style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:8,padding:'5px 9px',
+        fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap',...(extra||{})},
+      'style-hover':{background:C.tint}},label);
+    return h('div',{style:{padding:'13px 16px 0',marginTop:10,borderTop:'1px solid #eff0ec'}},
+      h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.6px',color:'#a7ada4',marginBottom:7}},this.t('snapTitle')),
+      h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},
+        b(this.t('snapExport'),()=>this.snapExport(),this.t('snapExportTip'),{color:C.primary}),
+        h('label',{title:this.t('snapImportTip'),
+          style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:8,padding:'5px 9px',
+            fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'},'style-hover':{background:C.tint}},
+          this.t('snapImport'),
+          h('input',{type:'file',accept:'.js,.json,.txt',style:{display:'none'},
+            onChange:e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(f) this.snapImport(f); }})),
+        seed?b(this.t('snapReset'),()=>this.snapReset(),this.t('snapResetTip')):null,
+        b(this.t('snapWipe'),()=>this.resetSaved(),this.t('snapWipeTip'),{color:'#c0392b',borderColor:'#eccfca'})),
+      h('div',{style:{marginTop:8,fontSize:9.5,fontFamily:mono,color:'#a7ada4',lineHeight:1.6,wordBreak:'break-word'}},
+        this.t('snapNow')+' '+this.kb(this.snapSize()),
+        h('br'),
+        seed?(this.t('snapSeed')+' '+String(seed.stamp||'').slice(0,10)):this.t('snapNone')),
+      this.state.snapMsg?h('div',{style:{marginTop:8,fontSize:10.5,fontWeight:600,color:C.dark,
+        background:C.tint,border:'1px solid '+C.border,borderRadius:8,padding:'5px 8px',lineHeight:1.4}},this.state.snapMsg):null);
+  }
+
   btn(kind){ const C=this.C; const base={display:'inline-flex',alignItems:'center',gap:7,padding:'9px 14px',borderRadius:10,transition:'background .12s,border-color .12s,box-shadow .12s',fontSize:13,fontWeight:600,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'};
     if(kind==='primary') return {...base,background:C.primary,color:'#fff',border:'1px solid '+C.primary};
     return {...base,background:C.white,color:C.ink,border:'1px solid '+C.border}; }
@@ -3601,7 +5242,24 @@ class Component extends DCLogic {
      renders identically to the bundle. */
   var PROPS = { primaryColor: '#8FC93A', density: 'Comfortable' };
 
+  /* ---- ảnh chụp dữ liệu ------------------------------------------------------
+     data/state-seed.js (nếu có) đặt window.MES_SEED = {ls, idb, …}. Máy nào mở app
+     mà localStorage còn trống thì nạp thẳng phần `ls` vào trước khi React dựng
+     component — restore() sau đó đọc như dữ liệu người dùng bình thường. Phần blob
+     trong IndexedDB nạp bất đồng bộ ở componentDidMount. */
+  function seedStorage() {
+    var S = window.MES_SEED;
+    if (!S || !S.ls) return false;
+    try {
+      if (window.localStorage.getItem('yic.mes.noseed')) return false;
+      if (window.localStorage.getItem(S.key || 'yic.sewplan.v2') != null) return false;
+      Object.keys(S.ls).forEach(function (k) { window.localStorage.setItem(k, S.ls[k]); });
+      return true;
+    } catch (e) { return false; }
+  }
+
   function mount() {
+    window.MES_SEED_FIRST = seedStorage();
     var el = document.getElementById('root');
     if (!el) { throw new Error('#root missing from index.html'); }
     var node = React.createElement(Component, PROPS);
