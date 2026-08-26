@@ -248,6 +248,10 @@ class Component extends DCLogic {
       dsoDefects:this.initDefects(), dsoDefLog:{}, dsoDefTime:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'',
       dsoPassLog:{},
       dsoHistQ:'', dsoDefQ:'', dsoHandBulk:null,
+      // Ban tablet cua trang chi tiet chuyen: o dang chon, ngay cua bang Top 3,
+      // anh ky thuat / gioi tinh theo ma hang, cong nhan gan voi tung hang loi.
+      dsoSel:{}, dsoDayV:null, dsoPhoto:{}, dsoPhotoI:{}, dsoGen:{}, dsoDefWho:{}, dsoOp:{},
+      dsoHistOpen:false, dsoInfo:null,
       finRecv:{}, finStage:{}, finQ:'', fsQ:'', fsRemark:{}, fsPackD:{}, fsCtnO:{}, fsCtnD:{},
       fsScan:{}, fsScanAt:null, fsScanQ:'', fsScanMsg:null,
       finTab:'gmt', ftRows:[], ftSeeded:0, ftQ:'', ftEdit:null,
@@ -261,7 +265,7 @@ class Component extends DCLogic {
   }
 
   SKEY='yic.sewplan.v2';
-  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','mlvLine','mlvFs','dsoDone','dsoPassLog','dsoDoneV','dsoHand','dsoHandQ','dsoSlips','dsoSlipSeq','dsoHandWho','bqNo','bqSeq','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog','dsoDefTime','finRecv','finStage','fsRemark','fsPackD','fsCtnO','fsCtnD','fsScan','finTab','ftRows','ftSeeded','ftSel','fgRows','fgSeeded','fgPk','fgBc'];
+  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','mlvLine','mlvFs','dsoDone','dsoPassLog','dsoDoneV','dsoHand','dsoHandQ','dsoSlips','dsoSlipSeq','dsoHandWho','bqNo','bqSeq','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog','dsoDefTime','dsoDefWho','dsoSel','dsoPhoto','dsoPhotoI','dsoGen','dsoOp','dsoHistOpen','finRecv','finStage','fsRemark','fsPackD','fsCtnO','fsCtnD','fsScan','finTab','ftRows','ftSeeded','ftSel','fgRows','fgSeeded','fgPk','fgBc'];
   // Mọi thay đổi dữ liệu được lưu lại — refresh vẫn giữ nguyên
   restore(){ const defPage=this.state.page; let saved=null;
     try{ const raw=window.localStorage.getItem(this.SKEY); if(!raw) return; const o=JSON.parse(raw)||{}; saved=o;
@@ -624,6 +628,21 @@ class Component extends DCLogic {
       dsoPick:'Chọn Lý Do Lỗi', dsoPickSub:'Bấm 1 dòng để ghi hàng lỗi cho size này', dsoPickBack:'← Quay lại',
       dsoDefEmpty:'Thư viện lỗi đang trống — vào Cài Đặt · Thư Viện Lỗi để thêm.',
       dsoDefLogged:'lỗi đã ghi', dsoClose:'Đóng',
+      dsoKOut:'Sản lượng', dsoKQc:'Cân đối QC', dsoKPassT:'Đạt', dsoKRej:'Loại bỏ',
+      dsoKToday:'Hôm nay', dsoKIncomp:'Còn thiếu', dsoKRepair:'Sửa lại',
+      dsoTop3:'Top 3', dsoTopPart:'Bộ phận · Loại lỗi', dsoTopOp:'Công nhân',
+      dsoTopEmpty:'Ngày này chưa ghi hàng lỗi nào',
+      dsoDayPrev:'Ngày trước', dsoDayNext:'Ngày sau',
+      dsoBtnMeas:'Đo thông số', dsoBtnChk:'Bảng kiểm', dsoBtnHist:'Lịch sử',
+      dsoHistHide:'Ẩn bảng lịch sử', dsoHistShow:'Mở bảng lịch sử theo ngày',
+      dsoLblColor:'Màu', dsoLblSize:'Size', dsoBtnPass:'ĐẠT', dsoBtnDef:'LỖI',
+      dsoNoPick:'Chọn màu và size để bắt đầu đếm', dsoStyleL:'Chọn mã hàng · PO',
+      dsoGenL:'Giới tính', dsoGenNone:'Giới tính',
+      dsoPhAdd:'Thêm ảnh kỹ thuật', dsoPhDel:'Xóa ảnh đang xem', dsoPhNone:'Chưa có ảnh kỹ thuật',
+      dsoOper:'Công nhân', dsoOperPh:'Tên công nhân (không bắt buộc)',
+      dsoOperTip:'Ghi tên công nhân vào hàng lỗi này — dùng để xếp Top 3 công nhân',
+      dsoMeasSoon:'Bảng đo thông số sẽ thiết kế ở bước sau — đang chờ spec chi tiết.',
+      dsoChkSoon:'Bảng kiểm sẽ thiết kế ở bước sau — đang chờ spec chi tiết.',
       dfPanel:'Thư Viện Lỗi', dfSub:'Danh mục lỗi dùng khi ghi hàng lỗi ở chuyền may',
       dfCode:'Mã lỗi', dfName:'Tên lỗi', dfCat:'Nhóm lỗi', dfSev:'Mức độ', dfLoc:'Vị trí lỗi', dfCause:'Nguyên nhân gốc',
       dfAdd:'Thêm lỗi', dfEmpty:'Chưa có lỗi nào — bấm Thêm lỗi hoặc nhập từ Excel.',
@@ -872,6 +891,21 @@ class Component extends DCLogic {
       dsoPick:'Select Defect Reason', dsoPickSub:'Tap a row to log the failed piece for this size', dsoPickBack:'← Back',
       dsoDefEmpty:'Defect library is empty — add rows in Settings · Defect Library.',
       dsoDefLogged:'defects logged', dsoClose:'Close',
+      dsoKOut:'Output', dsoKQc:'QC Balance', dsoKPassT:'Pass', dsoKRej:'Reject',
+      dsoKToday:'Today', dsoKIncomp:'Incompleted', dsoKRepair:'Repair',
+      dsoTop3:'Top 3', dsoTopPart:'Defect Part · Type', dsoTopOp:'Operator',
+      dsoTopEmpty:'No defect recorded on this day',
+      dsoDayPrev:'Previous day', dsoDayNext:'Next day',
+      dsoBtnMeas:'Measurement', dsoBtnChk:'Check List', dsoBtnHist:'History',
+      dsoHistHide:'Hide the history tables', dsoHistShow:'Open the daily history tables',
+      dsoLblColor:'Color', dsoLblSize:'Size', dsoBtnPass:'Pass', dsoBtnDef:'Defect',
+      dsoNoPick:'Pick a colour and a size to start counting', dsoStyleL:'Pick style · PO',
+      dsoGenL:'Gender', dsoGenNone:'Gender',
+      dsoPhAdd:'Add a technical sketch', dsoPhDel:'Remove the photo on screen', dsoPhNone:'No sketch yet',
+      dsoOper:'Operator', dsoOperPh:'Operator name (optional)',
+      dsoOperTip:'Attach an operator to this defect — this is what ranks the Top 3 operators',
+      dsoMeasSoon:'The measurement sheet is to be designed next — spec pending.',
+      dsoChkSoon:'The check list is to be designed next — spec pending.',
       dfPanel:'Defect Library', dfSub:'Defect master used when logging failed pieces on the sewing line',
       dfCode:'Defect Code', dfName:'Defect Name', dfCat:'Category', dfSev:'Severity', dfLoc:'Defect Location', dfCause:'Root Cause',
       dfAdd:'Add defect', dfEmpty:'No defect yet — add one or import from Excel.',
@@ -2471,12 +2505,10 @@ class Component extends DCLogic {
     return this.dsoCard('dfPanel','dfSub','DSO Defect Library',bodyEl,{full:true,action});
   }
 
-  // ==== Bam 1 card size -> hop lon PASS / FAIL ============================
-  // Card khong con +1 truc tiep nua: moi san pham deu di qua 1 lan xac nhan.
-  dsoTapOpen(c){ this.set({dsoTap:{c,stage:'ask'},dsoTapQ:''}); }
+  // ==== Bam LOI o trang chuyen -> bang chon ly do =========================
+  // Nut DAT / LOI da nam san tren trang chuyen, nen hop nay chi con mot buoc:
+  // chon ly do loi. dsoTap luon o stage 'fail'.
   dsoTapClose(){ this.set({dsoTap:null,dsoTapQ:''}); }
-  dsoTapPass(){ const t=this.state.dsoTap; if(!t) return; this.dsoBump(t.c,1); this.dsoTapClose(); }
-  dsoTapFail(){ this.setState(st=>st.dsoTap?{dsoTap:{...st.dsoTap,stage:'fail'},dsoTapQ:''}:null); }
   // Hang loi ghi theo (ngay, chuyen, style, PO, mau, size) + ma loi -> dem duoc
   // ca so luong loi va loi nao hay gap. KHONG cong vao san luong hoan thanh.
   // Doc new Date() MOT lan roi dung chung cho ca khoa ngay lan moc gio: doc 2
@@ -2485,11 +2517,16 @@ class Component extends DCLogic {
   // dsoDefLog GIU NGUYEN hinh dang so dem nen may dang co du lieu cu van doc duoc.
   dsoDefTake(c,d){ const now=new Date(), k=this.dsoDoneKey(c,this.psFmtD(now)), at=this.dsoHM(now);
     const code=String(d.code||'').trim()||String(d.name||'').trim()||'?';
+    const who=this.dsoOpOf(c.line).replace(/\s+/g,' ').trim();
     this.setState(st=>{ const m={...(st.dsoDefLog||{})}, cur={...(m[k]||{})};
       cur[code]=(Number(cur[code])||0)+1; m[k]=cur;
       const tm={...(st.dsoDefTime||{})}, tk=k+'|'+code;
       tm[tk]=(tm[tk]||[]).concat(at);
-      return {dsoDefLog:m,dsoDefTime:tm,dsoTap:null,dsoTapQ:''}; }); }
+      // Ten cong nhan ghi song song, CUNG khoa va CUNG chieu dai voi dsoDefTime
+      // (ke ca khi bo trong) -- nho vay xep hang Top 3 cong nhan chi con la dem.
+      const wm={...(st.dsoDefWho||{})};
+      wm[tk]=(wm[tk]||[]).concat(who);
+      return {dsoDefLog:m,dsoDefTime:tm,dsoDefWho:wm,dsoTap:null,dsoTapQ:''}; }); }
   // Tong luy ke moi ngay, giong dsoDoneOf
   dsoDefOf(c){ const m=this.state.dsoDefLog||{};
     const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
@@ -2503,7 +2540,7 @@ class Component extends DCLogic {
   renderDsoTap(){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const t=this.state.dsoTap; if(!t||!t.c) return null;
-    const c=t.c, fail=t.stage==='fail', S=this.mtStyles();
+    const c=t.c, S=this.mtStyles();
     const close=()=>this.dsoTapClose();
     const done=this.dsoDoneOf(c), nf=this.dsoDefOf(c);
     const chip=(label,val,col)=>h('div',{key:label,style:{minWidth:0}},
@@ -2528,7 +2565,7 @@ class Component extends DCLogic {
     const head=(titleKey,subKey,back)=>h('div',{style:{display:'flex',alignItems:'center',gap:12,flex:'none',
         padding:'15px 20px',borderBottom:'1px solid '+C.line}},
       back
-        ? h('button',{onClick:()=>this.set({dsoTap:{c,stage:'ask'},dsoTapQ:''}),
+        ? h('button',{onClick:close,
             style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:9,padding:'6px 12px',
               fontSize:12.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',flex:'none'},
             'style-hover':{background:C.tint}},this.t('dsoPickBack'))
@@ -2544,24 +2581,7 @@ class Component extends DCLogic {
         style:{border:'1px solid '+C.border,background:C.white,color:C.sub,borderRadius:9,width:30,height:30,
           flex:'none',cursor:'pointer',fontSize:17,lineHeight:1,padding:0,fontFamily:'inherit'},
         'style-hover':{background:C.tint}},'\u00d7'));
-    // ---- Buoc 1: 2 nut lon, bam duoc bang ngon tay tren tablet o chuyen ----
-    const big=(label,sub,tone,on)=>h('button',{onClick:on,
-      style:{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:9,
-        minHeight:168,border:'2px solid '+tone.bd,background:tone.bg,color:tone.fg,borderRadius:16,
-        cursor:'pointer',fontFamily:'inherit',padding:'20px 16px',
-        transition:'background .12s,border-color .12s,box-shadow .12s'},
-      'style-hover':{background:tone.hv,borderColor:tone.fg}},
-      h('svg',{width:40,height:40,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2.4},tone.ic),
-      h('span',{style:{fontSize:29,fontWeight:700,letterSpacing:'1px',lineHeight:1}},label),
-      h('span',{style:{fontSize:12.5,fontWeight:600,opacity:.82}},sub));
-    const PASS={fg:'#2f7d32',bg:'#eff7e9',bd:'#a9cf94',hv:'#e3f2d9',ic:h('path',{d:'M4 12.6l5.2 5.2L20 6.9'})};
-    const FAIL={fg:'#b3271b',bg:'#fdeeec',bd:'#e6b0a8',hv:'#fbe0dd',ic:h('path',{d:'M6 6l12 12M18 6L6 18'})};
-    const ask=h('div',null, head('dsoTapTitle','dsoTapTip',false), info,
-      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(215px,1fr))',
-          gap:14,padding:'20px 22px 22px'}},
-        big(this.t('dsoPass'),this.t('dsoPassSub'),PASS,()=>this.dsoTapPass()),
-        big(this.t('dsoFail'),this.t('dsoFailSub'),FAIL,()=>this.dsoTapFail())));
-    // ---- Buoc 2: bang ly do loi + o tim -----------------------------------
+    // ---- Bang ly do loi + o tim -------------------------------------------
     // Mau nen dat o <tr> (khong o <td>) de :hover cua ca dong hien duoc.
     const q=this.state.dsoTapQ||'', all=this.defects(), rows=this.dfList(q);
     const sth={...S.th,position:'sticky',top:0,zIndex:1};
@@ -2582,9 +2602,24 @@ class Component extends DCLogic {
         h('td',{style:{...ctd,wordBreak:'break-word'}},txt(r.loc)),
         h('td',{style:{...ctd,borderRight:'none',paddingRight:20,color:C.sub,
           wordBreak:'break-word'}},txt(r.cause))); });
+    // O ten cong nhan: ghi kem vao hang loi sap chon -> Top 3 cong nhan o trang
+    // chuyen xep hang tu day. Bo trong van ghi duoc, chi la khong quy duoc ai.
+    const ops=this.dsoOpNames(), opId='dso-op-'+String(c.line||'').replace(/[^\w-]/g,'');
+    const opBox=h('div',{title:this.t('dsoOperTip'),
+        style:{flex:'none',display:'flex',alignItems:'center',gap:8,border:'1px solid '+C.border,
+          borderRadius:9,background:C.white,padding:'0 10px',height:32}},
+      h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:C.faint,strokeWidth:1.9,
+          style:{flex:'none'}},
+        h('circle',{cx:12,cy:8,r:3.4}),h('path',{d:'M4.5 20.5a7.5 7.5 0 0 1 15 0'})),
+      h('input',{type:'text',value:this.dsoOpOf(c.line),list:ops.length?opId:undefined,
+        placeholder:this.t('dsoOperPh'),onChange:e=>this.dsoOpSet(c.line,e.target.value),
+        style:{width:186,border:'none',background:'none',padding:0,fontSize:12.5,fontWeight:600,
+          fontFamily:'inherit',color:C.ink,outline:'none'}}),
+      ops.length?h('datalist',{id:opId},ops.map(n=>h('option',{key:n,value:n}))):null);
     const search=h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 20px',flex:'none',
-        borderBottom:'1px solid '+C.line,background:'#fbfcf8'}},
+        borderBottom:'1px solid '+C.line,background:'#fbfcf8',flexWrap:'wrap'}},
       this.dfSearchBox(q,v=>this.set({dsoTapQ:v}),true),
+      opBox,
       h('span',{style:{flex:'none',fontSize:11.5,fontWeight:700,fontFamily:mono,color:C.faint,
         whiteSpace:'nowrap'}},this.fmt(rows.length)+' / '+this.fmt(all.length)));
     const table=h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:130}},
@@ -2607,10 +2642,10 @@ class Component extends DCLogic {
         h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel'))));
     return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
         backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:85,padding:24}},
-      h('div',{onClick:ev=>ev.stopPropagation(),style:{width:fail?'min(960px,96vw)':'min(620px,96vw)',
+      h('div',{onClick:ev=>ev.stopPropagation(),style:{width:'min(960px,96vw)',
           maxHeight:'92vh',display:'flex',flexDirection:'column',background:C.white,borderRadius:18,
           boxShadow:'0 30px 70px rgba(0,0,0,.34)',overflow:'hidden'}},
-        fail?pick:ask));
+        pick));
   }
 
   renderDsoSettings(){
@@ -3392,84 +3427,412 @@ class Component extends DCLogic {
         :this.dsoDay(days[0]),
       sizes:want,qty:n,cum:cum,alloc:alloc}); }
 
+  // ==========================================================================
+  // DSO · CHI TIET CHUYEN — ban dung cho tablet dat tai chuyen
+  // --------------------------------------------------------------------------
+  // Bo cuc 2x2, dung theo ban thiet ke:
+  //   trai-tren  4 o KPI: Output / QC Balance / Pass / Reject
+  //   trai-duoi  Top 3 (bo phan · loai loi | cong nhan) theo NGAY + 3 nut
+  //              Measurement / Check List / History
+  //   phai-tren  the ma hang: o chon style · PO, thuong hieu · gioi tinh, anh
+  //   phai-duoi  hang mau -> hang size -> 2 nut lon DAT / LOI
+  // Ma tran size cu bo di: o chuyen chi con 2 thao tac — cham mau + size roi
+  // bam. Hai bang lich su van con nguyen, nam sau nut History.
+  // ==========================================================================
+
+  // Con so cua CA chuyen, luy ke moi ngay. Hai section cung mot don co the trung
+  // (mau, size) -> chung khoa luu; cong 'need' ca hai nhung 'done/fail' chi mot
+  // lan, khong thi so da lam bi dem doi.
+  dsoKpi(line){ const cards=this.dsoSizeCards(line), td=this.dsoToday();
+    const dm=this.state.dsoDone||{}, seen={};
+    let need=0,done=0,fail=0,today=0;
+    cards.forEach(c=>{ need+=c.need;
+      const k=[c.line,c.style,c.po,c.color,c.size].join('|'); if(seen[k]) return; seen[k]=1;
+      done+=this.dsoDoneOf(c); fail+=this.dsoDefOf(c);
+      today+=Number(dm[this.dsoDoneKey(c,td)])||0; });
+    return {need:need,done:done,fail:fail,today:today,insp:done+fail,left:Math.max(0,need-done)}; }
+  // '99.93%' — toi da 2 chu so thap phan, bo duoi 0 (0 -> '0%')
+  dsoPct2(a,b){ const v=b?(Number(a)||0)/b*100:0;
+    return (Math.round(v*100)/100).toLocaleString('en-US',{maximumFractionDigits:2})+'%'; }
+
+  // ---- Ngay cua bang Top 3 (khong luu lai: mo lai app la ve hom nay) -------
+  DOW3=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  dsoDayView(){ return this.state.dsoDayV||this.dsoToday(); }
+  dsoDayShift(n){ const p=String(this.dsoDayView()).split('-').map(Number);
+    const d=new Date(p[0],(p[1]||1)-1,p[2]||1); d.setDate(d.getDate()+n);
+    this.set({dsoDayV:this.psFmtD(d)}); }
+  dsoDayLabel(v){ const p=String(v||'').split('-').map(Number); if(p.length<3) return String(v||'');
+    const d=new Date(p[0],(p[1]||1)-1,p[2]||1), z=n=>String(n).padStart(2,'0');
+    return z(d.getDate())+'/'+z(d.getMonth()+1)+' '+this.DOW3[d.getDay()]; }
+
+  // ---- Top 3 cua 1 ngay ----------------------------------------------------
+  // Bo phan · loai loi lay tu Thu Vien Loi theo ma loi: loc = bo phan, name =
+  // loai loi. Cung nguon voi dsoDefName nen sua thu vien la bang nay doi theo.
+  dsoTop3Def(line,day){ const m=this.state.dsoDefLog||{}, by={};
+    Object.keys(m).forEach(k=>{ const p=k.split('|'); if(p.length!==6) return;
+      if(p[0]!==day||p[1]!==line) return;
+      const o=m[k]||{}; Object.keys(o).forEach(c=>{ by[c]=(by[c]||0)+(Number(o[c])||0); }); });
+    const lib=this.defects();
+    return Object.keys(by).map(c=>{ const d=lib.find(x=>String(x.code||'').trim()===c)||{};
+        return {code:c,part:String(d.loc||'').trim(),type:String(d.name||'').trim(),n:by[c]}; })
+      .sort((a,b)=>b.n-a.n||String(a.code).localeCompare(String(b.code))).slice(0,3); }
+  // Xep hang cong nhan theo so hang loi da ghi ten. dsoDefWho di song song voi
+  // dsoDefTime (cung khoa, cung chieu dai) nen ban ghi khong co ten van dung so.
+  dsoTop3Op(line,day){ const m=this.state.dsoDefWho||{}, by={};
+    Object.keys(m).forEach(k=>{ const p=k.split('|'); if(p.length!==7) return;
+      if(p[0]!==day||p[1]!==line) return;
+      (m[k]||[]).forEach(nm=>{ const n=String(nm||'').trim(); if(n) by[n]=(by[n]||0)+1; }); });
+    return Object.keys(by).map(n=>({name:n,n:by[n]}))
+      .sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name)).slice(0,3); }
+  // Moi ten da tung ghi -> goi y cho o nhap trong hop chon ly do loi
+  dsoOpNames(){ const m=this.state.dsoDefWho||{}, seen={}, out=[];
+    Object.keys(m).forEach(k=>(m[k]||[]).forEach(nm=>{ const n=String(nm||'').trim();
+      if(n&&!seen[n]){ seen[n]=1; out.push(n); } }));
+    return out.sort((a,b)=>a.localeCompare(b)); }
+  dsoOpOf(line){ return String((this.state.dsoOp||{})[line]||''); }
+  dsoOpSet(line,v){ this.setState(st=>{ const m={...(st.dsoOp||{})}; m[line]=v; return {dsoOp:m}; }); }
+
+  // ---- O dang chon cua 1 chuyen -------------------------------------------
+  // Gia tri luu co the khong con trong ke hoach (sang tuan khac, doi don) nen
+  // luon soi lai qua danh sach card va tu roi ve lua chon dau tien con hop le.
+  dsoPick(line,cards){ const sel=(this.state.dsoSel||{})[line]||{};
+    const keys=[], kmap={}, nPo={};
+    cards.forEach(c=>{ const k=c.style+'|'+c.po;
+      if(!kmap[k]){ kmap[k]={sk:k,style:c.style,po:c.po}; keys.push(kmap[k]);
+        nPo[c.style]=(nPo[c.style]||0)+1; } });
+    // Nhan o chon: chi ghi kem PO khi mot ma hang co nhieu PO tren chuyen nay
+    keys.forEach(k=>{ k.label=k.style+(nPo[k.style]>1?'   ·   '+k.po:''); });
+    const sk=(sel.sk&&kmap[sel.sk])?sel.sk:(keys[0]?keys[0].sk:'');
+    const mine=cards.filter(c=>c.style+'|'+c.po===sk);
+    const colors=[]; mine.forEach(c=>{ if(colors.indexOf(c.color)<0) colors.push(c.color); });
+    const color=colors.indexOf(sel.color)>=0?sel.color:(colors[0]||'');
+    const oi=z=>{ const i=this.SORDER.indexOf(z); return i<0?99:i; };
+    const sizes=[]; mine.forEach(c=>{ if(c.color===color&&sizes.indexOf(c.size)<0) sizes.push(c.size); });
+    sizes.sort((a,b)=>oi(a)-oi(b)||String(a).localeCompare(String(b)));
+    const size=sizes.indexOf(sel.size)>=0?sel.size:(sizes[0]||'');
+    return {keys:keys,sk:sk,style:kmap[sk]?kmap[sk].style:'',po:kmap[sk]?kmap[sk].po:'',
+      colors:colors,color:color,sizes:sizes,size:size,
+      card:mine.find(c=>c.color===color&&c.size===size)||null}; }
+  // Doi ma hang -> bo mau/size cu; doi mau -> bo size cu. dsoPick tu chon lai.
+  dsoPickSet(line,patch){ this.setState(st=>{ const m={...(st.dsoSel||{})}, cur={...(m[line]||{})};
+      if(patch.sk!==undefined&&patch.sk!==cur.sk){ delete cur.color; delete cur.size; }
+      if(patch.color!==undefined&&patch.color!==cur.color) delete cur.size;
+      m[line]={...cur,...patch}; return {dsoSel:m}; }); }
+
+  // ---- Anh ky thuat + gioi tinh theo MA HANG -------------------------------
+  // Anh nam trong localStorage cung cho voi du lieu khac (nen tu dong theo ra
+  // state-seed.js), vi vay phai thu nho truoc khi luu: canvas -> JPEG <=560px.
+  DSO_PH_MAX=4; DSO_PH_PX=560;
+  dsoPhotos(style){ const l=(this.state.dsoPhoto||{})[style]; return Array.isArray(l)?l:[]; }
+  dsoPhotoIdx(style){ const n=this.dsoPhotos(style).length;
+    const i=Number((this.state.dsoPhotoI||{})[style])||0; return n?Math.min(Math.max(0,i),n-1):0; }
+  dsoPhotoAdd(style,file){ if(!file||!style) return;
+    const r=new FileReader();
+    r.onload=()=>{ const im=new Image();
+      im.onload=()=>{ try{
+          const s=Math.min(1,this.DSO_PH_PX/Math.max(im.width||1,im.height||1));
+          const w=Math.max(1,Math.round((im.width||1)*s)), hh=Math.max(1,Math.round((im.height||1)*s));
+          const cv=document.createElement('canvas'); cv.width=w; cv.height=hh;
+          const cx=cv.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,w,hh);
+          cx.drawImage(im,0,0,w,hh);
+          const url=cv.toDataURL('image/jpeg',.72);
+          if(!this._mounted) return;
+          this.setState(st=>{ const m={...(st.dsoPhoto||{})};
+            const l=(Array.isArray(m[style])?m[style]:[]).concat(url).slice(-this.DSO_PH_MAX);
+            m[style]=l; const ix={...(st.dsoPhotoI||{})}; ix[style]=l.length-1;
+            return {dsoPhoto:m,dsoPhotoI:ix}; });
+        }catch(e){} };
+      im.src=String(r.result||''); };
+    try{ r.readAsDataURL(file); }catch(e){} }
+  dsoPhotoDel(style){ const i=this.dsoPhotoIdx(style);
+    this.setState(st=>{ const m={...(st.dsoPhoto||{})};
+      const l=(Array.isArray(m[style])?m[style]:[]).filter((_,k)=>k!==i);
+      if(l.length) m[style]=l; else delete m[style];
+      const ix={...(st.dsoPhotoI||{})}; ix[style]=Math.max(0,Math.min(i,l.length-1));
+      return {dsoPhoto:m,dsoPhotoI:ix}; }); }
+  DSO_GEN=['Men','Women','Unisex','Kids'];
+  dsoGenOf(style){ return String((this.state.dsoGen||{})[style]||''); }
+  dsoGenSet(style,v){ this.setState(st=>{ const m={...(st.dsoGen||{})};
+      if(v) m[style]=v; else delete m[style]; return {dsoGen:m}; }); }
+  // Hinh ao ve san — cho o anh khi ma hang chua co anh ky thuat nao
+  dsoTeeSvg(size){ const h=React.createElement;
+    return h('svg',{width:size,height:size,viewBox:'0 0 120 120',fill:'none',
+        stroke:'#c9cec4',strokeWidth:1.6,strokeLinejoin:'round'},
+      h('path',{d:'M44 20 L30 26 L18 40 L27 50 L33 44 L33 100 L87 100 L87 44 L93 50 L102 40 L90 26 L76 20 Z'}),
+      h('path',{d:'M44 20 C48 30 72 30 76 20'}),
+      h('path',{d:'M33 92 L87 92',stroke:'#e0e4db'})); }
+
   renderDsoLineDetail(line){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
-    const cards=this.dsoSizeCards(line), styles=this.dsoStyles(line);
-    const need=cards.reduce((a,c)=>a+c.need,0), done=cards.reduce((a,c)=>a+this.dsoDoneOf(c),0);
-    const fail=cards.reduce((a,c)=>a+this.dsoDefOf(c),0);
+    const cards=this.dsoSizeCards(line), K=this.dsoKpi(line);
     const back=h('button',{onClick:()=>this.set({dsoLine:null}),
       style:{border:'1px solid '+C.border,background:C.white,color:C.dark,borderRadius:9,padding:'6px 13px',
-        fontSize:12.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',marginBottom:14},
+        fontSize:12.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',flex:'none'},
       'style-hover':{background:C.tint}},this.t('dsoBack'));
-    // Card summary full size: ten chuyen + style (+ tong da lam/can lam)
-    const summary=h('div',{style:{border:'1px solid '+C.border,borderRadius:14,background:C.tint2,
-        boxShadow:C.shadow,padding:'16px 20px',marginBottom:16,display:'flex',alignItems:'center',
-        flexWrap:'wrap',gap:16}},
-      h('div',{style:{minWidth:0,flex:1}},
-        h('div',{style:{fontSize:22,fontWeight:700,color:C.primary,fontFamily:mono,lineHeight:1.1}},line),
-        h('div',{style:{fontSize:13,color:C.sub,marginTop:4,wordBreak:'break-all'}},
-          styles.length?styles.join(' \u00b7 '):'\u2014')),
-      // 3 o rieng: DAT / LOI / CAN LAM -- truoc day gop 'da lam / can lam' vao 1 o
-      h('div',{style:{flex:'none',display:'flex',gap:10,flexWrap:'wrap'}},
-        [[this.t('dsoPass'),done,'#2f7d32','#eff7e9','#cfe3b4'],
-         [this.t('dsoFail'),fail,'#a3271b','#fdeeec','#eccfca'],
-         [this.t('dsoReq'),need,C.ink,C.white,C.border]].map(([lb,v,fg,bg,bd])=>
-          h('div',{key:lb,style:{flex:'none',minWidth:96,border:'1px solid '+bd,background:bg,
-              borderRadius:12,padding:'9px 14px'}},
-            h('div',{style:{fontSize:9.5,fontWeight:700,letterSpacing:'.5px',color:C.faint,
-              whiteSpace:'nowrap'}},lb),
-            h('div',{style:{fontSize:21,fontWeight:700,fontFamily:mono,color:fg,marginTop:3,
-              lineHeight:1}},this.fmt(v))))));
-    if(!cards.length) return h('div',{style:{padding:'18px 20px 24px'}},back,summary,
-      h('div',{style:{padding:'48px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('dsoNoCut')));
-    // ---- Ma tran: 1 dong = 1 mau (theo tung PO), cot = size tang dan --------
-    // Cot lay hop cac size cua ca chuyen roi xep theo SORDER (XXS..6XL), nen moi
-    // dong deu co du o; mau nao khong co size do thi o de TRONG cho thang hang.
-    const known=this.SORDER.filter(z=>cards.some(c=>c.size===z));
-    const other=[]; cards.forEach(c=>{ if(this.SORDER.indexOf(c.size)<0&&other.indexOf(c.size)<0) other.push(c.size); });
-    const cols=known.concat(other);
-    const rmap={}, rows=[];
-    cards.forEach(c=>{ const rk=c.po+'|'+c.color;
-      if(!rmap[rk]){ rmap[rk]={k:rk,po:c.po,color:c.color,by:{}}; rows.push(rmap[rk]); }
-      rmap[rk].by[c.size]=c; });
-    rows.sort((a,b)=>String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color)));
-    const gt='repeat('+(cols.length||1)+',minmax(150px,1fr))';
-    const cell=(c)=>{ const d=this.dsoDoneOf(c), ok=d>=c.need, nf=this.dsoDefOf(c);
-        return h('div',{key:this.dsoDoneKey(c),onClick:()=>this.dsoTapOpen(c),title:this.t('dsoTapAdd'),
-          style:{border:'1px solid '+(ok?'#cfe3b4':C.border),borderRadius:13,background:ok?'#f4f9ec':C.white,
-            boxShadow:C.shadow,cursor:'pointer',overflow:'hidden',userSelect:'none'},
-          'style-hover':{borderColor:C.primary}},
-          h('div',{style:{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8,padding:'11px 13px 9px'}},
-            h('span',{style:{fontSize:26,fontWeight:700,lineHeight:1,color:C.ink,letterSpacing:'-.5px'}},c.size),
-            h('span',{style:{display:'inline-flex',alignItems:'center',gap:6,flex:'none'}},
-              nf?h('span',{title:this.fmt(nf)+' '+this.t('dsoDefLogged'),
-                style:{fontSize:10.5,fontWeight:700,fontFamily:mono,color:'#a3271b',background:'#fdecea',
-                  border:'1px solid #eccfca',borderRadius:999,padding:'1px 6px',whiteSpace:'nowrap'}},
-                '✕ '+this.fmt(nf)):null,
-              h('span',{style:{fontSize:14,fontWeight:700,fontFamily:mono,color:ok?'#2f7d32':C.ink,whiteSpace:'nowrap'}},
-                this.fmt(d)+'/'+this.fmt(c.need)),
-              h('button',{title:this.t('dsoTapSub'),onClick:e=>{ e.stopPropagation(); this.dsoBump(c,-1); },
-                style:{flex:'none',width:19,height:19,lineHeight:1,border:'1px solid '+C.border,background:C.white,
-                  color:C.sub,borderRadius:6,cursor:'pointer',padding:0,fontSize:13,fontFamily:'inherit'}},'\u2212'))),
-          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,
-              padding:'7px 13px 9px',borderTop:'1px solid '+C.line,background:ok?'rgba(255,255,255,.5)':'#fbfcf8'}},
-            h('span',{style:{fontSize:11.5,fontWeight:600,fontFamily:mono,color:C.sub,whiteSpace:'nowrap'}},c.po),
-            h('span',{style:{fontSize:11.5,fontWeight:700,color:C.dark,whiteSpace:'nowrap'}},c.color))); };
-    // hang tieu de size -- de doc duoc cot nao la size nao khi o bi bo trong
-    const head=h('div',{key:'hd',style:{display:'grid',gridTemplateColumns:gt,gap:10,marginBottom:7}},
-      cols.map(z=>h('div',{key:z,style:{fontSize:11,fontWeight:700,letterSpacing:'.5px',color:C.sub,
-        textAlign:'center',textTransform:'uppercase'}},z)));
-    const grid=h('div',null,head,
-      rows.map(r=>h('div',{key:r.k,style:{display:'grid',gridTemplateColumns:gt,gap:10,marginBottom:10}},
-        cols.map(z=>{ const c=r.by[z];
-          // khong co size nay -> o trong, van chiem 1 cot
-          return c?cell(c):h('div',{key:'e'+z}); }))));
-    return h('div',{style:{padding:'18px 20px 24px'}},back,summary,
-      h('div',{className:'yscroll',style:{overflowX:'auto',paddingBottom:4}},
-        h('div',{style:{minWidth:(cols.length*160)+'px'}},grid)),
-      this.renderDsoHistory(line),
-      this.renderDsoDefHistory(line),
-      this.renderDsoTap());
+    const bar=h('div',{style:{display:'flex',alignItems:'center',gap:13,flexWrap:'wrap',marginBottom:13}},
+      back,
+      h('div',{style:{fontSize:20,fontWeight:700,fontFamily:mono,color:C.primary,lineHeight:1,
+        flex:'none'}},line),
+      h('div',{style:{flex:1,minWidth:8}}),
+      h('div',{style:{fontSize:10.5,fontWeight:700,letterSpacing:'.5px',color:C.faint,flex:'none'}},
+        this.t('dsoDoneNeed')),
+      h('div',{style:{fontSize:15,fontWeight:700,fontFamily:mono,color:C.ink,flex:'none'}},
+        this.fmt(K.done)+' / '+this.fmt(K.need)));
+    if(!cards.length) return h('div',{style:{padding:'16px 18px 22px'}},bar,
+      h('div',{style:{padding:'48px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},
+        this.t('dsoNoCut')));
+
+    const P=this.dsoPick(line,cards), c=P.card;
+    const dq=c?this.dsoDoneOf(c):0, dn=c?this.dsoDefOf(c):0;
+    const histOpen=!!this.state.dsoHistOpen;
+
+    // ---- Goc trai tren: 4 o KPI ------------------------------------------
+    const tile=(o)=>h('div',{key:o.t,style:{background:o.bg,padding:'13px 17px 15px',minWidth:0,
+        display:'flex',flexDirection:'column',minHeight:126,
+        borderRight:o.br?'1px solid '+C.line:'none',borderBottom:o.bb?'1px solid '+C.line:'none'}},
+      h('div',{style:{fontSize:19,fontWeight:700,color:o.fg,letterSpacing:'-.3px',lineHeight:1.05,
+        wordBreak:'break-word'}},o.t),
+      h('div',{style:{flex:1,minHeight:8}}),
+      (o.subs||[]).length?h('div',{style:{display:'flex',flexDirection:'column',alignItems:'flex-end',
+          gap:1,marginBottom:2}},
+        o.subs.map(sb=>h('div',{key:sb[0],style:{display:'flex',alignItems:'baseline',gap:7}},
+          h('span',{style:{fontSize:11.5,color:C.sub,whiteSpace:'nowrap'}},sb[0]),
+          h('span',{style:{fontSize:14,fontWeight:700,fontFamily:mono,color:C.ink,
+            whiteSpace:'nowrap'}},sb[1])))):null,
+      h('div',{style:{display:'flex',alignItems:'baseline',justifyContent:'flex-end',gap:6}},
+        h('span',{style:{fontSize:31,fontWeight:700,fontFamily:mono,color:o.fg,lineHeight:1,
+          letterSpacing:'-1.2px'}},o.big),
+        o.pct?h('span',{style:{fontSize:12,fontFamily:mono,color:C.sub,whiteSpace:'nowrap'}},
+          '('+o.pct+')'):null));
+    const dhu=K.insp?(K.fail/K.insp*100):0;
+    const kpi=h('div',{style:{flex:1,minWidth:0,display:'grid',
+        gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)',
+        gridTemplateRows:'minmax(0,1fr) minmax(0,1fr)'}},
+      tile({t:this.t('dsoKOut'),fg:'#2f9e44',bg:'#eef8ee',br:1,bb:1,big:this.fmt(K.need),
+        subs:[[this.t('dsoKToday'),this.fmt(K.today)],[this.t('dsoKIncomp'),this.fmt(K.left)]]}),
+      tile({t:this.t('dsoKQc'),fg:'#e8830c',bg:'#fff5e9',bb:1,big:this.fmt(K.insp),
+        pct:this.dsoPct2(K.insp,K.need),subs:[[this.t('dsoKRepair'),this.fmt(K.fail)]]}),
+      tile({t:this.t('dsoKPassT'),fg:'#4338ca',bg:'#eeeefc',br:1,big:this.fmt(K.done),
+        pct:this.dsoPct2(K.done,K.insp)}),
+      tile({t:this.t('dsoKRej'),fg:'#e03131',bg:'#fdeeed',big:this.fmt(K.fail),
+        pct:this.dsoPct2(K.fail,K.insp),
+        subs:[['DHU',this.fmtn(Math.round(dhu*100)/100)+' %']]}));
+
+    // ---- Goc trai duoi: Top 3 theo NGAY + 3 nut phu ----------------------
+    const day=this.dsoDayView();
+    const nbtn={border:'none',background:'none',color:C.sub,cursor:'pointer',padding:'0 10px',
+      fontSize:17,lineHeight:1,fontFamily:'inherit',height:30};
+    const nav=h('div',{style:{display:'inline-flex',alignItems:'center',flex:'none',
+        border:'1px solid '+C.border,borderRadius:9,overflow:'hidden',background:C.white}},
+      h('button',{title:this.t('dsoDayPrev'),onClick:()=>this.dsoDayShift(-1),style:nbtn,
+        'style-hover':{background:C.tint}},'‹'),
+      h('span',{style:{display:'inline-flex',alignItems:'center',gap:7,padding:'0 11px',fontSize:12.5,
+          fontWeight:700,fontFamily:mono,color:C.ink,whiteSpace:'nowrap',height:30,
+          borderLeft:'1px solid '+C.line,borderRight:'1px solid '+C.line}},
+        h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:C.faint,strokeWidth:1.9,
+            style:{flex:'none'}},
+          h('rect',{x:3,y:5,width:18,height:16,rx:2}),h('path',{d:'M8 3v4M16 3v4M3 11h18'})),
+        this.dsoDayLabel(day)),
+      h('button',{title:this.t('dsoDayNext'),onClick:()=>this.dsoDayShift(1),style:nbtn,
+        'style-hover':{background:C.tint}},'›'));
+    const tDef=this.dsoTop3Def(line,day), tOp=this.dsoTop3Op(line,day);
+    const rkTh={padding:'8px 12px',fontSize:11.5,fontWeight:600,color:C.sub,textAlign:'center',
+      borderBottom:'1px solid '+C.line,background:'#fbfcf8',whiteSpace:'nowrap'};
+    const rkRow=(i,body)=>h('div',{key:i,style:{display:'flex',alignItems:'center',gap:9,
+        padding:'8px 12px',borderTop:i?'1px solid '+C.line:'none',minHeight:44}},
+      h('span',{style:{flex:'none',width:14,fontSize:10,fontFamily:mono,color:C.faint,
+        textAlign:'right'}},i+1),
+      h('div',{style:{minWidth:0,flex:1}},body));
+    const rkEmpty=h('div',{style:{padding:'26px 12px',textAlign:'center',color:C.faint,
+      fontSize:11.5,lineHeight:1.5}},this.t('dsoTopEmpty'));
+    const rkCol=(titleKey,rows,render,br)=>h('div',{style:{minWidth:0,flex:1,
+        borderRight:br?'1px solid '+C.line:'none'}},
+      h('div',{style:rkTh},this.t(titleKey)),
+      rows.length?rows.map((r,i)=>rkRow(i,render(r))):rkEmpty);
+    const top3=h('div',{style:{padding:'13px 17px 15px',minWidth:0,display:'flex',
+        flexDirection:'column',borderRight:'1px solid '+C.line}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:11,flexWrap:'wrap'}},
+        h('div',{style:{fontSize:18,fontWeight:700,color:C.ink,letterSpacing:'-.3px',flex:'none'}},
+          this.t('dsoTop3')),
+        h('div',{style:{flex:1,minWidth:4}}),nav),
+      h('div',{style:{flex:1,border:'1px solid '+C.border,borderRadius:11,overflow:'hidden',
+          display:'flex',alignItems:'stretch',background:C.white}},
+        rkCol('dsoTopPart',tDef,r=>h('div',null,
+          h('div',{title:[r.part,r.type].filter(Boolean).join('  |  ')+'  ·  '+r.code,
+              style:{fontSize:12.5,fontWeight:600,color:C.ink,lineHeight:1.3,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap'}},
+            r.part||r.code,
+            r.type?h('span',{key:'s',style:{color:C.border}},'  |  '):null,
+            r.type?h('span',{key:'t',style:{fontWeight:500,color:C.sub}},r.type):null),
+          h('div',{style:{fontSize:11,fontFamily:mono,color:C.sub,marginTop:2}},
+            this.fmt(r.n),h('span',{style:{color:C.faint}},' pcs'))),true),
+        rkCol('dsoTopOp',tOp,r=>h('div',{style:{display:'flex',alignItems:'baseline',gap:8}},
+          h('span',{style:{minWidth:0,fontSize:12.5,fontWeight:600,color:C.ink,overflow:'hidden',
+            textOverflow:'ellipsis',whiteSpace:'nowrap'}},r.name),
+          h('span',{style:{flex:'none',fontSize:11,fontFamily:mono,color:C.faint}},
+            '×'+this.fmt(r.n))),false)));
+    const sideBtn=(labelKey,tipKey,icon,on,live)=>h('button',{key:labelKey,onClick:on,
+        title:this.t(tipKey||labelKey),
+        style:{display:'flex',alignItems:'center',justifyContent:'center',gap:9,minHeight:62,
+          border:'1px solid '+(live?C.primary:C.border),borderRadius:11,
+          background:live?C.tint:'#fafbf7',color:C.ink,fontSize:14.5,fontWeight:600,
+          fontFamily:'inherit',cursor:'pointer',padding:'0 14px'},
+        'style-hover':{background:live?C.tint:C.tint2,borderColor:C.primary}},
+      h('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:C.sub,strokeWidth:1.8,
+        style:{flex:'none'}},icon),
+      h('span',{style:{whiteSpace:'nowrap'}},this.t(labelKey)));
+    const acts=h('div',{style:{padding:'13px 17px 15px',minWidth:0,display:'grid',
+        gridTemplateRows:'repeat(3,minmax(0,1fr))',gap:11,alignContent:'center'}},
+      sideBtn('dsoBtnMeas',null,
+        h('path',{d:'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8-3-3-3.8 3.8zM6 22l-4-4 9.6-9.6 4 4L6 22z'}),
+        ()=>this.set({dsoInfo:'meas'}),false),
+      sideBtn('dsoBtnChk',null,
+        h('path',{d:'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'}),
+        ()=>this.set({dsoInfo:'chk'}),false),
+      sideBtn('dsoBtnHist',histOpen?'dsoHistHide':'dsoHistShow',
+        h('g',null,h('circle',{cx:12,cy:12,r:9}),h('path',{d:'M12 7v5l4 2'})),
+        ()=>this.set({dsoHistOpen:!histOpen}),histOpen));
+
+    // ---- Goc phai tren: the ma hang (o chon · thuong hieu · anh) ----------
+    const st=P.style, brand=st?this.brandForStyle(st):'';
+    const photos=this.dsoPhotos(st), pi=this.dsoPhotoIdx(st);
+    const icoSt={display:'inline-flex',alignItems:'center',justifyContent:'center',width:28,height:28,
+      flex:'none',border:'1px solid '+C.border,borderRadius:8,background:C.white,cursor:'pointer',
+      padding:0,fontFamily:'inherit'};
+    const ico=d=>h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',
+      strokeWidth:1.9},h('path',{d:d}));
+    const delBtn=h('button',{title:this.t('dsoPhDel'),onClick:()=>this.dsoPhotoDel(st),
+        style:{...icoSt,color:'#c0392b'},'style-hover':{background:'#fdeeec'}},
+      ico('M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5'));
+    const addBtn=h('label',{title:this.t('dsoPhAdd'),style:{...icoSt,color:C.dark},
+        'style-hover':{background:C.tint}},
+      ico('M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z'),
+      h('input',{type:'file',accept:'image/*',style:{display:'none'},
+        onChange:e=>{ const f=e.target.files&&e.target.files[0]; e.target.value='';
+          if(f) this.dsoPhotoAdd(st,f); }}));
+    const styleCard=h('div',{style:{padding:'13px 17px 15px',minWidth:0,display:'flex',
+        flexDirection:'column',gap:12}},
+      h('select',{value:P.sk,title:this.t('dsoStyleL'),
+          onChange:e=>this.dsoPickSet(line,{sk:e.target.value}),
+          style:{width:'100%',border:'1px solid '+C.border,borderRadius:9,background:'#fafbf7',
+            padding:'9px 11px',fontSize:14,fontWeight:700,fontFamily:mono,color:C.ink,
+            appearance:'auto',cursor:'pointer',boxSizing:'border-box'}},
+        P.keys.map(k=>h('option',{key:k.sk,value:k.sk},k.label))),
+      h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+        h('span',{style:{fontSize:13,fontWeight:600,color:brand?C.ink:C.faint,whiteSpace:'nowrap'}},
+          brand||this.t('dsoBrand')),
+        h('span',{style:{flex:'none',color:C.border}},'|'),
+        h('select',{value:this.dsoGenOf(st),title:this.t('dsoGenL'),
+            onChange:e=>this.dsoGenSet(st,e.target.value),
+            style:{border:'none',background:'none',fontSize:13,fontWeight:600,fontFamily:'inherit',
+              color:this.dsoGenOf(st)?C.ink:C.faint,cursor:'pointer',appearance:'auto',padding:0}},
+          h('option',{value:''},this.t('dsoGenNone')),
+          this.DSO_GEN.map(g=>h('option',{key:g,value:g},g))),
+        h('div',{style:{flex:1,minWidth:4}}),
+        photos.length?delBtn:null, addBtn),
+      h('div',{style:{display:'flex',alignItems:'flex-start',gap:11,minWidth:0}},
+        h('div',{style:{flex:'none',width:186,height:186,border:'1px solid '+C.border,borderRadius:10,
+            background:'#fbfcf8',display:'flex',alignItems:'center',justifyContent:'center',
+            overflow:'hidden'}},
+          photos.length
+            ? h('img',{src:photos[pi],alt:st,
+                style:{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block'}})
+            : h('div',{style:{textAlign:'center',color:C.faint}},this.dsoTeeSvg(112),
+                h('div',{style:{fontSize:10.5,marginTop:2}},this.t('dsoPhNone')))),
+        photos.length>1?h('div',{style:{display:'flex',flexWrap:'wrap',gap:8,minWidth:0}},
+          photos.map((u,i)=>h('button',{key:i,
+              onClick:()=>this.setState(s2=>{ const ix={...(s2.dsoPhotoI||{})};
+                ix[st]=i; return {dsoPhotoI:ix}; }),
+              style:{width:56,height:56,padding:2,flex:'none',cursor:'pointer',borderRadius:8,
+                background:C.white,border:'1px solid '+(i===pi?C.ink:C.border)}},
+            h('img',{src:u,alt:'',
+              style:{width:'100%',height:'100%',objectFit:'contain',display:'block'}})))):null));
+
+    // ---- Goc phai duoi: mau -> size -> 2 nut lon -------------------------
+    const chipRow=(label,items,cur,on,extra)=>h('div',{style:{display:'flex',alignItems:'stretch',
+        borderTop:'1px solid '+C.line,minHeight:46}},
+      h('div',{style:{flex:'none',width:70,display:'flex',alignItems:'center',padding:'0 13px',
+        fontSize:12.5,fontWeight:600,color:C.sub,borderRight:'1px solid '+C.line,
+        whiteSpace:'nowrap'}},label),
+      // Chip xuong dong thay vi cuon ngang: chuyen nhieu size van thay het,
+      // khong co o nao bi giau sau thanh cuon (tren tablet gan nhu khong keo duoc).
+      h('div',{style:{flex:1,minWidth:0,display:'flex',flexWrap:'wrap',alignContent:'flex-start'}},
+        items.length?items.map(v=>{ const on2=v===cur;
+            return h('button',{key:v,onClick:()=>on(v),title:String(v),
+              style:{flex:'0 0 auto',minWidth:88,height:45,border:'none',
+                borderRight:'1px solid '+C.line,borderBottom:'1px solid '+C.line,
+                background:on2?C.ink:C.white,color:on2?'#fff':C.ink,fontSize:13.5,
+                fontWeight:on2?700:500,fontFamily:'inherit',cursor:'pointer',padding:'0 15px'},
+              'style-hover':on2?{}:{background:C.tint}},v); })
+          : h('span',{style:{padding:'0 13px',alignSelf:'center',fontSize:12,color:C.faint}},'—')),
+      extra||null);
+    const noMinus=!c||dq<=0;
+    const minus=h('button',{title:this.t('dsoTapSub'),disabled:noMinus,
+        onClick:()=>{ if(!noMinus) this.dsoBump(c,-1); },
+        style:{flex:'none',width:52,border:'none',borderLeft:'1px solid '+C.line,background:'#fafbf7',
+          color:noMinus?'#c8ccc2':C.sub,fontSize:18,lineHeight:1,fontFamily:'inherit',
+          cursor:noMinus?'not-allowed':'pointer',padding:0},
+        'style-hover':noMinus?{}:{background:C.tint}},'−');
+    const bigBtn=(label,sub,bg,on)=>h('button',{onClick:c?on:undefined,disabled:!c,
+        style:{flex:1,minWidth:0,minHeight:152,border:'none',background:c?bg:'#e7eae2',
+          color:c?'#fff':'#a9afa3',fontFamily:'inherit',cursor:c?'pointer':'not-allowed',
+          display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:7,
+          transition:'filter .12s'},
+        'style-hover':c?{filter:'brightness(1.08)'}:{}},
+      h('span',{style:{fontSize:31,fontWeight:700,letterSpacing:'.3px',lineHeight:1}},label),
+      h('span',{style:{fontSize:12.5,fontWeight:600,fontFamily:mono,opacity:.92}},sub));
+    const tapPanel=h('div',{style:{minWidth:0,display:'flex',flexDirection:'column'}},
+      chipRow(this.t('dsoLblColor'),P.colors,P.color,v=>this.dsoPickSet(line,{color:v})),
+      chipRow(this.t('dsoLblSize'),P.sizes,P.size,v=>this.dsoPickSet(line,{size:v}),minus),
+      h('div',{style:{flex:1,display:'flex',alignItems:'stretch',minHeight:152,
+          borderTop:'1px solid '+C.line}},
+        bigBtn(this.t('dsoBtnPass'),c?(this.fmt(dq)+' / '+this.fmt(c.need)):this.t('dsoNoPick'),
+          '#4038e0',()=>this.dsoBump(c,1)),
+        bigBtn(this.t('dsoBtnDef'),c?('✕ '+this.fmt(dn)):this.t('dsoNoPick'),
+          '#ee4b47',()=>this.set({dsoTap:{c:c,stage:'fail'},dsoTapQ:''}))));
+
+    return h('div',{style:{padding:'16px 18px 22px'}},bar,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',background:C.white,
+          boxShadow:C.shadow,display:'grid',gridTemplateColumns:'minmax(0,1.04fr) minmax(0,1fr)',
+          alignItems:'stretch'}},
+        h('div',{style:{minWidth:0,display:'flex',borderRight:'1px solid '+C.line,
+          borderBottom:'1px solid '+C.line}},kpi),
+        h('div',{style:{minWidth:0,borderBottom:'1px solid '+C.line}},styleCard),
+        h('div',{style:{minWidth:0,borderRight:'1px solid '+C.line,display:'grid',
+          gridTemplateColumns:'minmax(0,1.55fr) minmax(0,1fr)',alignItems:'stretch'}},top3,acts),
+        tapPanel),
+      histOpen
+        ? h('div',null,this.renderDsoHistory(line),this.renderDsoDefHistory(line))
+        : h('div',null,this.renderDsoHandAsk(),this.renderDsoHandBulk()),
+      this.renderDsoTap(),this.renderDsoInfo());
+  }
+
+  // Measurement / Check List: chua co spec -> hop thoai giu cho, de nut khong
+  // bam trong ma van thay ro no se thanh cai gi.
+  renderDsoInfo(){
+    const h=React.createElement, C=this.C;
+    const k=this.state.dsoInfo; if(!k) return null;
+    const close=()=>this.set({dsoInfo:null});
+    const panel=h('div',{onClick:ev=>ev.stopPropagation(),
+        style:{width:'min(460px,94vw)',background:C.white,borderRadius:16,overflow:'hidden',
+          boxShadow:'0 30px 70px rgba(0,0,0,.32)'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'15px 20px',
+          borderBottom:'1px solid '+C.line}},
+        h('div',{style:{fontSize:16,fontWeight:700,marginRight:'auto'}},
+          this.t(k==='meas'?'dsoBtnMeas':'dsoBtnChk')),
+        h('button',{title:this.t('dsoClose'),onClick:close,
+          style:{border:'1px solid '+C.border,background:C.white,color:C.sub,borderRadius:9,width:30,
+            height:30,flex:'none',cursor:'pointer',fontSize:17,lineHeight:1,padding:0,
+            fontFamily:'inherit'},'style-hover':{background:C.tint}},'×')),
+      h('div',{style:{padding:'30px 24px',textAlign:'center',color:C.faint,fontSize:13.5,
+        lineHeight:1.6}},this.t(k==='meas'?'dsoMeasSoon':'dsoChkSoon')),
+      h('div',{style:{display:'flex',justifyContent:'flex-end',padding:'12px 20px',
+          borderTop:'1px solid '+C.line,background:'#f8faf3'}},
+        h('button',{onClick:close,style:this.btn('ghost')},this.t('dsoClose'))));
+    const over=h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
+      backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',
+      zIndex:88,padding:24}},panel);
+    return (RD&&RD.createPortal)?RD.createPortal(over,document.body):over;
   }
   // ==== PHIEU BAN GIAO: May -> Hoan thien ==================================
   // Nhan 1 'slip': {id, no, ts, style, po, color, line, dayTxt, sizes, qty, alloc}.
