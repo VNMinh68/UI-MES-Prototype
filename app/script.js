@@ -608,7 +608,9 @@ class Component extends DCLogic {
       dsoNoUnhanded:'Không còn hàng nào chờ giao — tất cả đã giao sang hoàn thiện.',
       dsoDefHist:'Lịch sử hàng lỗi theo ngày', dsoDefHistSub:'Mỗi lần bấm LỖI được ghi lại kèm giờ và lý do',
       dsoDefHistEmpty:'Chưa ghi hàng lỗi nào — bấm LỖI ở card size để ghi.',
-      dsoDefExpTip:'Xuất .xlsx đúng những dòng đang hiện', dsoDefAllLines:'TẤT CẢ CHUYỀN',
+      dsoDefExpTip:'Xuất .xlsx báo cáo QC 7 sheet — dashboard, theo chuyền · mã hàng, Pareto lỗi, theo giờ, chi tiết',
+      dsoDefNoTime:'Không rõ giờ',
+      dsoDefCut:'Sheet 07_QC_Detail chỉ chứa {n} dòng đầu trong {t} sản phẩm lỗi. Các sheet tổng hợp vẫn tính đủ; lọc hẹp lại nếu cần xem hết chi tiết.',
       dsoColSize:'SIZE', dsoColReason:'LÝ DO', dsoColDefQty:'SỐ LƯỢNG LỖI', dsoColTime:'GIỜ',
       mlvIncTip:'Thu nhập / 1 người theo giờ làm của chuyền',
       mlvSwitch:'Đổi chuyền', mlvTeam:'TỔ', mlvPerHour:'SẢN LƯỢNG / GIỜ', mlvQual:'CHẤT LƯỢNG',
@@ -854,7 +856,9 @@ class Component extends DCLogic {
       dsoNoUnhanded:'Nothing left to hand over — everything has gone to finishing.',
       dsoDefHist:'Daily defecting history', dsoDefHistSub:'Every FAIL tap is recorded with its time and reason',
       dsoDefHistEmpty:'No defect recorded yet — tap FAIL on a size card to log one.',
-      dsoDefExpTip:'Exports a .xlsx with exactly the rows shown', dsoDefAllLines:'ALL LINES',
+      dsoDefExpTip:'Exports the 7-sheet QC report .xlsx — dashboard, line · style, defect Pareto, hourly trend, detail',
+      dsoDefNoTime:'No time',
+      dsoDefCut:'07_QC_Detail holds only the first {n} of {t} defective pieces. The summary sheets still count them all; narrow the filter to see the rest of the detail.',
       dsoColSize:'SIZE', dsoColReason:'REASON', dsoColDefQty:'DEFECT QTY', dsoColTime:'TIME',
       mlvIncTip:'Income per person at this line\u2019s work hours',
       mlvSwitch:'Switch line', mlvTeam:'TEAM', mlvPerHour:'OUTPUT / HOUR', mlvQual:'QUALITY',
@@ -3055,36 +3059,303 @@ class Component extends DCLogic {
       ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color))
       ||oi(a.size)-oi(b.size)||String(a.code).localeCompare(String(b.code))); }
 
-  // ---- Xuat Excel bang lich su hang loi ------------------------------------
-  // Xuat DUNG nhung dong dang thay: cung bo loc chuyen, cung tu khoa tim, cung
-  // thu tu sap xep -- nguoi dung loc gi tren man hinh thi file ra dung the.
-  // Cot LY DO tren bang gop ma+ten trong 1 o; ra Excel tach lam 2 cot cho de
-  // loc va pivot. Cot CHUYEN chi co khi dang xem tat ca chuyen, giong bang.
+  // ==========================================================================
+  // XUAT EXCEL LICH SU HANG LOI  ->  bao cao QC nhieu sheet
+  // --------------------------------------------------------------------------
+  // 7 sheet, dung ten va dung cot nhu file mau Endline_QC_MES_Report_Sample:
+  //   01_Dashboard          KPI chung + bang theo chuyen  (+ bieu do cot)
+  //   02_Line_Style_Report  1 dong / (chuyen, ma hang)
+  //   03_Defect_Pareto      xep hang loi theo so luong     (+ bieu do cot)
+  //   04_Hourly_Trend       theo khung gio san xuat        (+ bieu do duong)
+  //   05_Rework_ReQC        CHUA CO NGUON -- app chua co luong sua hang/kiem lai
+  //   06_QC_Performance     CHUA CO NGUON -- app chua ghi ten QC kiem hang
+  //   07_QC_Detail          1 dong / 1 san pham NG
+  //
+  // Pham vi bao cao = cac NGAY co trong danh sach dang xem, giao voi chuyen dang
+  // loc. Trong pham vi do lay TAT CA du lieu, KHONG qua o tim kiem: loc danh
+  // sach la de chon ky bao cao, con so lieu giua cac sheet phai khop nhau.
+  //
+  // Cot khong co nguon trong app thi de trong (Rework, Reject, Bundle, QC) --
+  // giu cot cho dung form, dien duoc ngay khi app ghi nhan them.
+  QC_NAMES=['01_Dashboard','02_Line_Style_Report','03_Defect_Pareto','04_Hourly_Trend',
+    '05_Rework_ReQC','06_QC_Performance','07_QC_Detail'];
+  QC_TITLE='ENDLINE QC DASHBOARD – MES';
+  QC_MARGINS={left:.75,right:.75,top:1,bottom:1,header:.5,footer:.5};
+  QC_MAXDETAIL=5000;       // tran so dong sheet 07 cho khoi treo trinh duyet
+  DEF_SLOTS=[['7:30-8:30',450],['8:30-9:30',510],['9:30-10:30',570],['10:30-12:00',630],
+    ['13:00-14:00',780],['14:00-15:00',840],['15:00-16:00',900],['16:00-17:00',960],
+    ['17:00-18:00',1020],['18:00-20:30',1080]];
+
+  // Moc gio HH:MM -> ten khung gio. Roi vao khe nghi (12:00-13:00) hay muon hon
+  // ca ca thi don ve khung gan nhat truoc do; '' = ban ghi cu khong co moc gio.
+  dsoDefSlot(at){ const m=/^\s*(\d{1,2}):(\d{2})/.exec(String(at||''));
+    if(!m) return '';
+    const t=Number(m[1])*60+Number(m[2]); let nm=this.DEF_SLOTS[0][0];
+    this.DEF_SLOTS.forEach(s=>{ if(t>=s[1]) nm=s[0]; });
+    return nm; }
+  // Thu Vien Loi la nguon duy nhat cho ten / nhom / vi tri cua ma loi.
+  dsoDefRec(code){ const c=String(code||'').trim();
+    return this.defects().find(x=>String(x.code||'').trim()===c)||null; }
+  dsoDefLoc(code){ const d=this.dsoDefRec(code); return d?String(d.loc||'').trim():''; }
+  dsoDefCat(code){ const d=this.dsoDefRec(code); return d?String(d.cat||'').trim():''; }
+
+  // ---- Gom so lieu cho ca quyen bao cao trong 1 lan quet -------------------
+  dsoQcData(line,rows){
+    const NOT=this.t('dsoDefNoTime');
+    const day={}, days=[];
+    rows.forEach(r=>{ if(!day[r.day]){ day[r.day]=1; days.push(r.day); } });
+    days.sort();
+    const F={days:days,pass:0,fail:0,line:{},lineOrd:[],ls:{},lsOrd:[],
+      code:{},codeOrd:[],slot:{},slotOrd:[],detail:[],detailAll:0};
+    const gl=n=>{ if(!F.line[n]){ F.line[n]={line:n,pass:0,fail:0}; F.lineOrd.push(n); }
+      return F.line[n]; };
+    const gls=(n,st)=>{ const k=n+'|'+st;
+      if(!F.ls[k]){ F.ls[k]={line:n,style:st,buyer:this.brandForStyle(st),pass:0,fail:0}; F.lsOrd.push(k); }
+      return F.ls[k]; };
+    const gsl=s=>{ if(!F.slot[s]) F.slot[s]={pass:0,fail:0}; return F.slot[s]; };
+
+    // DAT -- moi san pham bam DAT de lai 1 moc HH:MM trong dsoPassLog.
+    // Quet ca nhung chuyen chi co hang DAT ma khong co loi trong ky: khong the
+    // bo, neu khong so DA KIEM se thieu va FPY bi tinh sai.
+    const pm=this.state.dsoPassLog||{};
+    Object.keys(pm).forEach(k=>{ const p=k.split('|');
+      if(p.length!==6||!day[p[0]]||(line&&p[1]!==line)) return;
+      (pm[k]||[]).forEach(t=>{ const s=this.dsoDefSlot(t)||NOT;
+        F.pass++; gl(p[1]).pass++; gls(p[1],p[2]).pass++; gsl(s).pass++; }); });
+
+    // LOI
+    this.dsoDefHistory(line).forEach(r=>{ if(!day[r.day]) return;
+      const q=Number(r.qty)||0; if(q<=0) return;
+      const s=this.dsoDefSlot(r.at)||NOT, c=String(r.code||'');
+      F.fail+=q; gl(r.line).fail+=q; gls(r.line,r.style).fail+=q; gsl(s).fail+=q;
+      if(!F.code[c]){ F.code[c]={code:c,qty:0}; F.codeOrd.push(c); }
+      F.code[c].qty+=q;
+      F.detailAll+=q;
+      // 1 dong = 1 san pham NG, dung nhu file mau (khong co cot so luong)
+      for(let i=0;i<q&&F.detail.length<this.QC_MAXDETAIL;i++) F.detail.push(r); });
+
+    F.lineOrd.sort(); F.lsOrd.sort();
+    F.codeOrd.sort((a,b)=>F.code[b].qty-F.code[a].qty||String(a).localeCompare(String(b)));
+    F.slotOrd=this.DEF_SLOTS.map(s=>s[0]);
+    if(F.slot[NOT]) F.slotOrd.push(NOT);
+    return F; }
+
+  // ---- Dinh dang o theo file mau ------------------------------------------
+  qcS(){ return this._qcS||(this._qcS={
+    title:{font:{bold:true,sz:16},alignment:{vertical:'center'}},
+    kpi:{font:{bold:true},fill:{patternType:'solid',fgColor:{rgb:'FFD9EAF7'}},
+      alignment:{vertical:'center'}},
+    head:{font:{bold:true,color:{rgb:'FFFFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'FF1F4E78'}},
+      alignment:{vertical:'center'}},
+    cell:{alignment:{vertical:'center'}} }); }
+  xsCol(n){ let s='', i=Number(n); while(i>=0){ s=String.fromCharCode(65+(i%26))+s; i=Math.floor(i/26)-1; }
+    return s; }
+  // v: so | chuoi | {f:'cong thuc',v:gia tri da tinh}. pct -> dinh dang 0.0%.
+  // O cong thuc van kem gia tri da tinh san: Excel tin o dem san va chi tinh lai
+  // khi can, khong co no thi mo file ra thay 0 cho den luc bam tinh lai.
+  qcCell(v,s,pct){ const o={s:s};
+    if(v&&typeof v==='object'&&v.f!=null){ o.t='n'; o.f=v.f;
+      o.v=(typeof v.v==='number'&&isFinite(v.v))?v.v:0; }
+    else { o.t=(typeof v==='number')?'n':'s'; o.v=(v==null?'':v); }
+    if(pct) o.z='0.0%';
+    return o; }
+  // Bang phang: dong 1 tieu de, tu dong 2 la du lieu. cd=[{w,pct}]
+  qcTable(head,body,cd){ const ws={}, S=this.qcS();
+    head.forEach((h,i)=>{ ws[this.xsCol(i)+'1']=this.qcCell(h,S.head); });
+    body.forEach((row,r)=>row.forEach((v,i)=>{
+      ws[this.xsCol(i)+(r+2)]=this.qcCell(v,S.cell,!!(cd[i]&&cd[i].pct)); }));
+    ws['!ref']='A1:'+this.xsCol(head.length-1)+(body.length+1);
+    ws['!cols']=cd.map(c=>({width:c.w}));
+    ws['!margins']=this.QC_MARGINS;
+    return ws; }
+
+  // ---- 01_Dashboard: KPI + bang theo chuyen -------------------------------
+  qcDash(F){ const ws={}, S=this.qcS(), insp=F.pass+F.fail;
+    const put=(c,r,v,s,pct)=>{ ws[this.xsCol(c)+r]=this.qcCell(v,s,pct); };
+    put(0,1,this.QC_TITLE,S.title);
+    for(let c=1;c<=7;c++) put(c,1,'',S.title);
+    // FPY / DHU de cong thuc nhu file mau -> sua so o tren la ty le chay theo
+    const KPI=[['Total Inspected',insp,false],['Pass',F.pass,false],['Defect Qty',F.fail,false],
+      ['FPY',{f:'IFERROR(B4/B3,0)',v:insp?F.pass/insp:0},true],
+      ['DHU',{f:'IFERROR(B5/B3,0)',v:insp?F.fail/insp:0},true],
+      ['Rework','',false],['Reject','',false]];
+    KPI.forEach((k,i)=>{ const r=i+3; put(0,r,k[0],S.kpi); put(1,r,k[1],S.cell,k[2]); });
+    ['Line','Inspected','Pass','Defect','DHU'].forEach((h,i)=>put(i,11,h,S.head));
+    F.lineOrd.forEach((n,i)=>{ const r=12+i, o=F.line[n], k=o.pass+o.fail;
+      put(0,r,n,S.cell); put(1,r,k,S.cell); put(2,r,o.pass,S.cell);
+      put(3,r,o.fail,S.cell);
+      put(4,r,{f:'IFERROR(D'+r+'/B'+r+',0)',v:k?o.fail/k:0},S.cell,true); });
+    ws['!ref']='A1:H'+(11+Math.max(1,F.lineOrd.length));
+    ws['!cols']=[22,15,12,12,12,3,18,18].map(w=>({width:w}));
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:7}}];
+    ws['!margins']=this.QC_MARGINS;
+    return ws; }
+
+  // ---- Ca 7 sheet ---------------------------------------------------------
+  qcSheets(F){
+    const pc=(col,num,den,r)=>({f:'IFERROR('+col+num+r+'/'+col+den+r+',0)'});
+    // 02
+    const t2=this.qcTable(
+      ['Line','Buyer','Style','Qty Check','Pass','Defect','DHU','Rework','Reject'],
+      F.lsOrd.map((k,i)=>{ const o=F.ls[k], r=i+2, n=o.pass+o.fail;
+        return [o.line,o.buyer,o.style,n,o.pass,o.fail,
+          {f:'IFERROR(F'+r+'/D'+r+',0)',v:n?o.fail/n:0},'','']; }),
+      [{w:12},{w:15},{w:14},{w:14},{w:12},{w:12},{w:12,pct:true},{w:12},{w:12}]);
+    // 03 -- % Total chia cho tong cot Qty, vung co dinh nhu file mau
+    const n3=Math.max(1,F.codeOrd.length), sum3='SUM($D$2:$D$'+(1+n3)+')';
+    const t3=this.qcTable(
+      ['Rank','Defect Code','Defect Name','Qty','% Total','Process'],
+      F.codeOrd.map((c,i)=>[i+1,c,this.dsoDefName(c),F.code[c].qty,
+        {f:'IFERROR(D'+(i+2)+'/'+sum3+',0)',v:F.fail?F.code[c].qty/F.fail:0},
+        this.dsoDefCat(c)]),
+      [{w:8},{w:14},{w:24},{w:12},{w:14,pct:true},{w:14}]);
+    // 04
+    const t4=this.qcTable(
+      ['Time','Inspected','Defect','DHU'],
+      F.slotOrd.map((s,i)=>{ const o=F.slot[s]||{pass:0,fail:0}, r=i+2, n=o.pass+o.fail;
+        return [s,n,o.fail,{f:'IFERROR(C'+r+'/B'+r+',0)',v:n?o.fail/n:0}]; }),
+      [{w:16},{w:14},{w:12},{w:12,pct:true}]);
+    // 05 / 06 -- app chua co nguon, giu dung tieu de cot cua form
+    const t5=this.qcTable(
+      ['Bundle','Style','Initial QC','Defect','Rework Status','Re-QC','Final Result'],[],
+      [{w:14},{w:14},{w:14},{w:22},{w:18},{w:14},{w:16}]);
+    const t6=this.qcTable(
+      ['QC','Qty Checked','Defect Found','DHU','Recheck','Hours'],[],
+      [{w:12},{w:15},{w:15},{w:12,pct:true},{w:12},{w:10}]);
+    // 07 -- 1 dong / 1 san pham NG
+    const t7=this.qcTable(
+      ['Date','Line','Style','Bundle','QC','Defect Code','Defect Name','Process','Operation','Result'],
+      F.detail.map(r=>[r.day,r.line,r.style,'','',r.code,this.dsoDefName(r.code),
+        this.dsoDefCat(r.code),this.dsoDefLoc(r.code),'NG']),
+      [{w:14},{w:12},{w:12},{w:12},{w:10},{w:14},{w:22},{w:14},{w:20},{w:12}]);
+    return [this.qcDash(F),t2,t3,t4,t5,t6,t7]; }
+
+  // ---- Bieu do + dong bang dong tieu de ------------------------------------
+  // SheetJS khong ghi duoc bieu do lan pane dong bang, nen 2 thu do duoc chen o
+  // muc zip (XLSX.CFB) sau khi da tao xong file. XML bieu do dung dung khuon cua
+  // file mau. Hong bat cu buoc nao thi tra ve file goc -- van du du lieu, chi
+  // mat bieu do.
+  QC_NSC='http://schemas.openxmlformats.org/drawingml/2006/chart';
+  QC_NSA='http://schemas.openxmlformats.org/drawingml/2006/main';
+  QC_NSR='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  QC_FREEZE='<sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft"'
+    +' state="frozen"/><selection pane="bottomLeft" activeCell="A1" sqref="A1"/></sheetView>';
+  qcEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  qcRich(t){ const a=' xmlns:a="'+this.QC_NSA+'"';
+    return '<tx><rich><a:bodyPr'+a+'/><a:p'+a+'><a:pPr><a:defRPr/></a:pPr><a:r><a:t>'
+      +this.qcEsc(t)+'</a:t></a:r></a:p></rich></tx>'; }
+  qcChartXml(c){
+    const a=' xmlns:a="'+this.QC_NSA+'"';
+    const ln='<spPr><a:ln'+a+'><a:prstDash val="solid"/></a:ln></spPr>';
+    const bar=c.kind!=='line';
+    const ser='<ser><idx val="0"/><order val="0"/><tx><strRef><f>'+this.qcEsc(c.ser)+'</f></strRef></tx>'
+      +ln+(bar?'':'<marker><symbol val="none"/>'+ln+'</marker>')
+      +'<cat><numRef><f>'+this.qcEsc(c.cat)+'</f></numRef></cat>'
+      +'<val><numRef><f>'+this.qcEsc(c.val)+'</f></numRef></val></ser>';
+    const plot=bar
+      ? '<barChart><barDir val="col"/><grouping val="clustered"/>'+ser
+        +'<gapWidth val="150"/><axId val="10"/><axId val="100"/></barChart>'
+      : '<lineChart><grouping val="standard"/>'+ser+'<axId val="10"/><axId val="100"/></lineChart>';
+    const ax=t=>t?'<title>'+this.qcRich(t)+'</title>':'';
+    return '<chartSpace xmlns="'+this.QC_NSC+'"><chart><title>'+this.qcRich(c.title)+'</title><plotArea>'
+      +plot
+      +'<catAx><axId val="10"/><scaling><orientation val="minMax"/></scaling><axPos val="l"/>'+ax(c.catAx)
+      +'<majorTickMark val="none"/><minorTickMark val="none"/><crossAx val="100"/>'
+      +'<lblOffset val="100"/></catAx>'
+      +'<valAx><axId val="100"/><scaling><orientation val="minMax"/></scaling><axPos val="l"/>'
+      +'<majorGridlines/>'+ax(c.valAx)
+      +'<majorTickMark val="none"/><minorTickMark val="none"/><crossAx val="10"/></valAx>'
+      +'</plotArea><legend><legendPos val="r"/></legend><plotVisOnly val="1"/>'
+      +'<dispBlanksAs val="gap"/></chart></chartSpace>'; }
+  qcDrawXml(col,row){
+    return '<wsDr xmlns="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing">'
+      +'<oneCellAnchor><from><col>'+col+'</col><colOff>0</colOff><row>'+row+'</row>'
+      +'<rowOff>0</rowOff></from><ext cx="5400000" cy="2700000"/><graphicFrame>'
+      +'<nvGraphicFramePr><cNvPr id="1" name="Chart 1"/><cNvGraphicFramePr/></nvGraphicFramePr><xfrm/>'
+      +'<a:graphic xmlns:a="'+this.QC_NSA+'"><a:graphicData uri="'+this.QC_NSC+'">'
+      +'<c:chart xmlns:c="'+this.QC_NSC+'" xmlns:r="'+this.QC_NSR+'" r:id="rId1"/>'
+      +'</a:graphicData></a:graphic></graphicFrame><clientData/></oneCellAnchor></wsDr>'; }
+  qcRels(type,target){
+    return '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      +'<Relationship Type="'+this.QC_NSR+'/'+type+'" Target="'+target+'" Id="rId1"/></Relationships>'; }
+  // Vung du lieu cua tung bieu do bam theo so dong that, khong co dinh nhu mau
+  qcChartDefs(F){
+    const nl=Math.max(1,F.lineOrd.length), nc=Math.max(1,F.codeOrd.length),
+      ns=Math.max(1,F.slotOrd.length);
+    return [
+      {sh:1,col:6,row:2,kind:'bar',title:'Defect Qty by Line',catAx:'Line',valAx:'Defect Qty',
+        ser:"'01_Dashboard'!$D$11",cat:"'01_Dashboard'!$A$12:$A$"+(11+nl),
+        val:"'01_Dashboard'!$D$12:$D$"+(11+nl)},
+      {sh:3,col:7,row:1,kind:'bar',title:'Top Defects',
+        ser:"'03_Defect_Pareto'!$D$1",cat:"'03_Defect_Pareto'!$C$2:$C$"+(1+nc),
+        val:"'03_Defect_Pareto'!$D$2:$D$"+(1+nc)},
+      {sh:4,col:5,row:1,kind:'line',title:'Hourly DHU Trend',catAx:'Time',valAx:'DHU',
+        ser:"'04_Hourly_Trend'!$D$1",cat:"'04_Hourly_Trend'!$A$2:$A$"+(1+ns),
+        val:"'04_Hourly_Trend'!$D$2:$D$"+(1+ns)}]; }
+  qcPack(XS,wb,F){
+    const buf=XS.write(wb,{bookType:'xlsx',type:'array',bookSST:true});
+    const C=XS&&XS.CFB;
+    if(!C||!C.read||!C.write||!C.find||!C.utils||!C.utils.cfb_add
+      ||typeof TextDecoder==='undefined'||typeof TextEncoder==='undefined') return buf;
+    const cf=C.read(new Uint8Array(buf),{type:'array'});
+    const dec=new TextDecoder('utf-8'), enc=new TextEncoder();
+    const rd=nm=>{ const f=C.find(cf,nm); return f&&f.content?dec.decode(new Uint8Array(f.content)):null; };
+    const wr=(nm,s)=>{ const b=enc.encode(s), f=C.find(cf,nm);
+      if(f){ f.content=b; f.size=b.length; } else C.utils.cfb_add(cf,nm,b); };
+
+    // Dong bang dong tieu de o moi sheet
+    (cf.FileIndex||[]).forEach((f,i)=>{
+      const nm=String((cf.FullPaths||[])[i]||'');
+      if(!/xl\/worksheets\/sheet\d+\.xml$/.test(nm)||!f.content) return;
+      let s=dec.decode(new Uint8Array(f.content));
+      if(s.indexOf('<pane ')>=0) return;
+      s=s.replace('<sheetView workbookViewId="0"/>',this.QC_FREEZE);
+      const b=enc.encode(s); f.content=b; f.size=b.length; });
+
+    // Bieu do
+    let ct=rd('/[Content_Types].xml');
+    if(!ct) return buf;
+    this.qcChartDefs(F).forEach((c,k)=>{
+      const n=k+1, sh='/xl/worksheets/sheet'+c.sh+'.xml';
+      let s=rd(sh); if(s==null) return;
+      wr('/xl/charts/chart'+n+'.xml',this.qcChartXml(c));
+      wr('/xl/drawings/drawing'+n+'.xml',this.qcDrawXml(c.col,c.row));
+      wr('/xl/drawings/_rels/drawing'+n+'.xml.rels',this.qcRels('chart','/xl/charts/chart'+n+'.xml'));
+      wr('/xl/worksheets/_rels/sheet'+c.sh+'.xml.rels',
+        this.qcRels('drawing','/xl/drawings/drawing'+n+'.xml'));
+      if(s.indexOf('<drawing ')<0)
+        s=s.replace('</worksheet>','<drawing xmlns:r="'+this.QC_NSR+'" r:id="rId1"/></worksheet>');
+      wr(sh,s);
+      ct=ct.replace('</Types>',
+        '<Override PartName="/xl/drawings/drawing'+n+'.xml"'
+        +' ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>'
+        +'<Override PartName="/xl/charts/chart'+n+'.xml"'
+        +' ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/></Types>'); });
+    wr('/[Content_Types].xml',ct);
+    return C.write(cf,{type:'array',fileType:'zip'}); }
+
   dsoDefExport(line){
-    const X=window.XLSX;
-    if(!X||!X.utils){ window.alert(this.t('mtNoXlsx')); return; }
+    const XS=window.XLSXStyle||window.XLSX;
+    if(!XS||!XS.utils){ window.alert(this.t('mtNoXlsx')); return; }
     const q=this.state.dsoDefQ||'';
     const rows=this.dsoDefHistory(line)
       .filter(r=>this.dsoRowHit(r,q,r.at+' '+r.code+' '+this.dsoDefName(r.code)));
     if(!rows.length){ window.alert(this.t(this.dsoDefHistory(line).length?'dfNoHit':'dsoDefHistEmpty')); return; }
-    const head=[this.t('dsoColDay'),this.t('dsoColTime')];
-    if(!line) head.push(this.t('lsCol1'));
-    head.push(this.t('lsCol2'),this.t('dsoColPo'),this.t('dsoColColor'),this.t('dsoColSize'),
-      this.t('dfCode'),this.t('dfName'),this.t('dsoColDefQty'));
-    const who=line||this.t('dsoDefAllLines');
-    const aoa=[[this.t('dsoDefHist')],['YIC HÀ NAM · '+who+' · '+this.todayStamp()],[],head];
-    rows.forEach(r=>{ const a=[this.dsoDay(r.day),r.at||''];
-      if(!line) a.push(r.line||'');
-      a.push(r.style||'',r.po||'',r.color||'',r.size||'',r.code||'',this.dsoDefName(r.code),Number(r.qty)||0);
-      aoa.push(a); });
-    const tot=new Array(head.length).fill('');
-    tot[0]=this.t('bkTot'); tot[head.length-1]=rows.reduce((a,r)=>a+(Number(r.qty)||0),0);
-    aoa.push(tot);
-    const ws=X.utils.aoa_to_sheet(aoa);
-    ws['!cols']=(line?[13,8]:[13,8,12]).concat([18,13,15,9,12,30,15]).map(w=>({wch:w}));
-    const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'Defect History');
-    X.writeFile(wb,('YIC-HaNam_Defect-History_'+(line||'ALL')+'_'+this.todayStamp())
-      .replace(/[^0-9A-Za-z]+/g,'-').replace(/-+$/,'')+'.xlsx'); }
+    const F=this.dsoQcData(line,rows);
+    const wb=XS.utils.book_new();
+    this.qcSheets(F).forEach((ws,i)=>XS.utils.book_append_sheet(wb,ws,this.QC_NAMES[i]));
+    const name=('YIC-HaNam_Endline-QC-Report_'+(line||'ALL')+'_'+this.todayStamp())
+      .replace(/[^0-9A-Za-z]+/g,'-').replace(/-+$/,'')+'.xlsx';
+    // Tu tai bang Blob de con kip chen bieu do + pane dong bang vao. Hong bat cu
+    // buoc nao thi de chinh thu vien tai file -- van du du lieu, chi mat bieu do.
+    const MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    let done=false;
+    try{ const buf=this.qcPack(XS,wb,F); if(buf) done=this.snapDownload(name,buf,MIME); }
+    catch(e){ done=false; }
+    if(!done) XS.writeFile(wb,name,{bookSST:true});
+    if(F.detail.length<F.detailAll)
+      window.alert(this.t('dsoDefCut').replace('{n}',F.detail.length).replace('{t}',F.detailAll)); }
 
   // ---- Hop chon so luong giao (mo tu nut 'Giao sang hoan thien (n)') ----
   dsoBulkOpen(line){ const p=this.dsoHandPool(line||null);

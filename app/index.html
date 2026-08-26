@@ -16,6 +16,14 @@
 <script src="vendor/react-dom.js"></script>
 <script src="vendor/anime.js"></script>
 <script src="vendor/xlsx.js"></script>
+<!-- xlsx-js-style: ban fork cua SheetJS (cung nhan 0.18.5) GHI duoc dinh dang o
+     - font, vien, mau nen, can le - thu ma ban CE khong lam duoc. No cung tu gan
+     vao window.XLSX, nen phai cat ban goc di roi tra lai: moi cho dang doc/ghi
+     file van chay tren SheetJS cu, chi rieng ban in mau bao cao QC dung ban co
+     dinh dang qua window.XLSXStyle. cptable do vendor/xlsx.js o tren khai bao. -->
+<script>window.__XLSX_PLAIN__ = window.XLSX;</script>
+<script src="vendor/xlsx-style.js"></script>
+<script>window.XLSXStyle = window.XLSX; window.XLSX = window.__XLSX_PLAIN__;</script>
 <script src="vendor/qr.js"></script>
 
 <!-- Data. Loaded before the app, so window.KHC / window.PSCHED are always ready
