@@ -248,8 +248,11 @@ class Component extends DCLogic {
       dsoDefects:this.initDefects(), dsoDefLog:{}, dsoDefTime:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'',
       dsoPassLog:{},
       dsoHistQ:'', dsoDefQ:'', dsoHandBulk:null,
-      finRecv:{}, finStage:{}, finQ:'', fsQ:'', fsRemark:{},
-      fgRows:[], fgSeeded:0, fgQ:'', fgEdit:null, fgMsg:'', snapMsg:'',
+      finRecv:{}, finStage:{}, finQ:'', fsQ:'', fsRemark:{}, fsPackD:{}, fsCtnO:{}, fsCtnD:{},
+      fsScan:{}, fsScanAt:null, fsScanQ:'', fsScanMsg:null,
+      finTab:'gmt', ftRows:[], ftSeeded:0, ftQ:'', ftEdit:null,
+      ftSel:{}, ftPick:null, ftPickQ:'', ftPickKind:'', ftPickDraft:null,
+      fgRows:[], fgSeeded:0, fgQ:'', fgEdit:null, fgMsg:'', fgPk:{}, fgBc:{}, snapMsg:'',
       files:[{name:'KH cắt-199-PO10848-CHOT.xlsx',sheets:2},{name:'KH cắt-199-PO10502-HANAM.xlsx',sheets:2},{name:'KH cắt-VW5159-M2-BLK-PO4446+4841.xlsx',sheets:8},{name:'KH cắt-1003117-PO10130.xlsx',sheets:6},{name:'KH cắt-VW5159-M11-CHOT.xlsx',sheets:8}],
     };
     this.state.capTurns=this.allocTurns();
@@ -258,7 +261,7 @@ class Component extends DCLogic {
   }
 
   SKEY='yic.sewplan.v2';
-  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','mlvLine','mlvFs','dsoDone','dsoPassLog','dsoDoneV','dsoHand','dsoHandQ','dsoSlips','dsoSlipSeq','dsoHandWho','bqNo','bqSeq','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog','dsoDefTime','finRecv','finStage','fsRemark','fgRows','fgSeeded'];
+  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','mlvLine','mlvFs','dsoDone','dsoPassLog','dsoDoneV','dsoHand','dsoHandQ','dsoSlips','dsoSlipSeq','dsoHandWho','bqNo','bqSeq','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog','dsoDefTime','finRecv','finStage','fsRemark','fsPackD','fsCtnO','fsCtnD','fsScan','finTab','ftRows','ftSeeded','ftSel','fgRows','fgSeeded','fgPk','fgBc'];
   // Mọi thay đổi dữ liệu được lưu lại — refresh vẫn giữ nguyên
   restore(){ const defPage=this.state.page; let saved=null;
     try{ const raw=window.localStorage.getItem(this.SKEY); if(!raw) return; const o=JSON.parse(raw)||{}; saved=o;
@@ -586,8 +589,7 @@ class Component extends DCLogic {
       bqTitle:'PHIẾU GIAO NHẬN BÁN THÀNH PHẨM',
       bqDay:'Ngày giao:', bqCust:'Khách hàng:', bqLine:'Cho chuyền may:', bqStyle:'Mã hàng:',
       bqC1:'Mẫu', bqC2:'Bàn', bqC3:'Cỡ', bqC4:'Số lượng', bqC5:'Số PO #',
-      bqC6:'Xuất đi nước', bqC7:'Ngày giao hàng',
-      bqNote:'Ghi chú:', bqSign1:'Người giao', bqSign2:'Người nhận', bqSign3:'Tổ trưởng Bộ phận cắt',
+      bqNote:'Ghi chú:', bqSign1:'Người giao', bqSign2:'Người nhận',
       bqOk:'Xác nhận đã nhận', bqOpenTip:'Bấm để mở phiếu giao nhận bán thành phẩm',
       bgSignFrom:'Người giao (May)', bgSignTo:'Người nhận (Hoàn thiện)',
       bgPrint:'In / Lưu PDF', bgView:'Xem / in phiếu bàn giao',
@@ -606,6 +608,7 @@ class Component extends DCLogic {
       dsoNoUnhanded:'Không còn hàng nào chờ giao — tất cả đã giao sang hoàn thiện.',
       dsoDefHist:'Lịch sử hàng lỗi theo ngày', dsoDefHistSub:'Mỗi lần bấm LỖI được ghi lại kèm giờ và lý do',
       dsoDefHistEmpty:'Chưa ghi hàng lỗi nào — bấm LỖI ở card size để ghi.',
+      dsoDefExpTip:'Xuất .xlsx đúng những dòng đang hiện', dsoDefAllLines:'TẤT CẢ CHUYỀN',
       dsoColSize:'SIZE', dsoColReason:'LÝ DO', dsoColDefQty:'SỐ LƯỢNG LỖI', dsoColTime:'GIỜ',
       mlvIncTip:'Thu nhập / 1 người theo giờ làm của chuyền',
       mlvSwitch:'Đổi chuyền', mlvTeam:'TỔ', mlvPerHour:'SẢN LƯỢNG / GIỜ', mlvQual:'CHẤT LƯỢNG',
@@ -717,18 +720,67 @@ class Component extends DCLogic {
       fiNo:'SỐ PHIẾU', fiWhen:'PHÁT HÀNH LÚC', fiLine:'CHUYỀN', fiStyle:'MÃ HÀNG', fiPo:'PO', fiColor:'MÀU',
       fiSizes:'SIZE', fiQty:'SL (PCS)', fiSt:'TRẠNG THÁI', fiBy:'NGƯỜI NHẬN', fiAct:'HÀNH ĐỘNG',
       fiWait:'Chờ nhận', fiDone:'Đã nhận', fiRecv:'Nhận', fiUnrecv:'Bỏ nhận', fiView:'Xem phiếu',
-      fiRecvAll:'Nhận tất cả', fiWho:'Tên người nhận', fiCount:'phiếu bàn giao',
+      fiRecvAll:'Nhận tất cả', fiByTip:'Lấy từ ô "Người nhận (Hoàn thiện)" trên phiếu bàn giao', fiCount:'phiếu bàn giao',
       fiSearch:'Tìm số phiếu, chuyền, mã hàng, PO, màu…', fiNoHit:'Không có phiếu nào khớp từ khóa',
       fiEmpty:'Chưa có phiếu bàn giao nào — sang MAY · Sản lượng may hàng ngày để phát hành phiếu.',
+      fiTab1:'Hàng may', fiTab2:'Phụ liệu hoàn thiện',
+      ftPanel:'Phụ Liệu Hoàn Thiện Nhận Vào', ftSub:'Một dòng cho mỗi mã hàng · PO — SL đơn hàng lấy từ Kế hoạch sản xuất, SL thực nhận nhập tay khi phụ liệu về kho',
+      ftK1:'SL ĐƠN HÀNG', ftK1s:'pcs phụ liệu theo đơn', ftK2:'THỰC NHẬN', ftK2s:'pcs phụ liệu đã nhận',
+      ftK3:'CÒN THIẾU', ftK3s:'pcs chưa nhận đủ', ftK4:'ĐỦ HÀNG', ftK4s:'dòng đã nhận đủ SL đơn',
+      ftBrand:'THƯƠNG HIỆU', ftStyle:'MÃ HÀNG', ftPo:'PO#', ftQtyO:'SL ĐƠN HÀNG', ftQtyA:'SL THỰC NHẬN',
+      ftCount:'dòng phụ liệu', ftSearch:'Tìm thương hiệu, mã hàng, PO…', ftNoHit:'Không có dòng nào khớp từ khóa',
+      ftEmpty:'Chưa có dòng phụ liệu nào — bấm Gieo lại từ kế hoạch để lấy đơn hàng về.',
+      ftReseed:'Gieo lại từ kế hoạch',
+      ftReseedAsk:'Gieo lại bảng phụ liệu từ Kế hoạch sản xuất? Mọi SL thực nhận đã nhập sẽ mất.',
+      ftShortTip:'Còn thiếu so với SL đơn hàng', ftOverTip:'Nhận vượt SL đơn hàng',
+      ftPickTip:'Bấm để chọn phụ liệu đã về kho từ danh mục phụ liệu',
+      ftPickLn:'dòng', ftPickFoot:'Đã chọn',
+      ftPickT:'Chọn Phụ Liệu Nhận Vào',
+      ftPickRowTip:'Bấm để tích / bỏ tích dòng phụ liệu này',
+      ftPickSel:'ĐÃ CHỌN', ftPickSelS:'dòng trong danh mục phụ liệu',
+      ftPickQty:'TỔNG SL NHẬN', ftPickQtyS:'sẽ vào ô SL THỰC NHẬN',
+      ftPickOrd:'SL ĐƠN HÀNG', ftPickOrdS:'lấy từ Kế hoạch sản xuất',
+      ftPickDif:'CHÊNH LỆCH', ftPickDifS:'so với SL đơn hàng',
+      ftPickAll:'TẤT CẢ', ftPickPick:'Tích hết', ftPickNone:'Bỏ tích hết',
+      ftPickMix:'Đang gộp nhiều đơn vị:',
+      ftPickSearch:'Tìm item#, mô tả, khổ, màu, NCC…',
+      ftPickNoHit:'Không có phụ liệu nào khớp từ khóa',
+      ftPickEmpty:'Chưa nạp được danh mục phụ liệu — kiểm tra data/mlist.js.',
+      ftPickOk:'Xác nhận', ftPickSrc:'Nguồn:',
+      mlKind:'LOẠI', mlItem:'ITEM#', mlDesc:'MÔ TẢ PHỤ LIỆU', mlSize:'KHỔ / SIZE',
+      mlColor:'MÀU PHỤ LIỆU', mlUnit:'ĐVỊ', mlNeed:'SL CẦN', mlShipQ:'ĐÃ GỬI',
+      mlArr:'NGÀY VỀ KHO', mlSup:'NCC', mlRecv:'SL NHẬN', mlBal:'CHÊNH LỆCH',
       fsBc:'Tình trạng hoàn thiện', fsTitle:'Tình Trạng Hoàn Thiện',
-      fsPanel:'Tình Trạng Đóng Gói · Xuất Hàng', fsSub:'Hàng đã nhận vào hoàn thiện — đã đóng gói, chưa đóng gói, đã xuất và tồn kho. SL đơn · Đã xuất · Tồn kho là số của cả PO nên chỉ hiện ở dòng đầu mỗi PO',
+      fsPanel:'Tình Trạng Đóng Gói · Xuất Hàng', fsSub:'Hàng đã nhận vào hoàn thiện — đã đóng gói, chưa đóng gói, đã xuất và tồn kho. SL đơn · Đã xuất · Tồn kho lọc theo đúng mã hàng · PO · màu bên Kế hoạch xuất hàng',
       fsK1:'ĐÃ NHẬN', fsK1s:'pcs hoàn thiện đã nhận', fsK2:'CHƯA ĐÓNG GÓI', fsK2s:'pcs đã nhận nhưng chưa đóng gói',
       fsK3:'ĐÃ ĐÓNG GÓI', fsK3s:'pcs qua công đoạn đóng gói', fsK4:'TỒN KHO', fsK4s:'pcs đã đóng gói chưa xuất',
       fsCLine:'CHUYỀN', fsCBrand:'KHÁCH HÀNG', fsCStyle:'MÃ HÀNG', fsCPo:'PO#', fsCColor:'MÀU',
       fsCOrder:'SL ĐƠN', fsCPacked:'ĐÃ ĐÓNG GÓI', fsCUnpack:'CHƯA ĐÓNG GÓI',
+      fsCPackY:'HÔM QUA', fsCPackT:'HÔM NAY', fsCPackC:'TỔNG LŨY KẾ',
+      fsCOrderC:'SL THÙNG ĐƠN HÀNG', fsCPackedC:'THÙNG ĐÃ ĐÓNG', fsCUnpackC:'THÙNG CHƯA ĐÓNG',
       fsCShip:'ĐÃ XUẤT', fsCStock:'TỒN KHO', fsCRemark:'GHI CHÚ',
-      fsPoTip:'Số của cả PO — chỉ hiện ở dòng đầu của PO đó',
-      fsPackTip:'Sửa được — tối đa bằng số đã nhận',
+      fsPoTip:'Lấy ở dòng Kế hoạch xuất hàng khớp cả mã hàng · PO · màu — mấy màu dùng chung một dòng thì chỉ hiện ở dòng đầu',
+      fsNoFgTip:'Chưa có dòng Kế hoạch xuất hàng nào khớp mã hàng · PO · màu này — sang Kế hoạch xuất hàng thêm dòng, hoặc bấm Nạp lại từ KHSX',
+      fsPackAuto:'Tự sinh từ số thùng đã đóng —', fsPcsCtn:'cái/thùng (tỷ lệ tạm)',
+      fsPackYTip:'Tự sinh từ số thùng đóng hôm qua — ngày đã chốt',
+      fsPackCTip:'Tự sinh từ tổng số thùng đã đóng',
+      fsPackOverTip:'Vượt số đã nhận về hoàn thiện — tỷ lệ cái/thùng đang sai, hoặc số thùng ghi nhầm',
+      fsCtnOrdTip:'Số thùng theo đơn hàng của mã hàng · PO · màu này — nhập tay, không suy ra được từ dữ liệu nào khác',
+      fsCtnTip:'Số thùng đóng hôm nay — sửa được',
+      fsCtnCap:'còn',
+      fsCtnYTip:'Số thùng đóng hôm qua — ngày đã chốt, không sửa ở đây',
+      fsCtnCTip:'Cộng số thùng của mọi ngày đã ghi',
+      fsCtnUTip:'SL thùng đơn hàng trừ số thùng đã đóng — chưa nhập SL thùng đơn hàng thì để trống',
+      fsCtnOverTip:'Đã đóng vượt SL thùng đơn hàng — sửa lại SL thùng đơn hàng hoặc số thùng của từng ngày',
+      fsCAct:'HÀNH ĐỘNG', fsScanBtn:'Quét mã',
+      fsScanTip:'Quét mã vạch từng thùng — đối chiếu với danh sách barcode đã nhập ở Kế hoạch xuất hàng',
+      fsScanNoBc:'Lô xuất của dòng này chưa có danh sách barcode — sang Kế hoạch xuất hàng nhập packing list rồi nhập barcode',
+      fsScanTitle:'QUÉT MÃ VẠCH ĐÓNG THÙNG', fsScanPh:'Quét hoặc gõ mã vạch rồi Enter…',
+      fsScanDone:'thùng đã quét', fsScanOk:'Đã ghi', fsScanDup:'Mã này đã quét lúc',
+      fsScanBad:'Mã không có trong danh sách barcode của lô xuất này',
+      fsScanLogL:'Đã quét ở dòng này', fsScanNone:'Chưa quét mã nào',
+      fsScanUndo:'Bỏ lần quét này', fsScanHint:'Máy quét gõ xong tự Enter — cứ quét liên tục, ô nhập tự xóa sau mỗi mã',
+      fsCtnScanT:'thùng từ quét mã', fsCtnManT:'thùng gõ tay',
       fsRemarkPh:'Ghi chú…',
       fsIn:'ĐÃ NHẬN', fsIron:'ỦI', fsQc:'KIỂM CUỐI', fsPack:'ĐÓNG GÓI', fsFg:'NHẬP KHO TP',
       fsWip:'ĐANG LÀM', fsPct:'TIẾN ĐỘ', fsAll:'Đẩy hết', fsClr:'Xóa số', fsCount:'nhóm hàng',
@@ -736,16 +788,25 @@ class Component extends DCLogic {
       fsSearch:'Tìm mã hàng, PO, màu, chuyền…', fsNoHit:'Không có dòng nào khớp từ khóa',
       fsEmpty:'Chưa nhận hàng nào — sang Nhận hàng hoàn thiện để xác nhận phiếu bàn giao.',
       fgBc:'Kế hoạch xuất hàng', fgTitle:'Kế Hoạch Xuất Hàng Thành Phẩm',
-      fgPanel:'Lô Xuất Theo Mã Hàng · PO', fgSub:'Gieo từ Kế hoạch sản xuất — cột SẴN SÀNG lấy thẳng từ số đã nhập kho thành phẩm ở Tình trạng hoàn thiện',
+      fgPanel:'Lô Xuất Theo Mã Hàng · PO', fgSub:'1 dòng cho mỗi mã hàng · PO — cột MÀU gom mọi màu của lô, lấy ở BẢNG TỔNG THEO MÀU của tác nghiệp cắt; SL đã xuất, ngày đóng hàng, phương thức, điểm đến và CBM nhập tay',
       fgK1:'TỔNG ĐƠN', fgK1s:'pcs theo kế hoạch xuất', fgK2:'SẴN SÀNG', fgK2s:'pcs thành phẩm đã nhập kho',
       fgK3:'ĐÃ XUẤT', fgK3s:'pcs đã lên container', fgK4:'TRỄ ETD', fgK4s:'lô đã quá ngày xuất dự kiến',
-      fgBrand:'THƯƠNG HIỆU', fgStyle:'MÃ HÀNG', fgPo:'PO', fgQty:'SL ĐƠN', fgEtd:'ETD',
-      fgReady:'SẴN SÀNG', fgShipped:'ĐÃ XUẤT', fgBal:'CÒN LẠI', fgPct:'%', fgSt:'TRẠNG THÁI', fgNote:'GHI CHÚ',
-      fgStPlan:'Kế hoạch', fgStReady:'Sẵn sàng', fgStShip:'Đã xuất', fgStLate:'Trễ ETD',
+      fgNo:'STT', fgBrand:'THƯƠNG HIỆU', fgSeason:'MÙA', fgFactory:'NHÀ MÁY', fgStyle:'MÃ HÀNG',
+      fgPo:'PO#', fgColor:'MÀU', fgQty:'SL ĐƠN HÀNG', fgShipped:'SL ĐÃ XUẤT', fgBal:'SL CÂN ĐỐI',
+      fgLoad:'NGÀY ĐÓNG HÀNG', fgEtd:'ETD', fgMode:'PHƯƠNG THỨC', fgDest:'ĐIỂM ĐẾN', fgCbm:'CBM', fgNote:'GHI CHÚ',
       fgAdd:'Thêm lô xuất', fgCount:'lô xuất', fgReseed:'Nạp lại từ KHSX',
       fgReseedAsk:'Nạp lại toàn bộ lô xuất từ Kế hoạch sản xuất? Mọi chỉnh sửa tay ở bảng này sẽ mất.',
-      fgReadyTip:'Số đã nhập kho thành phẩm của mã hàng · PO này (cộng mọi màu)',
-      fgSearch:'Tìm thương hiệu, mã hàng, PO, ETD, ghi chú…', fgNoHit:'Không có lô nào khớp từ khóa',
+      fgPkImp:'Packing list', fgPkTip:'Nhập packing list (.xlsx/.xls/.csv) của lô này — lấy tổng số thùng, đổ sang cột SL THÙNG ĐƠN HÀNG ở Tình trạng hoàn thiện',
+      fgPkHas:'Đã có packing list — bấm để nhập file khác', fgPkClr:'Bỏ packing list (bỏ luôn barcode của lô này)',
+      fgPkOk:'Đã nhập packing list —', fgPkCtn:'thùng',
+      fgPkNone:'Không tìm thấy số thùng trong file. Cần có cột SỐ THÙNG / CARTON NO, hoặc cột SL THÙNG, hoặc ô TỔNG SỐ THÙNG.',
+      fgBcImp:'Barcode', fgBcTip:'Nhập file barcode đóng thùng (.xlsx/.xls/.csv) — danh sách mã lưu lại cho bảng Tình trạng hoàn thiện',
+      fgBcHas:'Đã có barcode — bấm để nhập file khác', fgBcClr:'Bỏ danh sách barcode của lô này',
+      fgBcNeed:'Phải nhập packing list trước rồi mới nhập được barcode',
+      fgBcOk:'Đã nhập barcode —', fgBcN:'mã', fgBcCut:'mã (đã cắt bớt phần vượt)',
+      fgBcNone:'Không tìm thấy mã barcode nào trong file. Cần có cột BARCODE / MÃ VẠCH / UPC / EAN.',
+      fsCtnOrdPk:'Lấy từ packing list', fsCtnBcTip:'Số barcode đã nhập cho lô xuất này',
+      fgSearch:'Tìm thương hiệu, mã hàng, PO, màu, điểm đến, ETD…', fgNoHit:'Không có lô nào khớp từ khóa',
       fgEmpty:'Chưa có lô xuất nào — bấm Nạp lại từ KHSX hoặc Thêm lô xuất.',
       snapTitle:'DỮ LIỆU LOCAL', snapExport:'Xuất ảnh chụp', snapImport:'Nhập ảnh chụp',
       snapExportTip:'Tải về state-seed.js gồm TOÀN BỘ localStorage + file trong IndexedDB. Chép vào app/data/ rồi gửi cả thư mục đi.',
@@ -774,8 +835,7 @@ class Component extends DCLogic {
       bqTitle:'SEMI-FINISHED GOODS HANDOVER SLIP',
       bqDay:'Delivery date:', bqCust:'Customer:', bqLine:'To sewing line:', bqStyle:'Style:',
       bqC1:'Colour', bqC2:'Table', bqC3:'Size', bqC4:'Quantity', bqC5:'PO #',
-      bqC6:'Export to', bqC7:'Ship date',
-      bqNote:'Note:', bqSign1:'Handed by', bqSign2:'Received by', bqSign3:'Cutting supervisor',
+      bqNote:'Note:', bqSign1:'Handed by', bqSign2:'Received by',
       bqOk:'Confirm received', bqOpenTip:'Click to open the semi-finished goods handover slip',
       bgSignFrom:'Handed by (Sewing)', bgSignTo:'Received by (Finishing)',
       bgPrint:'Print / Save PDF', bgView:'View / print handover slip',
@@ -794,6 +854,7 @@ class Component extends DCLogic {
       dsoNoUnhanded:'Nothing left to hand over — everything has gone to finishing.',
       dsoDefHist:'Daily defecting history', dsoDefHistSub:'Every FAIL tap is recorded with its time and reason',
       dsoDefHistEmpty:'No defect recorded yet — tap FAIL on a size card to log one.',
+      dsoDefExpTip:'Exports a .xlsx with exactly the rows shown', dsoDefAllLines:'ALL LINES',
       dsoColSize:'SIZE', dsoColReason:'REASON', dsoColDefQty:'DEFECT QTY', dsoColTime:'TIME',
       mlvIncTip:'Income per person at this line\u2019s work hours',
       mlvSwitch:'Switch line', mlvTeam:'TEAM', mlvPerHour:'OUTPUT / HOUR', mlvQual:'QUALITY',
@@ -905,18 +966,67 @@ class Component extends DCLogic {
       fiNo:'SLIP NO.', fiWhen:'ISSUED AT', fiLine:'LINE', fiStyle:'STYLE #', fiPo:'PO', fiColor:'COLOUR',
       fiSizes:'SIZES', fiQty:'QTY (PCS)', fiSt:'STATUS', fiBy:'RECEIVED BY', fiAct:'ACTIONS',
       fiWait:'Awaiting', fiDone:'Received', fiRecv:'Receive', fiUnrecv:'Un-receive', fiView:'View slip',
-      fiRecvAll:'Receive all', fiWho:'Receiver name', fiCount:'handover slips',
+      fiRecvAll:'Receive all', fiByTip:'Taken from the "Received by (Finishing)" field on the handover slip', fiCount:'handover slips',
       fiSearch:'Search slip no., line, style, PO, colour…', fiNoHit:'No slip matches the search',
       fiEmpty:'No handover slip yet — go to SEWING · Daily Sewing Output to issue one.',
+      fiTab1:'Garment', fiTab2:'Finishing trims',
+      ftPanel:'Finishing Trims Received', ftSub:'One row per style · PO — order quantity comes from the Production Plan, actual quantity is keyed in as the trims arrive',
+      ftK1:'ORDER QTY', ftK1s:'pcs of trims on order', ftK2:'ACTUAL QTY', ftK2s:'pcs of trims received',
+      ftK3:'SHORT', ftK3s:'pcs still outstanding', ftK4:'COMPLETE', ftK4s:'rows received in full',
+      ftBrand:'BRAND', ftStyle:'STYLE', ftPo:'PO#', ftQtyO:'ORDER QTY', ftQtyA:'ACTUAL QTY',
+      ftCount:'trim rows', ftSearch:'Search brand, style, PO…', ftNoHit:'No row matches the search',
+      ftEmpty:'No trim row yet — hit Reseed from plan to pull the orders in.',
+      ftReseed:'Reseed from plan',
+      ftReseedAsk:'Reseed the trims table from the Production Plan? Every actual quantity keyed in will be lost.',
+      ftShortTip:'Short against the order quantity', ftOverTip:'Received over the order quantity',
+      ftPickTip:'Click to pick the trims that have arrived from the materials list',
+      ftPickLn:'rows', ftPickFoot:'Selected',
+      ftPickT:'Pick Trims Received',
+      ftPickRowTip:'Click to tick / untick this material row',
+      ftPickSel:'SELECTED', ftPickSelS:'rows on the materials list',
+      ftPickQty:'TOTAL RECEIVED', ftPickQtyS:'goes into the ACTUAL QTY cell',
+      ftPickOrd:'ORDER QTY', ftPickOrdS:'from the Production Plan',
+      ftPickDif:'DIFFERENCE', ftPickDifS:'against the order quantity',
+      ftPickAll:'ALL', ftPickPick:'Tick all', ftPickNone:'Untick all',
+      ftPickMix:'Mixing units:',
+      ftPickSearch:'Search item#, description, width, colour, supplier…',
+      ftPickNoHit:'No material matches the search',
+      ftPickEmpty:'Materials list not loaded — check data/mlist.js.',
+      ftPickOk:'Confirm', ftPickSrc:'Source:',
+      mlKind:'TYPE', mlItem:'ITEM#', mlDesc:'ITEM DESCRIPTION', mlSize:'WIDTH / SIZE',
+      mlColor:'MATERIALS COLOR', mlUnit:'UNIT', mlNeed:'TOTAL NEED', mlShipQ:'SHIPPED',
+      mlArr:'ARRIVED W/H', mlSup:'SUPPLIER', mlRecv:'RECEIVED QTY', mlBal:'BALANCE',
       fsBc:'Finishing Status', fsTitle:'Finishing Status',
-      fsPanel:'Packing · Shipment Status', fsSub:'Goods received into finishing — packed, un-packed, shipped and in stock. Order / Shipped / Stock are PO-level figures, shown on the first row of each PO',
+      fsPanel:'Packing · Shipment Status', fsSub:'Goods received into finishing — packed, un-packed, shipped and in stock. Order / Shipped / Stock are filtered on the matching style · PO · colour in the F.G Shipment Plan',
       fsK1:'RECEIVED', fsK1s:'pcs received into finishing', fsK2:'UN-PACKED', fsK2s:'pcs received but not packed',
       fsK3:'PACKED', fsK3s:'pcs through the packing stage', fsK4:'STOCK', fsK4s:'pcs packed but not shipped',
       fsCLine:'Line', fsCBrand:'Brand', fsCStyle:'Style', fsCPo:'PO#', fsCColor:'Color',
       fsCOrder:'Order Qty', fsCPacked:'Packed Qty', fsCUnpack:'Un-Packed Qty',
+      fsCPackY:'Yesterday', fsCPackT:'Today', fsCPackC:'Cumulative',
+      fsCOrderC:'Ordered Carton Qty', fsCPackedC:'Packed Carton Qty', fsCUnpackC:'Un-Packed Carton Qty',
       fsCShip:'Shipped Qty', fsCStock:'Stock Qty', fsCRemark:'Remark',
-      fsPoTip:'PO-level figure — shown on the first row of that PO only',
-      fsPackTip:'Editable — capped at the received qty',
+      fsPoTip:'From the F.G Shipment row matching style · PO · colour — when several colours share one row the figure shows on the first of them',
+      fsNoFgTip:'No F.G Shipment row matches this style · PO · colour — add one there, or hit Reseed from plan',
+      fsPackAuto:'Auto from packed cartons —', fsPcsCtn:'pcs per carton (placeholder ratio)',
+      fsPackYTip:'Auto from the cartons packed yesterday — that day is closed',
+      fsPackCTip:'Auto from every packed carton',
+      fsPackOverTip:'More than was received into finishing — the pcs-per-carton ratio is off, or a carton count is wrong',
+      fsCtnOrdTip:'Cartons ordered for this style · PO · colour — keyed in, nothing in the app derives it',
+      fsCtnTip:'Cartons packed today — editable',
+      fsCtnCap:'remaining',
+      fsCtnYTip:'Cartons packed on the previous calendar day — that day is closed, not editable here',
+      fsCtnCTip:'Every logged day of cartons added up',
+      fsCtnUTip:'Ordered cartons minus packed cartons — blank until an ordered carton qty is keyed in',
+      fsCtnOverTip:'Packed beyond the ordered carton qty — fix the ordered qty or a daily carton count',
+      fsCAct:'ACTIONS', fsScanBtn:'Scan',
+      fsScanTip:'Scan each carton barcode — checked against the barcode list imported in the F.G Shipment Plan',
+      fsScanNoBc:'This row’s shipment has no barcode list yet — import a packing list then the barcodes in the F.G Shipment Plan',
+      fsScanTitle:'CARTON BARCODE SCAN', fsScanPh:'Scan or type a barcode, then Enter…',
+      fsScanDone:'cartons scanned', fsScanOk:'Recorded', fsScanDup:'Already scanned at',
+      fsScanBad:'That code is not in this shipment’s barcode list',
+      fsScanLogL:'Scanned on this row', fsScanNone:'Nothing scanned yet',
+      fsScanUndo:'Undo this scan', fsScanHint:'A wedge scanner sends Enter itself — keep scanning, the box clears after each code',
+      fsCtnScanT:'cartons from scans', fsCtnManT:'cartons keyed in',
       fsRemarkPh:'Remark…',
       fsIn:'RECEIVED', fsIron:'IRON', fsQc:'FINAL QC', fsPack:'PACK', fsFg:'FG WAREHOUSE',
       fsWip:'IN PROGRESS', fsPct:'PROGRESS', fsAll:'Push all', fsClr:'Clear', fsCount:'groups',
@@ -924,16 +1034,25 @@ class Component extends DCLogic {
       fsSearch:'Search style, PO, colour, line…', fsNoHit:'No row matches the search',
       fsEmpty:'Nothing received yet — go to Finishing In and confirm a handover slip.',
       fgBc:'F.G Shipment Plan', fgTitle:'Finished Goods Shipment Plan',
-      fgPanel:'Shipments By Style · PO', fgSub:'Seeded from the Production Plan — the READY column reads straight from FG warehouse quantities in Finishing Status',
+      fgPanel:'Shipments By Style · PO', fgSub:'One row per style · PO — the COLOR cell lists every colour of the shipment, read from the cutting plan SUMMARY BY COLOUR (matched on style · PO); shipped quantity, loading date, ship mode, destination and CBM are keyed in',
       fgK1:'ORDERED', fgK1s:'pcs on the shipment plan', fgK2:'READY', fgK2s:'pcs booked into finished goods',
       fgK3:'SHIPPED', fgK3s:'pcs already loaded', fgK4:'LATE', fgK4s:'shipments past their ETD',
-      fgBrand:'BRAND', fgStyle:'STYLE #', fgPo:'PO', fgQty:'ORDER QTY', fgEtd:'ETD',
-      fgReady:'READY', fgShipped:'SHIPPED', fgBal:'BALANCE', fgPct:'%', fgSt:'STATUS', fgNote:'NOTE',
-      fgStPlan:'Planned', fgStReady:'Ready', fgStShip:'Shipped', fgStLate:'Late',
+      fgNo:'NO#', fgBrand:'BRAND', fgSeason:'SEASON', fgFactory:'FACTORY', fgStyle:'STYLE NO#',
+      fgPo:'PO#', fgColor:'COLOR', fgQty:'ORDER QUANTITY', fgShipped:'SHIPPED QUANTITY', fgBal:'BALANCE QUANTITY',
+      fgLoad:'LOADING DATE', fgEtd:'ETD', fgMode:'SHIP MODE', fgDest:'DESTINATION', fgCbm:'CBM', fgNote:'RE-MARK',
       fgAdd:'Add shipment', fgCount:'shipments', fgReseed:'Reseed from plan',
       fgReseedAsk:'Reseed every shipment from the Production Plan? Manual edits in this table will be lost.',
-      fgReadyTip:'FG warehouse quantity for this style · PO (all colours)',
-      fgSearch:'Search brand, style, PO, ETD, note…', fgNoHit:'No shipment matches the search',
+      fgPkImp:'Packing list', fgPkTip:'Import this shipment’s packing list (.xlsx/.xls/.csv) — takes the total carton qty and feeds Ordered Carton Qty on Finishing Status',
+      fgPkHas:'Packing list imported — click to import a different file', fgPkClr:'Drop the packing list (drops this shipment’s barcodes too)',
+      fgPkOk:'Packing list imported —', fgPkCtn:'ctn',
+      fgPkNone:'No carton count found in the file. It needs a CARTON NO column, a carton-qty column, or a TOTAL CARTONS cell.',
+      fgBcImp:'Barcode', fgBcTip:'Import the carton barcode file (.xlsx/.xls/.csv) — the list is stored for the Finishing Status table',
+      fgBcHas:'Barcodes imported — click to import a different file', fgBcClr:'Drop this shipment’s barcode list',
+      fgBcNeed:'Import the packing list first — barcodes need it',
+      fgBcOk:'Barcodes imported —', fgBcN:'codes', fgBcCut:'codes (the overflow was dropped)',
+      fgBcNone:'No barcode found in the file. It needs a BARCODE / UPC / EAN column.',
+      fsCtnOrdPk:'From the packing list', fsCtnBcTip:'Barcodes imported for this shipment',
+      fgSearch:'Search brand, style, PO, colour, destination, ETD…', fgNoHit:'No shipment matches the search',
       fgEmpty:'No shipment yet — hit Reseed from plan or Add shipment.',
       snapTitle:'LOCAL DATA', snapExport:'Export snapshot', snapImport:'Import snapshot',
       snapExportTip:'Download state-seed.js with ALL of localStorage plus the IndexedDB files. Drop it into app/data/ and ship the whole folder.',
@@ -1206,9 +1325,9 @@ class Component extends DCLogic {
   }
 
   // ================= Phieu giao nhan ban thanh pham =====================
-  // Dung khuon to phieu giay QT.GRSBM11-09: khung do, 7 cot, Ghi chu, 3 o ky.
-  // Cac o Xuat di nuoc / Ngay giao hang de trong dung nhu to giay -- du lieu
-  // nay khong co trong app, nguoi giao dien tay sau khi in.
+  // Dung khuon to phieu giay QT.GRSBM11-09, da rut bot cho ban dien tu: 5 cot
+  // (bo Xuat di nuoc / Ngay giao hang -- app khong co du lieu nay), Ghi chu,
+  // 2 o ky (bo To truong Bo phan cat).
   BQ_ROWS=10;          // so dong ke san tren to phieu
   renderBqSlip(){
     const d=this.bSlipData(); if(!d) return null;
@@ -1225,8 +1344,7 @@ class Component extends DCLogic {
       h('span',{style:{flex:1,minWidth:0,borderBottom:'1px dotted '+LN,paddingBottom:1,
         fontSize:14,fontWeight:700,color:VAL,fontFamily:mono,whiteSpace:'nowrap',
         overflow:'hidden',textOverflow:'ellipsis'}},val||'\u00a0'));
-    const cols=[['bqC1','14%'],['bqC2','9%'],['bqC3','9%'],['bqC4','12%'],['bqC5','20%'],
-      ['bqC6','16%'],['bqC7','20%']];
+    const cols=[['bqC1','24%'],['bqC2','16%'],['bqC3','14%'],['bqC4','20%'],['bqC5','26%']];
     const cbase={border:'1px solid '+LN,padding:'6px 7px',fontSize:12.5,verticalAlign:'middle'};
     const th=h('tr',null,cols.map(([k,w])=>h('th',{key:k,style:{...cbase,width:w,background:HEAD,
       fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
@@ -1239,13 +1357,13 @@ class Component extends DCLogic {
     d.lines.forEach((x,i)=>body.push(h('tr',{key:'r'+i},
       cell(i?'':d.color,{k:'c',al:'left'}), cell(x.tb,{k:'tb',mono:true}),
       cell(x.size,{k:'sz',b:true}), cell(this.fmt(x.qty),{k:'q',mono:true,b:true}),
-      cell(i?'':d.po,{k:'po',mono:true}), cell('',{k:'ex'}), cell('',{k:'sd'}))));
+      cell(i?'':d.po,{k:'po',mono:true}))));
     for(let i=d.lines.length;i<this.BQ_ROWS;i++)
       body.push(h('tr',{key:'e'+i},cols.map(([k])=>cell('',{k:k}))));
     // Khoi ky: dung khuon giong phieu ban giao cua Daily Sewing Output
-    const sign=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:22,
-        padding:'0 6px',marginTop:24}},
-      ['bqSign1','bqSign2','bqSign3'].map(k=>h('div',{key:k,style:{textAlign:'center'}},
+    const sign=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:40,
+        maxWidth:560,margin:'24px auto 0',padding:'0 6px'}},
+      ['bqSign1','bqSign2'].map(k=>h('div',{key:k,style:{textAlign:'center'}},
         h('div',{style:{height:40}}),
         h('div',{style:{borderTop:'1px solid '+LN,paddingTop:7,fontSize:12,fontWeight:600,
           color:C.faint}},this.t(k)))));
@@ -1417,6 +1535,11 @@ class Component extends DCLogic {
   bqNoOf(r,day){ const v=(this.state.bqNo||{})[this.bqNoKey(r,day)];
     if(!v||!v.no) return '';
     return v.sig===this.bqSig(r,day)?v.no:''; }
+  // Moc phat hanh to phieu -- dung lam gio o truong 'Ngay giao'. Ban luu cu
+  // (truoc khi co truong nay) khong co ts: to phieu chi hien ngay, khong gio.
+  bqTsOf(r,day){ const v=(this.state.bqNo||{})[this.bqNoKey(r,day)];
+    if(!v||!v.no||v.sig!==this.bqSig(r,day)) return 0;
+    return Number(v.ts)||0; }
   // So thu tu trong ngay CHI TANG. Khong dem so ban ghi dang co: tra 1 so ve
   // (doi noi dung, xac nhan xong) roi dem lai se cap trung so da in.
   bqSeqAt(st,day){ const pre='CS-'+day+'-';
@@ -1430,10 +1553,10 @@ class Component extends DCLogic {
   // Cap so luc mo phieu. Khong tra ve gia tri: setState la bat dong bo, ben
   // goi doc lai bang bqNoOf sau khi state da cap nhat.
   bqNoIssue(r,day){ if(this.bqNoOf(r,day)) return;
-    const k=this.bqNoKey(r,day), day8=this.dsoSlipDay(Date.now()), sig=this.bqSig(r,day);
+    const k=this.bqNoKey(r,day), ts=Date.now(), day8=this.dsoSlipDay(ts), sig=this.bqSig(r,day);
     this.setState(st=>{ const n=this.bqSeqAt(st,day8)+1;
       return {bqSeq:{...(st.bqSeq||{}),[day8]:n},
-        bqNo:{...(st.bqNo||{}),[k]:{no:'CS-'+day8+'-'+String(n).padStart(3,'0'),sig:sig}}}; }); }
+        bqNo:{...(st.bqNo||{}),[k]:{no:'CS-'+day8+'-'+String(n).padStart(3,'0'),sig:sig,ts:ts}}}; }); }
   // Xac nhan da nhan = to giay do khep lai. Lan giao sau cua cung o phai la to
   // moi, nen tra ma ve; bo dem chi tang nen so cu khong bao gio duoc dung lai.
   bqNoRelease(r,day){ const k=this.bqNoKey(r,day);
@@ -1448,11 +1571,15 @@ class Component extends DCLogic {
     const r=this.getWeek().rows.find(x=>x.id===s.rid);
     if(r){ this.bqNoRelease(r,s.day); this.cycleStatus(r,s.day); }
     this.bSlipClose(); }
-  // 'DD/MM/YYYY' cua dung ngay trong tuan dang xem
-  bSlipDate(day){ const st=this.psWeekRange(this.state.week)[0], i=this.DAYS.indexOf(day);
+  // 'DD/MM/YYYY HH:mm' -- NGAY lay tu dung ngay trong tuan dang xem, GIO lay
+  // tu moc phat hanh to phieu (ts). Khong co ts thi chi tra ve ngay.
+  bSlipDate(day,ts){ const st=this.psWeekRange(this.state.week)[0], i=this.DAYS.indexOf(day);
     const d=new Date(st.getFullYear(),st.getMonth(),st.getDate()+(i<0?0:i));
     const p=n=>String(n).padStart(2,'0');
-    return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear(); }
+    const s=p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear();
+    if(!ts) return s;
+    const t=new Date(ts);
+    return s+' '+p(t.getHours())+':'+p(t.getMinutes()); }
   // PO lay tu tac nghiep cat cua ma hang; nhieu PO thi ghep lai
   bSlipPo(style){ const ps=(this.khcPlansFor(style)||[]).map(p=>String(p.qrPo||'').trim()).filter(Boolean);
     return [...new Set(ps)].join(' / '); }
@@ -1470,7 +1597,7 @@ class Component extends DCLogic {
       tb:turns.filter(t=>(this.turnSizes(t)[z]||0)>0).map(t=>t.id).join(', ')
          ||(cell.turns||[]).join(', ')}));
     return {row:r,cell:cell,lines:lines,no:this.bqNoOf(r,s.day),
-      color:this.bundleColor(r,ri), day:this.bSlipDate(s.day),
+      color:this.bundleColor(r,ri), day:this.bSlipDate(s.day,this.bqTsOf(r,s.day)),
       brand:r.brand||'', line:String(r.line||'').replace(/^Line\s*/i,''),
       style:r.style||'', po:this.bSlipPo(r.style)}; }
 
@@ -2928,6 +3055,37 @@ class Component extends DCLogic {
       ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color))
       ||oi(a.size)-oi(b.size)||String(a.code).localeCompare(String(b.code))); }
 
+  // ---- Xuat Excel bang lich su hang loi ------------------------------------
+  // Xuat DUNG nhung dong dang thay: cung bo loc chuyen, cung tu khoa tim, cung
+  // thu tu sap xep -- nguoi dung loc gi tren man hinh thi file ra dung the.
+  // Cot LY DO tren bang gop ma+ten trong 1 o; ra Excel tach lam 2 cot cho de
+  // loc va pivot. Cot CHUYEN chi co khi dang xem tat ca chuyen, giong bang.
+  dsoDefExport(line){
+    const X=window.XLSX;
+    if(!X||!X.utils){ window.alert(this.t('mtNoXlsx')); return; }
+    const q=this.state.dsoDefQ||'';
+    const rows=this.dsoDefHistory(line)
+      .filter(r=>this.dsoRowHit(r,q,r.at+' '+r.code+' '+this.dsoDefName(r.code)));
+    if(!rows.length){ window.alert(this.t(this.dsoDefHistory(line).length?'dfNoHit':'dsoDefHistEmpty')); return; }
+    const head=[this.t('dsoColDay'),this.t('dsoColTime')];
+    if(!line) head.push(this.t('lsCol1'));
+    head.push(this.t('lsCol2'),this.t('dsoColPo'),this.t('dsoColColor'),this.t('dsoColSize'),
+      this.t('dfCode'),this.t('dfName'),this.t('dsoColDefQty'));
+    const who=line||this.t('dsoDefAllLines');
+    const aoa=[[this.t('dsoDefHist')],['YIC HÀ NAM · '+who+' · '+this.todayStamp()],[],head];
+    rows.forEach(r=>{ const a=[this.dsoDay(r.day),r.at||''];
+      if(!line) a.push(r.line||'');
+      a.push(r.style||'',r.po||'',r.color||'',r.size||'',r.code||'',this.dsoDefName(r.code),Number(r.qty)||0);
+      aoa.push(a); });
+    const tot=new Array(head.length).fill('');
+    tot[0]=this.t('bkTot'); tot[head.length-1]=rows.reduce((a,r)=>a+(Number(r.qty)||0),0);
+    aoa.push(tot);
+    const ws=X.utils.aoa_to_sheet(aoa);
+    ws['!cols']=(line?[13,8]:[13,8,12]).concat([18,13,15,9,12,30,15]).map(w=>({wch:w}));
+    const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'Defect History');
+    X.writeFile(wb,('YIC-HaNam_Defect-History_'+(line||'ALL')+'_'+this.todayStamp())
+      .replace(/[^0-9A-Za-z]+/g,'-').replace(/-+$/,'')+'.xlsx'); }
+
   // ---- Hop chon so luong giao (mo tu nut 'Giao sang hoan thien (n)') ----
   dsoBulkOpen(line){ const p=this.dsoHandPool(line||null);
     this.set({dsoHandBulk:{line:line||'',qty:{...p.sizes}}}); }
@@ -3353,6 +3511,10 @@ class Component extends DCLogic {
         h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('dsoDefHistSub'))),
       h('div',{style:{flex:1,minWidth:8}}),
       all.length?this.dfSearchBox(q,v=>this.set({dsoDefQ:v}),false,'dsoHistSearch'):null,
+      rows.length?h('button',{title:this.t('dsoDefExpTip'),onClick:()=>this.dsoDefExport(line),
+        style:{border:'1px solid '+C.border,background:C.white,color:C.primary,borderRadius:8,
+          padding:'6px 12px',fontSize:12,fontWeight:700,fontFamily:'inherit',cursor:'pointer',
+          whiteSpace:'nowrap'},'style-hover':{background:C.tint}},this.t('exportXls')):null,
       h('span',{style:{fontSize:12,fontWeight:700,fontFamily:mono,color:'#a3271b',background:'#fdecea',
         border:'1px solid #eccfca',borderRadius:999,padding:'4px 11px',whiteSpace:'nowrap'}},
         this.fmt(rows.reduce((a,r)=>a+r.qty,0))+' pcs'));
@@ -4728,6 +4890,7 @@ class Component extends DCLogic {
       if(e.key==='Escape'&&this.state.bslip) this.bSlipClose();
       if(e.key==='Escape'&&this.state.dsoHandBulk) this.set({dsoHandBulk:null});
       if(e.key==='Escape'&&this.state.dsoHandAsk) this.dsoSlipClose();
+      if(e.key==='Escape'&&this.state.fsScanAt) this.fsScanClose();
       if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')&&(this.state.psTrash||[]).length){ e.preventDefault(); this.psUndo(); } };
     document.addEventListener('keydown',this._esc);
     // May moi (localStorage rong) da duoc nap localStorage o seedStorage();
@@ -4736,11 +4899,11 @@ class Component extends DCLogic {
     this.awaitData();
     setTimeout(()=>this.psGoToday(),160); }
   // Bản HTML rời nạp data/psched.js & data/khc.js không đồng bộ — chờ có dữ liệu rồi vẽ lại
-  awaitData(){ this.ensureSeed(); this.reconcileWeeks(); this.fgEnsure(); let n=0;
+  awaitData(){ this.ensureSeed(); this.reconcileWeeks(); this.fgEnsure(); this.ftEnsure(); let n=0;
     this._dataT=setInterval(()=>{ n++;
       const ready=window.PSCHED&&window.KHC&&window.KHC.__seed&&window.PSCHED.__seed;
       if(window.PSCHED&&window.KHC) this.ensureSeed();
-      if(ready){ clearInterval(this._dataT); this._dataT=null; this.reconcileWeeks(); this.fgEnsure(); this.psGoToday(); }
+      if(ready){ clearInterval(this._dataT); this._dataT=null; this.reconcileWeeks(); this.fgEnsure(); this.ftEnsure(); this.psGoToday(); }
       else if(n>240){ clearInterval(this._dataT); this._dataT=null; } },50); }
   componentWillUnmount(){ clearTimeout(this._pt); clearTimeout(this._tblT); clearTimeout(this._snT); clearTimeout(this._fgT); clearInterval(this._dataT); this.mlvClockOff(); this.mlvFsOff(); this.persist(); if(this._esc) document.removeEventListener('keydown',this._esc); document.body.classList.remove('kc-qr-open'); document.body.classList.remove('bg-slip-open'); }
 
@@ -4957,23 +5120,113 @@ class Component extends DCLogic {
   finList(q){ const list=this.finSlips().slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
     q=String(q||'').trim().toLowerCase(); if(!q) return list;
     return list.filter(s=>[this.dsoSlipNo(s),s.line,s.style,s.po,s.color].join(' ').toLowerCase().indexOf(q)>=0); }
-  finRecvSet(id,on){ this.setState(st=>{ const m={...(st.finRecv||{})};
-    if(on) m[id]={ts:Date.now(),by:(m[id]&&m[id].by)||''}; else delete m[id];
-    return {finRecv:m}; }); }
-  finRecvWho(id,by){ this.setState(st=>{ const m={...(st.finRecv||{})};
-    if(!m[id]) return null; m[id]={...m[id],by}; return {finRecv:m}; }); }
+  // Ten nguoi nhan KHONG go lai o day: doc thang o 'Nguoi nhan (Hoan thien)'
+  // da ky tren to phieu (state.dsoHandWho). Ban ghi cu con go tay thi giu lai
+  // lam du phong, va to phieu luon duoc uu tien -- sua ten tren phieu la cot
+  // NGUOI NHAN doi theo.
+  finWhoTo(who,id){ return String(((who||{})[id]||{}).to||'').trim(); }
+  finRecvBy(s){ const r=this.finRecvMap()[s.id];
+    return this.finWhoTo(this.state.dsoHandWho,s.id)||String((r&&r.by)||'').trim(); }
+  finRecvSet(s,on){ const id=s&&s.id; if(!id) return;
+    this.setState(st=>{ const m={...(st.finRecv||{})};
+      if(on) m[id]={ts:Date.now(),by:this.finWhoTo(st.dsoHandWho,id)||(m[id]&&m[id].by)||''};
+      else delete m[id];
+      return {finRecv:m}; }); }
   finRecvAll(){ const ids=this.finSlips().map(s=>s.id);
     this.setState(st=>{ const m={...(st.finRecv||{})}, ts=Date.now();
-      ids.forEach(id=>{ if(!m[id]) m[id]={ts,by:''}; }); return {finRecv:m}; }); }
+      ids.forEach(id=>{ if(!m[id]) m[id]={ts,by:this.finWhoTo(st.dsoHandWho,id)}; });
+      return {finRecv:m}; }); }
+
+  // ---- Finishing In · Phụ liệu hoàn thiện ----------------------------------
+  // Cung nguon voi bang Ke hoach xuat hang: 1 dong / (ma hang | PO) cua Ke hoach
+  // san xuat, khoa PO doc qua orderPo() nen khop voi ca 2 ben May va Hoan thien.
+  // SL DON HANG gieo tu ke hoach; SL THUC NHAN la so nguoi dung go khi hang ve.
+  FIN_IN_TABS=[['gmt','fiTab1'],['trim','fiTab2']];
+  ftSeed(){ const out=[], seen={};
+    (this.PS().groups||[]).forEach(g=>(g.rows||[]).forEach(r=>(r.orders||[]).forEach(o=>{
+      const style=this.psCode(o.code); if(!style) return;
+      const po=this.orderPo(o), k=style+'|'+po; if(seen[k]) return; seen[k]=1;
+      out.push({id:'ft'+(out.length+1),brand:this.brandOf(o)||'',style,po,
+        qty:this.psQty(o)||0,act:0}); })));
+    return out.sort((a,b)=>String(a.brand).localeCompare(String(b.brand))
+      ||String(a.style).localeCompare(String(b.style))||String(a.po).localeCompare(String(b.po))); }
+  // Gieo 1 lan khi da co Ke hoach san xuat; sau do bang la du lieu nguoi dung sua duoc.
+  ftEnsure(){ if(this.state.ftSeeded||(this.state.ftRows||[]).length) return false;
+    const rows=this.ftSeed(); if(!rows.length) return false;
+    this.set({ftRows:rows,ftSeeded:1}); return true; }
+  ftReseed(){ if(!window.confirm(this.t('ftReseedAsk'))) return;
+    this.set({ftRows:this.ftSeed(),ftSeeded:1,ftEdit:null,ftQ:'',ftSel:{},ftPick:null}); }
+  ftAll(){ return this.state.ftRows||[]; }
+  ftList(q){ const l=this.ftAll(); q=String(q||'').trim().toLowerCase(); if(!q) return l;
+    return l.filter(r=>[r.brand,r.style,r.po].join(' ').toLowerCase().indexOf(q)>=0); }
+  ftSet(id,patch){ this.setState(s=>({ftRows:(s.ftRows||[]).map(r=>r.id===id?{...r,...patch}:r)})); }
+  ftDel(id){ this.setState(s=>{ const sel={...(s.ftSel||{})}; delete sel[id];
+    return {ftRows:(s.ftRows||[]).filter(r=>r.id!==id),ftSel:sel,
+      ftEdit:s.ftEdit===id?null:s.ftEdit,ftPick:s.ftPick===id?null:s.ftPick}; }); }
+  // Am = con thieu, duong = nhan vuot, 0 = dung bang don hang.
+  ftBal(r){ return (Number(r.act)||0)-(Number(r.qty)||0); }
+
+  // ---- O SL THUC NHAN -> hop chon phu lieu --------------------------------
+  // Bang trong hop la Danh muc phu lieu (data/mlist.js), sinh tu file Excel
+  // "MATERIALS LIST ... -FORM - update.xlsx". Moi dong = 1 phu lieu: tich chon
+  // roi go SL nhan; Xac nhan thi TONG bay vao o SL THUC NHAN ngoai bang.
+  // ftSel[dong].{id phu lieu} = SL nhan -> giu lai de mo lai van thay da chon gi.
+  ML(){ return window.MLIST||{rows:[]}; }
+  mlRows(){ return this.ML().rows||[]; }
+  mlKinds(){ const out=[]; this.mlRows().forEach(m=>{ const k=m.kind||'';
+    if(k&&out.indexOf(k)<0) out.push(k); }); return out; }
+  mlList(q,kind){ let l=this.mlRows();
+    if(kind) l=l.filter(m=>(m.kind||'')===kind);
+    q=String(q||'').trim().toLowerCase(); if(!q) return l;
+    return l.filter(m=>[m.item,m.desc,m.pos,m.size,m.mcolor,m.color,m.unit,m.sup,m.arr,m.ship]
+      .join(' ').toLowerCase().indexOf(q)>=0); }
+  mlSize(m){ return String(m.size||m.pos||'').trim(); }
+  // SL goi y khi tich 1 dong: uu tien SL DA GUI, khong co thi lay SL CAN.
+  mlDefQty(m){ const v=Number(m.rcvd)||0, n=Number(m.need)||0;
+    return Math.round(v>0?v:n); }
+  // Duong = ve vuot so can, am = con thieu. Chua tich thi soi theo SL da gui.
+  mlDiff(m,q){ return (q==null?(Number(m.rcvd)||0):(Number(q)||0))-(Number(m.need)||0); }
+
+  ftPickOpen(id){ if(!this.ftAll().some(r=>r.id===id)) return;
+    this.set({ftPick:id,ftPickQ:'',ftPickKind:'',
+      ftPickDraft:{...((this.state.ftSel||{})[id]||{})}}); }
+  ftPickClose(){ this.set({ftPick:null,ftPickQ:'',ftPickKind:'',ftPickDraft:null}); }
+  ftDraft(){ return this.state.ftPickDraft||{}; }
+  ftPickHas(mid){ return this.ftDraft()[mid]!=null; }
+  ftPickToggle(m){ this.setState(s=>{ const d={...(s.ftPickDraft||{})};
+    if(d[m.id]!=null) delete d[m.id]; else d[m.id]=this.mlDefQty(m);
+    return {ftPickDraft:d}; }); }
+  ftPickQty(mid,v){ this.setState(s=>({ftPickDraft:{...(s.ftPickDraft||{}),[mid]:this.fgNum(v)}})); }
+  // Chon/bo het -- chi tac dong len nhung dong dang hien (theo o tim + loc loai)
+  ftPickFill(on){ const list=this.mlList(this.state.ftPickQ,this.state.ftPickKind);
+    this.setState(s=>{ const d={...(s.ftPickDraft||{})};
+      list.forEach(m=>{ if(on){ if(d[m.id]==null) d[m.id]=this.mlDefQty(m); }
+        else delete d[m.id]; });
+      return {ftPickDraft:d}; }); }
+  // units = cac don vi dang gop lai (MT / YD / EA / SET / CONE). Gop nhieu don vi
+  // vao 1 con so thi hop se noi ro ra, khong lang le cong don.
+  ftPickSum(){ const d=this.ftDraft(), by={}; let n=0, qty=0;
+    this.mlRows().forEach(m=>{ if(d[m.id]==null) return;
+      n++; qty+=Number(d[m.id])||0; const u=String(m.unit||'').trim(); if(u) by[u]=1; });
+    return {n,qty,units:Object.keys(by)}; }
+  ftPickOk(){ const id=this.state.ftPick; if(!id) return;
+    const sum=this.ftPickSum(), d={...this.ftDraft()};
+    this.setState(s=>({ftSel:{...(s.ftSel||{}),[id]:d},
+      ftRows:(s.ftRows||[]).map(r=>r.id===id?{...r,act:sum.qty}:r),
+      ftPick:null,ftPickQ:'',ftPickKind:'',ftPickDraft:null})); }
+  ftSelN(id){ const d=(this.state.ftSel||{})[id]; return d?Object.keys(d).length:0; }
 
   renderFinInBody(){
-    const h=React.createElement;
+    const h=React.createElement, tab=this.state.finTab||'gmt';
     return h('div',{ref:this.scrollRef,className:'yscroll','data-screen-label':'Finishing In',
       style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
       this.renderTitle('fiTitle','S-06-FINISH-IN · UI Proto'),
-      this.renderFinInKpis(),
-      this.renderFinInTable(),
-      this.renderDsoHandAsk());
+      this.tabBar(this.FIN_IN_TABS,tab,id=>this.set({finTab:id,ftEdit:null}),false),
+      tab==='trim'
+        ? h('div',null,this.renderFinTrimKpis(),this.renderFinTrimTable())
+        : h('div',null,this.renderFinInKpis(),this.renderFinInTable()),
+      this.renderDsoHandAsk(),
+      this.renderFtPick());
   }
   renderFinInKpis(){
     const rec=this.finRecvMap(), today=this.dsoToday();
@@ -4999,7 +5252,7 @@ class Component extends DCLogic {
       wait?this.mtBtn(this.t('fiRecvAll'),()=>this.finRecvAll(),
         {color:C.primary,borderColor:C.border,padding:'6px 12px',fontSize:12}):null);
     const body=rows.map((s,i)=>{
-      const r=rec[s.id], on=!!r, bg=i%2?'#f7f9f3':C.white;
+      const on=!!rec[s.id], bg=i%2?'#f7f9f3':C.white;
       return h('tr',{key:s.id},
         h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
         h('td',{style:{...S.td,background:bg,whiteSpace:'nowrap'}},
@@ -5015,14 +5268,13 @@ class Component extends DCLogic {
           this.finSizeTxt(s.sizes)||'—'),
         h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700,textAlign:'right'}},this.fmt(s.qty)),
         h('td',{style:{...S.td,background:bg,whiteSpace:'nowrap'}},this.finChip(on)),
-        h('td',{style:{...S.td,background:bg}},
-          on?h('input',{value:r.by||'',placeholder:this.t('fiWho'),onChange:e=>this.finRecvWho(s.id,e.target.value),
-                style:{...S.inp,fontFamily:'inherit'}})
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},
+          on?h('span',{title:this.t('fiByTip'),style:{fontWeight:600,color:C.ink}},this.finRecvBy(s)||'—')
             :h('span',{style:{color:C.faint}},'—')),
         h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
           h('div',{style:{display:'flex',gap:6}},
-            on?this.mtBtn(this.t('fiUnrecv'),()=>this.finRecvSet(s.id,false),{color:'#c0392b',borderColor:'#eccfca'})
-              :this.mtBtn(this.t('fiRecv'),()=>this.finRecvSet(s.id,true),{border:'1px solid '+C.primary,background:C.tint}),
+            on?this.mtBtn(this.t('fiUnrecv'),()=>this.finRecvSet(s,false),{color:'#c0392b',borderColor:'#eccfca'})
+              :this.mtBtn(this.t('fiRecv'),()=>this.finRecvSet(s,true),{border:'1px solid '+C.primary,background:C.tint}),
             this.mtBtn(this.t('fiView'),()=>this.dsoSlipOpen(s)))));
     });
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
@@ -5042,6 +5294,251 @@ class Component extends DCLogic {
           style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
           this.t(all.length?'fiNoHit':'fiEmpty'))))));
     return this.dsoCard('fiPanel','fiSub','Finishing In',tbl,{full:true,action});
+  }
+
+  renderFinTrimKpis(){
+    const l=this.ftAll(); let qty=0, act=0, short=0, done=0;
+    l.forEach(r=>{ const q=Number(r.qty)||0, a=Number(r.act)||0;
+      qty+=q; act+=a; if(a<q) short+=q-a; else if(q>0) done++; });
+    return this.finKpis([
+      [this.t('ftK1'),this.fmtn(qty),this.t('ftK1s')],
+      [this.t('ftK2'),this.fmtn(act),this.t('ftK2s')],
+      [this.t('ftK3'),this.fmtn(short),this.t('ftK3s'),short>0],
+      [this.t('ftK4'),this.fmtn(done),this.t('ftK4s')]]);
+  }
+  renderFinTrimTable(){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const q=this.state.ftQ||'', all=this.ftAll(), rows=this.ftList(q);
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+      h('span',{style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.tint,
+        border:'1px solid '+C.border,borderRadius:999,padding:'4px 10px',whiteSpace:'nowrap'}},
+        this.fmt(all.length)+' '+this.t('ftCount')),
+      this.dfSearchBox(q,v=>this.set({ftQ:v}),false,'ftSearch'),
+      this.mtBtn(this.t('ftReseed'),()=>this.ftReseed(),{padding:'6px 12px',fontSize:12}));
+    const body=rows.map((r,i)=>{
+      const ed=this.state.ftEdit===r.id, bg=i%2?'#f7f9f3':C.white, bal=this.ftBal(r);
+      const selN=this.ftSelN(r.id);
+      // THUONG HIEU · MA HANG · PO# la khoa dong, do Ke hoach san xuat quyet dinh
+      // -> chi doc ca khi dang sua. Sua o trang Ke hoach san xuat roi Gieo lai.
+      const ro=f=>String(r[f]||'').trim()||'—';
+      const num=f=>ed
+        ? h('input',{value:r[f]||'',inputMode:'numeric',
+            onChange:e=>this.ftSet(r.id,{[f]:this.fgNum(e.target.value)}),
+            style:{...S.inp,textAlign:'right'}})
+        : this.fmt(r[f]);
+      const cell=(el,extra)=>h('td',{style:{...S.td,background:bg,...(extra||{})}},el);
+      const lock=(el,extra)=>h('td',{title:this.t('tipPlanCol'),
+        style:{...S.td,background:bg,color:ed?C.sub:undefined,...(extra||{})}},el);
+      return h('tr',{key:r.id},
+        cell(i+1,{textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}),
+        lock(ro('brand'),{fontWeight:600}),
+        lock(ro('style'),{fontFamily:S.mono,fontWeight:700,color:ed?C.sub:C.primary}),
+        lock(ro('po'),{fontFamily:S.mono}),
+        cell(num('qty'),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
+        // O SL THUC NHAN khong go tay: bam vao la mo hop chon phu lieu (renderFtPick).
+        // The nho ben canh = so dong phu lieu dang gop lai thanh con so nay.
+        h('td',{onClick:()=>this.ftPickOpen(r.id),
+          title:this.t('ftPickTip')+(bal<0?' · '+this.t('ftShortTip')
+            :(bal>0?' · '+this.t('ftOverTip'):'')),
+          style:{...S.td,background:bg,padding:0,cursor:'pointer'}},
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:7,
+              padding:'8px 10px'},'style-hover':{background:C.tint}},
+            selN?h('span',{style:{fontSize:10,fontWeight:700,fontFamily:S.mono,color:C.dark,
+              background:C.tint,border:'1px solid '+C.border,borderRadius:999,padding:'1px 7px',
+              whiteSpace:'nowrap'}},this.fmt(selN)+' '+this.t('ftPickLn')):null,
+            h('span',{style:{fontFamily:S.mono,fontWeight:700,
+              color:bal<0?'#c0392b':(bal>0?C.primary:C.ink)}},this.fmt(r.act)),
+            h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:C.faint,strokeWidth:2,
+              style:{flex:'none'}},h('path',{d:'M6 9l6 6 6-6'})))),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('div',{style:{display:'flex',gap:6}},
+            ed?this.mtBtn(this.t('lsDone'),()=>this.set({ftEdit:null}),{border:'1px solid '+C.primary,background:C.tint})
+              :this.mtBtn(this.t('lsEdit'),()=>this.set({ftEdit:r.id})),
+            this.mtBtn(this.t('mtDel'),()=>this.ftDel(r.id),{color:'#c0392b',borderColor:'#eccfca'}))));
+    });
+    const cols=[['mtNo',0],['ftBrand',0],['ftStyle',0],['ftPo',0],['ftQtyO',1],['ftQtyA',1],['mtAct',0]];
+    const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'880px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'46px'}}),h('col',{style:{width:'auto'}}),
+          h('col',{style:{width:'auto'}}),h('col',{style:{width:'130px'}}),
+          h('col',{style:{width:'140px'}}),h('col',{style:{width:'150px'}}),
+          h('col',{style:{width:'150px'}})),
+        h('thead',null,h('tr',null,
+          cols.map(([k,rt],ci)=>h('th',{key:k,style:{...S.th,
+            ...(rt?{textAlign:'right'}:{}),
+            ...(ci===0?{textAlign:'center',paddingLeft:8}:{}),
+            ...(ci===cols.length-1?{borderRight:'none'}:{})}},this.t(k))))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:cols.length,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
+          this.t(all.length?'ftNoHit':'ftEmpty'))))));
+    return this.dsoCard('ftPanel','ftSub','Finishing Trims',tbl,{full:true,action});
+  }
+
+  // ---- Hop chon phu lieu nhan vao ------------------------------------------
+  // Mo tu o SL THUC NHAN. Ban chon nam trong ftPickDraft (nhap nhay tuy y, chua
+  // dinh gi den bang ngoai); chi Xac nhan moi ghi vao ftSel + act. Bam ra ngoai
+  // hay Huy la mat ban nhap -- co y nhu vay, gio o ngoai khong the sua nham.
+  renderFtPick(){
+    const h=React.createElement, C=this.C, S=this.mtStyles(), mono=S.mono;
+    const id=this.state.ftPick; if(!id) return null;
+    const r=this.ftAll().find(x=>x.id===id); if(!r) return null;
+    const ML=this.ML(), all=this.mlRows(), close=()=>this.ftPickClose();
+    const q=this.state.ftPickQ||'', kind=this.state.ftPickKind||'';
+    const rows=this.mlList(q,kind), d=this.ftDraft(), sum=this.ftPickSum();
+    const order=Number(r.qty)||0, diff=sum.qty-order, dash='—';
+    // --- dau hop: dong nao dang duoc nhan phu lieu ---
+    const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'15px 20px',
+        flex:'none',borderBottom:'1px solid '+C.line}},
+      h('div',{style:{width:36,height:36,borderRadius:10,background:C.tint,color:C.dark,flex:'none',
+          display:'flex',alignItems:'center',justifyContent:'center'}},
+        h('svg',{width:19,height:19,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M20 7l-8-4-8 4 8 4 8-4zM4 7v10l8 4 8-4V7'}))),
+      h('div',{style:{minWidth:0,marginRight:'auto'}},
+        h('div',{style:{fontSize:16,fontWeight:700}},this.t('ftPickT')),
+        h('div',{style:{fontSize:11.5,color:C.faint,marginTop:2,display:'flex',gap:7,
+            flexWrap:'wrap',alignItems:'center'}},
+          h('span',{style:{fontWeight:700,color:C.sub}},String(r.brand||'').trim()||dash),
+          h('span',{style:{color:C.border}},'·'),
+          h('span',{style:{fontFamily:mono,fontWeight:700,color:C.primary}},String(r.style||'').trim()||dash),
+          h('span',{style:{color:C.border}},'·'),
+          h('span',{style:{fontFamily:mono}},String(r.po||'').trim()||dash))),
+      h('button',{title:this.t('dsoClose'),onClick:close,
+        style:{border:'1px solid '+C.border,background:C.white,color:C.sub,borderRadius:9,width:30,
+          height:30,flex:'none',cursor:'pointer',fontSize:17,lineHeight:1,padding:0,fontFamily:'inherit'},
+        'style-hover':{background:C.tint}},'×'));
+    // --- tong hop tren dau: dang chon bao nhieu, so voi SL don hang ---
+    const card=(label,value,sub,tone)=>h('div',{key:label,
+      style:{flex:'1 1 150px',minWidth:132,border:'1px solid '+C.border,borderRadius:12,
+        background:C.white,padding:'10px 13px'}},
+      h('div',{style:{fontSize:10,fontWeight:700,letterSpacing:'.5px',color:C.faint,
+        whiteSpace:'nowrap'}},label),
+      h('div',{style:{fontSize:21,fontWeight:700,fontFamily:mono,lineHeight:1.15,marginTop:3,
+        color:tone||C.ink}},value),
+      h('div',{style:{fontSize:10.5,color:C.faint,marginTop:3}},sub));
+    const pct=order>0?Math.min(100,Math.round(sum.qty/order*100)):0;
+    const tone=diff<0?'#c0392b':(diff>0?C.primary:C.ink);
+    const recap=h('div',{style:{padding:'16px 20px 0',flex:'none'}},
+      h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
+        card(this.t('ftPickSel'),this.fmt(sum.n)+'/'+this.fmt(all.length),
+          this.t('ftPickSelS'),sum.n?C.dark:C.faint),
+        card(this.t('ftPickQty'),this.fmtn(sum.qty),
+          sum.units.length>1?this.t('ftPickMix')+' '+sum.units.join(' + ')
+            :(sum.units[0]?this.t('ftPickQtyS')+' · '+sum.units[0]:this.t('ftPickQtyS')),
+          sum.qty?C.ink:C.faint),
+        card(this.t('ftPickOrd'),this.fmt(order),this.t('ftPickOrdS')),
+        card(this.t('ftPickDif'),(diff>0?'+':'')+this.fmtn(diff),this.t('ftPickDifS'),tone)),
+      // thanh do: dang chon duoc bao nhieu phan so voi SL don hang
+      order>0?h('div',{style:{marginTop:11}},
+        h('div',{style:{height:6,borderRadius:99,background:C.line,overflow:'hidden'}},
+          h('div',{style:{width:pct+'%',height:'100%',borderRadius:99,
+            background:diff<0?'#e6a19a':C.primary,transition:'width .18s'}})),
+        h('div',{style:{fontSize:10.5,color:C.faint,marginTop:5,fontFamily:mono}},
+          this.fmtn(sum.qty)+' / '+this.fmt(order)+'  ·  '+pct+'%')):null);
+    // --- thanh cong cu: loc theo loai + o tim + chon/bo het ---
+    const chip=(label,val)=>{ const on=kind===val;
+      return h('button',{key:'k'+val,onClick:()=>this.set({ftPickKind:val}),
+        style:{border:'1px solid '+(on?C.primary:C.border),background:on?C.tint:C.white,
+          color:on?C.dark:C.sub,borderRadius:999,padding:'5px 12px',fontSize:11.5,fontWeight:700,
+          fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap'},
+        'style-hover':{background:C.tint}},label); };
+    const bar=h('div',{style:{display:'flex',alignItems:'center',gap:8,padding:'14px 20px 10px',
+        flexWrap:'wrap',flex:'none'}},
+      chip(this.t('ftPickAll'),''),
+      ...this.mlKinds().map(k=>chip(k,k)),
+      h('div',{style:{flex:1,minWidth:8}}),
+      this.dfSearchBox(q,v=>this.set({ftPickQ:v}),false,'ftPickSearch'),
+      this.mtBtn(this.t('ftPickPick'),()=>this.ftPickFill(true),{padding:'6px 11px',fontSize:11.5}),
+      this.mtBtn(this.t('ftPickNone'),()=>this.ftPickFill(false),{padding:'6px 11px',fontSize:11.5}));
+    // --- bang danh muc phu lieu ---
+    const sth={...S.th,position:'sticky',top:0,zIndex:1};
+    const ctd={padding:'7px 9px',fontSize:12,borderTop:'1px solid '+C.line,
+      borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    // 2 cot cuoi ghim phai (SL nhan + chenh lech) — keo ngang van thay o nhap.
+    const PINW=[112,108];
+    const pin=(i,z)=>({position:'sticky',right:i?0:PINW[1],zIndex:z,
+      ...(i?{}:{borderLeft:'1px solid '+C.border})});
+    const txt=v=>String(v==null?'':v).trim()||dash;
+    const cols=[['','c'],['mtNo','c'],['mlKind','l'],['mlItem','l'],['mlDesc','l'],['mlSize','l'],
+      ['mlColor','l'],['mlUnit','c'],['mlNeed','r'],['mlShipQ','r'],['mlArr','l'],['mlSup','l'],
+      ['mlRecv','r'],['mlBal','r']];
+    const body=rows.map((m,i)=>{ const on=d[m.id]!=null, dq=on?d[m.id]:null;
+      const dv=this.mlDiff(m,dq);
+      const rbg=on?C.tint:(i%2?'#f7f9f3':C.white);
+      return h('tr',{key:m.id,onClick:()=>this.ftPickToggle(m),title:this.t('ftPickRowTip'),
+          style:{cursor:'pointer',background:rbg},
+          'style-hover':{background:on?C.badge:C.tint2}},
+        // o tich ve tay: bam bat cu dau tren dong cung an
+        h('td',{style:{...ctd,textAlign:'center',paddingLeft:14,width:34}},
+          h('span',{style:{display:'inline-flex',alignItems:'center',justifyContent:'center',
+              width:16,height:16,borderRadius:5,border:'1.5px solid '+(on?C.primary:C.border),
+              background:on?C.primary:C.white,color:'#fff'}},
+            on?h('svg',{width:11,height:11,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',
+              strokeWidth:3.2},h('path',{d:'M5 13l4 4L19 7'})):null)),
+        h('td',{style:{...ctd,textAlign:'center',fontFamily:mono,color:C.faint,fontWeight:600}},i+1),
+        h('td',{style:{...ctd,whiteSpace:'nowrap'}},
+          h('span',{style:{fontSize:10,fontWeight:700,fontFamily:mono,letterSpacing:'.3px',
+            color:C.sub,background:C.white,border:'1px solid '+C.border,borderRadius:999,
+            padding:'1px 7px'}},txt(m.kind))),
+        h('td',{style:{...ctd,fontFamily:mono,fontWeight:700,color:C.dark,whiteSpace:'nowrap'}},txt(m.item)),
+        h('td',{style:{...ctd,fontWeight:600,minWidth:180,wordBreak:'break-word'}},txt(m.desc)),
+        h('td',{style:{...ctd,fontFamily:mono,whiteSpace:'nowrap'}},txt(this.mlSize(m))),
+        h('td',{style:{...ctd,whiteSpace:'nowrap'}},txt(m.mcolor||m.color)),
+        h('td',{style:{...ctd,textAlign:'center',fontFamily:mono,color:C.sub,whiteSpace:'nowrap'}},txt(m.unit)),
+        h('td',{style:{...ctd,textAlign:'right',fontFamily:mono,whiteSpace:'nowrap'}},this.fmtn(m.need)),
+        h('td',{style:{...ctd,textAlign:'right',fontFamily:mono,color:C.sub,whiteSpace:'nowrap'}},
+          Number(m.rcvd)?this.fmtn(m.rcvd):dash),
+        h('td',{style:{...ctd,fontFamily:mono,fontSize:11.5,color:C.sub,minWidth:92}},txt(m.arr)),
+        h('td',{style:{...ctd,color:C.sub,minWidth:80,wordBreak:'break-word'}},txt(m.sup)),
+        // go SL nhan: chan noi bam len <tr> de khong bo tich khi dang sua so
+        h('td',{onClick:e=>e.stopPropagation(),style:{...ctd,textAlign:'right',
+          width:PINW[0],minWidth:PINW[0],background:rbg,...pin(0,2)}},
+          on?h('input',{value:dq==null?'':String(dq),inputMode:'numeric',
+              onChange:e=>this.ftPickQty(m.id,e.target.value),
+              style:{...S.inp,textAlign:'right'}})
+            :h('span',{style:{fontFamily:mono,color:C.faint}},dash)),
+        h('td',{style:{...ctd,borderRight:'none',textAlign:'right',fontFamily:mono,fontWeight:700,
+          whiteSpace:'nowrap',width:PINW[1],minWidth:PINW[1],background:rbg,...pin(1,2),
+          color:dv<0?'#c0392b':(dv>0?C.primary:C.faint)}},
+          (dv>0?'+':'')+this.fmtn(dv))); });
+    const note=k=>h('div',{style:{padding:'46px 20px',textAlign:'center',color:C.faint,
+      fontSize:13}},this.t(k));
+    const table=!all.length?h('div',{style:{flex:1,minHeight:150}},note('ftPickEmpty'))
+      :(rows.length
+        ? h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:150,
+            borderTop:'1px solid '+C.line}},
+            h('table',{style:{width:'100%',minWidth:'1240px',borderCollapse:'collapse'}},
+              h('thead',null,h('tr',null,
+                cols.map(([k,a],ci)=>{ const pi=ci-(cols.length-2);
+                  return h('th',{key:'h'+ci,style:{...sth,
+                    ...(a==='r'?{textAlign:'right'}:(a==='c'?{textAlign:'center'}:{})),
+                    ...(ci===0?{paddingLeft:14}:{}),
+                    ...(ci===cols.length-1?{borderRight:'none'}:{}),
+                    ...(pi>=0?{width:PINW[pi],minWidth:PINW[pi],...pin(pi,3)}:{})}},
+                    k?this.t(k):''); }))),
+              h('tbody',null,body)))
+        : h('div',{style:{flex:1,minHeight:150}},note('ftPickNoHit')));
+    // --- chan hop: dang chon bao nhieu + Huy / Xac nhan ---
+    const foot=h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 20px',
+        flex:'none',borderTop:'1px solid '+C.line,background:'#f8faf3',flexWrap:'wrap'}},
+      h('span',{style:{fontSize:12,fontWeight:700,whiteSpace:'nowrap',
+        color:sum.n?C.dark:C.faint}},this.t('ftPickFoot')+': ',
+        h('span',{style:{fontFamily:mono}},
+          this.fmt(sum.n)+' '+this.t('ftPickLn')+' · '+this.fmtn(sum.qty))),
+      ML.src?h('span',{title:ML.src,style:{fontSize:10.5,color:C.faint,minWidth:0,overflow:'hidden',
+        textOverflow:'ellipsis',whiteSpace:'nowrap'}},this.t('ftPickSrc')+' '+ML.src):null,
+      h('div',{style:{flex:1,minWidth:8}}),
+      h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel')),
+      h('button',{onClick:()=>this.ftPickOk(),style:this.btn('primary')},
+        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M5 13l4 4L19 7'})),this.t('ftPickOk')));
+    const over=h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
+        backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',
+        zIndex:87,padding:24}},
+      h('div',{onClick:ev=>ev.stopPropagation(),style:{width:'min(1340px,96vw)',maxHeight:'92vh',
+          display:'flex',flexDirection:'column',background:C.white,borderRadius:18,
+          boxShadow:'0 30px 70px rgba(0,0,0,.34)',overflow:'hidden'}},
+        head,recap,bar,table,foot));
+    return (RD&&RD.createPortal)?RD.createPortal(over,document.body):over;
   }
 
   // ---- Finishing Status: WIP qua 4 công đoạn -------------------------------
@@ -5093,27 +5590,180 @@ class Component extends DCLogic {
   // Bang chi con cot DONG GOI go tay, nen doc SO THO roi kep theo DA NHAN.
   // KHONG dung finStageQ: ham do kep theo ca Ui / Kiem cuoi, ma hai cong doan
   // do khong con cot nao de go -> pack se dung 0 mai.
-  fsPacked(g){ return Math.min(g.in,this.finRawQ(g.key,'pack')); }
+  // So dong goi go theo TUNG NGAY: fsPackD['ma hang|PO|mau|YYYY-MM-DD'].
+  // Bang chi mo o HOM NAY; hom qua da chot chi doc, tong luy ke la so cong lai.
+  fsYesterday(){ const d=new Date(); d.setDate(d.getDate()-1); return this.psFmtD(d); }
+  // ---- PCS DA DONG GOI: SINH TU SO THUNG ---------------------------------
+  // Cot DA DONG GOI khong go tay nua -- moi con so deu la SO THUNG x ti le.
+  // Packing list moi cho TONG SO THUNG, chua tach duoc 1 thung bao nhieu cai,
+  // nen ti le tam khoa cung o day. Co du lieu that (cot pcs/carton trong
+  // packing list, hay ti le theo ma hang) thi doi DUNG 1 CHO NAY.
+  //
+  // Chuoi day du:  quet ma vach -> so thung -> pcs -> CHUA DONG GOI / TON KHO
+  //
+  // state.fsPackD (so pcs go tay cua ban truoc) khong con duoc doc, nhung van
+  // giu trong PERSIST -- bo ti le tu sinh nay di la du lieu cu con nguyen.
+  FS_PCS_CTN=9;
+  fsPcs(ctn){ return Math.max(0,Math.round((Number(ctn)||0)*this.FS_PCS_CTN)); }
+  fsPackDay(g,day){ return this.fsPcs(this.fsCtnDay(g,day)); }
+  fsPackRaw(g){ return this.fsPcs(this.fsCtnRaw(g)); }
+  fsPacked(g){ return this.fsPackRaw(g); }
+  // Vuot so DA NHAN = ti le tam dang sai (hoac so thung go nham) -> to do o cot
+  // TONG LUY KE. Khong kep lai: 3 o cua khoi pcs deu la so thung x ti le, kep
+  // mot o thi cong doc khong khop, nhin nhu bang tinh sai.
+  fsPackOver(g){ return Math.max(0,this.fsPackRaw(g)-g.in); }
   fsUnpacked(g){ return Math.max(0,g.in-this.fsPacked(g)); }
-  fsPackedSet(g,v){ const n=Math.max(0,Math.min(g.in,parseInt(String(v).replace(/[^0-9]/g,''),10)||0));
-    this.setState(s=>({finStage:{...(s.finStage||{}),[g.key+'|pack']:n}})); }
-  // SL don / Da xuat lay tu Ke hoach xuat FG, o do 1 dong = 1 (ma hang | PO)
-  fsFgRow(g){ return this.fgAll().find(r=>r.style===g.style&&String(r.po)===String(g.po))||null; }
+  // ---- SO THUNG: y het khoi pcs o tren, chi khac cai tran --------------------
+  // fsCtnO['ma hang|PO|mau']            SL thung don hang, go tay
+  // fsCtnD['ma hang|PO|mau|YYYY-MM-DD'] so thung dong trong ngay do
+  // Khong co du lieu nao trong app suy ra duoc so thung (khong co ti le
+  // pcs/thung o dau ca) nen SL thung don hang phai go. Chua go thi coi nhu
+  // chua biet tran: khong kep so thung dong, va cot THUNG CHUA DONG de trong.
+  fsInt(v){ return Math.max(0,parseInt(String(v).replace(/[^0-9]/g,''),10)||0); }
+  // Packing list nhap o Ke hoach xuat FG la nguon uu tien cho SL THUNG DON HANG.
+  // Do nguoc ve dung 1 dong (ma hang | PO | mau) qua fsFgRow(g). Chua nhap
+  // packing list thi van go tay nhu cu -> khong lam hong du lieu da co.
+  fsCtnPk(g){ const r=this.fsFgRow(g); return r?this.fgPkCtn(r):0; }
+  fsCtnBc(g){ const r=this.fsFgRow(g); const b=r?this.fgBcOf(r):null;
+    return b?((b.list||[]).length):0; }
+  fsCtnOrd(g){ return this.fsCtnPk(g)
+    ||Math.max(0,Number((this.state.fsCtnO||{})[g.key])||0); }
+  fsCtnOrdSet(g,v){ if(this.fsCtnPk(g)) return;   // dang do packing list lai -> khoa
+    const n=this.fsInt(v);
+    this.setState(s=>{ const m={...(s.fsCtnO||{})};
+      if(n>0) m[g.key]=n; else delete m[g.key]; return {fsCtnO:m}; }); }
+  // GO TAY va QUET MA la 2 nguon rieng, cong lai moi ra so thung cua 1 ngay.
+  // Tach ra vi o HOM NAY chi sua duoc phan go tay -- phan quet duoc thi phai
+  // bo mot lan quet moi giam di.
+  fsCtnMan(g,day){ return Math.max(0,Number((this.state.fsCtnD||{})[g.key+'|'+day])||0); }
+  fsCtnDay(g,day){ return this.fsCtnMan(g,day)+this.fsScanDay(g,day); }
+  fsCtnSums(){ const m=this.state.fsCtnD||{};
+    const c=this._fsCS; if(c&&c.m===m) return c.out;
+    const out={}; Object.keys(m).forEach(k=>{ const i=k.lastIndexOf('|'); if(i<0) return;
+      const gk=k.slice(0,i); out[gk]=(out[gk]||0)+Math.max(0,Number(m[k])||0); });
+    this._fsCS={m,out}; return out; }
+  fsCtnRaw(g){ return (this.fsCtnSums()[g.key]||0)+this.fsScanN(g); }
+  fsCtnPacked(g){ return this.fsCtnRaw(g); }
+  // Packing list la so cua CA PO (1 dong Ke hoach xuat = 1 ma hang · PO, gop
+  // moi mau) nen tran / con lai cung phai tinh o cap PO: cong so thung da dong
+  // cua moi mau cung tro ve 1 dong Ke hoach xuat. Khong co packing list thi giu
+  // nguyen cach cu -- go tay tung mau, tran tinh trong pham vi mau do.
+  fsCtnPackedFg(g){ const k=this.fsFgKey(g); let n=0;
+    this.finGroups().forEach(x=>{ if(this.fsFgKey(x)===k) n+=this.fsCtnRaw(x); });
+    return n; }
+  fsCtnOver(g){ const pk=this.fsCtnPk(g);
+    if(pk) return Math.max(0,this.fsCtnPackedFg(g)-pk);
+    const o=this.fsCtnOrd(g); return o?Math.max(0,this.fsCtnRaw(g)-o):0; }
+  // null = chua co SL thung don hang -> chua co tran de kep
+  // Chi tru phan GO TAY cua ngay do: phan quet duoc cua chinh ngay do van
+  // chiem cho, khong duoc go de lan len.
+  fsCtnCap(g,day){ const pk=this.fsCtnPk(g);
+    if(pk) return Math.max(0,pk-(this.fsCtnPackedFg(g)-this.fsCtnMan(g,day)));
+    const o=this.fsCtnOrd(g); if(!o) return null;
+    return Math.max(0,o-(this.fsCtnRaw(g)-this.fsCtnMan(g,day))); }
+  fsCtnUnpacked(g){ const pk=this.fsCtnPk(g);
+    if(pk) return Math.max(0,pk-this.fsCtnPackedFg(g));
+    const o=this.fsCtnOrd(g); return o?Math.max(0,o-this.fsCtnRaw(g)):null; }
+  fsCtnSet(g,day,v){ const cap=this.fsCtnCap(g,day);
+    let n=this.fsInt(v); if(cap!=null) n=Math.min(cap,n);
+    this.setState(s=>{ const m={...(s.fsCtnD||{})}, k=g.key+'|'+day;
+      if(n>0) m[k]=n; else delete m[k]; return {fsCtnD:m}; }); }
+  // ---- QUET MA VACH DONG THUNG -------------------------------------------
+  // Danh sach ma vach nhap o bang Ke hoach xuat (state.fgBc[fgRowId].list), do
+  // nguoc ve dung 1 dong qua fsFgRow(g). Quet trung 1 ma -> ghi lai moc
+  // dd/mm/yyyy HH:mm; so thung dong duoc cua 1 ngay CHINH LA so ma quet trong
+  // ngay do, khong phai con so go tay nua.
+  //
+  //   fsScan['MA VACH'] = {ts, key}   key = 'ma hang|PO|mau' cua dong da quet
+  //
+  // Khoa theo MA VACH nen 1 thung khong the dem 2 lan: quet lai ma cu thi bao
+  // 'da quet luc ...' chu khong cong them. Ghi ca key vi may mau co the dung
+  // chung 1 dong Ke hoach xuat -> phai biet ma nay duoc quet o dong nao.
+  fsBcNorm(v){ return String(v==null?'':v).trim().toUpperCase(); }
+  fsWhen(ts){ const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+    return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()
+      +' '+p(d.getHours())+':'+p(d.getMinutes()); }
+  fsBcOf(g){ const r=this.fsFgRow(g), b=r?this.fgBcOf(r):null; return (b&&b.list)||[]; }
+  // Set de tra ma trong O(1) -- danh sach co the toi 20.000 ma (FG_BC_MAX).
+  // Nho theo chinh mang list nen nhap file khac la tu dung lai.
+  fsBcSet(g){ const list=this.fsBcOf(g); if(!list.length) return null;
+    this._fsBS=this._fsBS||new WeakMap();
+    let s=this._fsBS.get(list);
+    if(!s){ s=new Set(list.map(x=>this.fsBcNorm(x))); this._fsBS.set(list,s); }
+    return s; }
+  // Dem theo nhom + theo ngay, cong 1 lan cho ca bang roi nho lai
+  fsScanSums(){ const m=this.state.fsScan||{};
+    const c=this._fsSS; if(c&&c.m===m) return c.out;
+    const out={};
+    Object.keys(m).forEach(k=>{ const v=m[k]; if(!v||!v.key) return;
+      const o=out[v.key]||(out[v.key]={n:0,day:{}});
+      o.n++; const d=this.psFmtD(new Date(v.ts||0)); o.day[d]=(o.day[d]||0)+1; });
+    this._fsSS={m,out}; return out; }
+  fsScanN(g){ const o=this.fsScanSums()[g.key]; return o?o.n:0; }
+  fsScanDay(g,day){ const o=this.fsScanSums()[g.key]; return (o&&o.day[day])||0; }
+  fsScanLog(g){ const m=this.state.fsScan||{};
+    return Object.keys(m).filter(k=>m[k]&&m[k].key===g.key)
+      .map(k=>({code:k,ts:m[k].ts||0})).sort((a,b)=>b.ts-a.ts); }
+  fsScanShow(g){ this.set({fsScanAt:g.key,fsScanQ:'',fsScanMsg:null}); }
+  fsScanClose(){ this.set({fsScanAt:null,fsScanQ:'',fsScanMsg:null}); }
+  fsScanGroup(){ const k=this.state.fsScanAt;
+    return k?(this.finGroups().find(x=>x.key===k)||null):null; }
+  // 3 ket qua: khong co trong danh sach / da quet roi / khop va con moi
+  fsScanTake(g,raw){ const code=this.fsBcNorm(raw); if(!code) return;
+    const set=this.fsBcSet(g);
+    if(!set||!set.has(code)){ this.set({fsScanMsg:{t:'bad',code},fsScanQ:''}); return; }
+    const old=(this.state.fsScan||{})[code];
+    if(old){ this.set({fsScanMsg:{t:'dup',code,ts:old.ts},fsScanQ:''}); return; }
+    const ts=Date.now();
+    this.setState(s=>({fsScan:{...(s.fsScan||{}),[code]:{ts,key:g.key}},
+      fsScanMsg:{t:'ok',code,ts},fsScanQ:''})); }
+  fsScanDrop(code){ this.setState(s=>{ const m={...(s.fsScan||{})}; delete m[code];
+    return {fsScan:m,fsScanMsg:null}; }); }
+  // ---- Do dong Ke hoach xuat FG cho 1 nhom hoan thien ---------------------
+  // Ke hoach xuat FG gio moi dong la 1 (ma hang | PO | MAU) nen phai loc DU CA
+  // BA truong -- vi du '0131M&W Kirin pants' | 'PO0131M&W' | 'BLACK'. Cong ca
+  // PO lai (nhu ban truoc) thi cot SL DON cua tung mau deu ra tong ca don.
+  //
+  // Mau 2 ben khong cung mot bo chu: ben may lay o CUTCOLORS ('Black'), ben cat
+  // lay ma vai cua tac nghiep ('BLK'), va o COLOR ben Ke hoach xuat thi go tay.
+  // Nen do theo bac: dung het -> chua nhau -> don CHUA tach mau (1 dong, va 1
+  // trong 2 ben de trong). Khong ra dong nao thi tra null, cot de '—' chu khong
+  // muon so cua mau khac.
+  fsNorm(v){ return String(v==null?'':v).trim().toLowerCase(); }
+  // Danh so 1 lan theo (ma hang | PO) roi nho lai: fsFgRow bi goi lai theo
+  // O(nhom^2) qua fsPackedFg, quet ca bang Ke hoach xuat moi lan thi rat ky.
+  fsFgIndex(){ const rows=this.fgAll();
+    const c=this._fsFGI; if(c&&c.rows===rows) return c.out;
+    const out={}; rows.forEach(r=>{ const k=this.fsNorm(r.style)+'|'+this.fsNorm(r.po);
+      (out[k]=out[k]||[]).push(r); });
+    this._fsFGI={rows,out}; return out; }
+  fsFgRow(g){ const same=this.fsFgIndex()[this.fsNorm(g.style)+'|'+this.fsNorm(g.po)];
+    if(!same||!same.length) return null;
+    const co=this.fsNorm(g.color);
+    const hit=same.find(r=>this.fsNorm(r.color)===co); if(hit) return hit;
+    if(co){ const near=same.find(r=>{ const rc=this.fsNorm(r.color);
+      return rc&&(rc.indexOf(co)>=0||co.indexOf(rc)>=0); }); if(near) return near; }
+    const only=same.length===1?same[0]:null;
+    return (only&&(!co||!this.fsNorm(only.color)))?only:null; }
   fsOrderQ(g){ const r=this.fsFgRow(g); return r?(Number(r.qty)||0):0; }
   // brandForStyle chi quet don DANG CHAY -> don da qua tuan se ra rong.
   // Dong Ke hoach xuat FG khoa theo (ma hang | PO) va mang san khach hang.
   fsBrand(g){ const r=this.fsFgRow(g); return (r&&r.brand)||this.brandForStyle(g.style)||''; }
   fsShippedQ(g){ const r=this.fsFgRow(g); return r?(Number(r.ship)||0):0; }
-  fsPackedPo(g){ let n=0;
-    this.finGroups().forEach(x=>{ if(x.style===g.style&&x.po===g.po) n+=this.fsPacked(x); });
+  // Cum cac mau dang dung CHUNG mot dong Ke hoach xuat. Moi mau co dong rieng
+  // -> cum chi 1 dong. Don chua tach mau -> ca may mau chung 1 dong.
+  fsFgKey(g){ const r=this.fsFgRow(g);
+    return r?('#'+r.id):('?|'+this.fsNorm(g.style)+'|'+this.fsNorm(g.po)); }
+  fsPackedFg(g){ const k=this.fsFgKey(g); let n=0;
+    this.finGroups().forEach(x=>{ if(this.fsFgKey(x)===k) n+=this.fsPacked(x); });
     return n; }
-  // Ton kho = da dong goi (ca PO, moi mau) - da xuat
-  fsStockQ(g){ return Math.max(0,this.fsPackedPo(g)-this.fsShippedQ(g)); }
-  // SL don / Da xuat / Ton la so cua CA PO -> chi in o dong dau cua PO do, de
-  // khong ai cong doc theo cot ra so gap doi. finGroups() da sap theo
-  // ma hang -> PO -> mau nen cac dong cung PO luon lien nhau.
-  fsPoHead(rows,i){ const g=rows[i], p=rows[i-1];
-    return !p||p.style!==g.style||String(p.po)!==String(g.po); }
+  // Ton kho = da dong goi cua cum - da xuat cua chinh dong do
+  fsStockQ(g){ return Math.max(0,this.fsPackedFg(g)-this.fsShippedQ(g)); }
+  // In so o dong dau cua cum thoi, khong thi may mau chung 1 dong Ke hoach xuat
+  // se cong doc theo cot ra gap doi. finGroups() da sap theo ma hang -> PO ->
+  // mau nen cac dong cung cum luon lien nhau.
+  fsFgHead(rows,i){ const p=rows[i-1];
+    return !p||this.fsFgKey(rows[i])!==this.fsFgKey(p); }
   fsRemark(g){ return (this.state.fsRemark||{})[g.key]||''; }
   fsRemarkSet(g,v){ this.setState(s=>({fsRemark:{...(s.fsRemark||{}),[g.key]:v}})); }
   // Thành phẩm sẵn sàng xuất của 1 mã hàng · PO (cộng mọi màu) — nguồn cho F.G Shipment.
@@ -5130,7 +5780,79 @@ class Component extends DCLogic {
       style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
       this.renderTitle('fsTitle','S-07-FINISH-STATUS · UI Proto'),
       this.renderFinStKpis(),
-      this.renderFinStTable());
+      this.renderFinStTable(),
+      this.renderFsScan());
+  }
+  bcIc(){ const h=React.createElement;
+    return h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'currentColor'},
+      h('path',{d:'M2 4h2v16H2V4zm3 0h1v16H5V4zm2 0h2v16H7V4zm3 0h1v16h-1V4zm2 0h2v16h-2V4zm3 0h1v16h-1V4zm2 0h2v16h-2V4zm3 0h1v16h-1V4z'})); }
+  // Hop thoai quet: o nhap tu focus, may quet go xong tu Enter -> quet lien tuc
+  // duoc, moi ma xong thi xoa o nhap va bao ket qua ngay ben duoi.
+  renderFsScan(){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const g=this.fsScanGroup(); if(!g) return null;
+    const close=()=>this.fsScanClose();
+    const tot=this.fsBcOf(g).length, done=this.fsScanN(g);
+    const pct=tot?Math.min(100,Math.round(done/tot*100)):0;
+    const log=this.fsScanLog(g), msg=this.state.fsScanMsg;
+    const MC={ok:['#2f7d32','#e6f2e2','#c3ddbe'],
+              dup:['#b0791b','#fbf3df','#ecdcb4'],
+              bad:['#c0392b','#fdecea','#eccfca']};
+    const head=h('div',{style:{padding:'20px 24px 14px',borderBottom:'1px solid '+C.line}},
+      h('div',{style:{fontSize:15,fontWeight:700,letterSpacing:'.2px',color:C.ink}},
+        this.t('fsScanTitle')),
+      h('div',{style:{marginTop:5,fontSize:12.5,color:C.sub,wordBreak:'break-word'}},
+        [g.style,g.po,g.color].filter(Boolean).join(' \u00b7 ')),
+      h('div',{style:{marginTop:12,display:'flex',alignItems:'baseline',gap:8}},
+        h('span',{style:{fontFamily:S.mono,fontSize:19,fontWeight:700,color:C.ink}},
+          this.fmt(done)+' / '+this.fmt(tot)),
+        h('span',{style:{fontSize:12,color:C.sub}},this.t('fsScanDone'))),
+      h('div',{style:{marginTop:8,height:6,borderRadius:3,background:'#e6e9e1',overflow:'hidden'}},
+        h('div',{style:{height:'100%',width:pct+'%',background:C.primary,borderRadius:3,
+          transition:'width .2s ease'}})));
+    const box=h('div',{style:{padding:'16px 24px 0'}},
+      h('input',{autoFocus:true,value:this.state.fsScanQ||'',placeholder:this.t('fsScanPh'),
+        onChange:e=>this.set({fsScanQ:e.target.value}),
+        onKeyDown:e=>{ if(e.key==='Enter'){ e.preventDefault(); this.fsScanTake(g,this.state.fsScanQ); } },
+        style:{width:'100%',boxSizing:'border-box',border:'1.5px solid '+C.primary,borderRadius:10,
+          padding:'11px 13px',fontSize:15,fontFamily:S.mono,fontWeight:700,letterSpacing:'.5px',
+          color:C.ink,background:C.white,outline:'none'}}),
+      h('div',{style:{marginTop:6,fontSize:11,color:C.faint}},this.t('fsScanHint')),
+      msg?h('div',{style:{marginTop:11,display:'flex',alignItems:'center',gap:8,borderRadius:9,
+          padding:'9px 12px',fontSize:12.5,fontWeight:600,
+          color:MC[msg.t][0],background:MC[msg.t][1],border:'1px solid '+MC[msg.t][2]}},
+        h('span',{style:{fontFamily:S.mono,fontWeight:700}},msg.code),
+        h('span',{style:{flex:1,minWidth:0,textAlign:'right'}},
+          msg.t==='ok'?(this.t('fsScanOk')+' '+this.fsWhen(msg.ts))
+          :msg.t==='dup'?(this.t('fsScanDup')+' '+this.fsWhen(msg.ts))
+          :this.t('fsScanBad'))):null);
+    const rows=log.map(x=>h('div',{key:x.code,
+      style:{display:'flex',alignItems:'center',gap:10,padding:'7px 0',
+        borderTop:'1px solid '+C.line}},
+      h('span',{style:{flex:1,minWidth:0,fontFamily:S.mono,fontSize:12,fontWeight:700,
+        color:C.ink,wordBreak:'break-all'}},x.code),
+      h('span',{style:{flex:'none',fontFamily:S.mono,fontSize:11.5,color:C.sub}},
+        this.fsWhen(x.ts)),
+      h('button',{title:this.t('fsScanUndo'),onClick:()=>this.fsScanDrop(x.code),
+        style:{flex:'none',border:'1px solid '+C.border,background:C.white,color:'#c0392b',
+          borderRadius:7,padding:'2px 8px',fontSize:11,fontWeight:700,fontFamily:'inherit',
+          cursor:'pointer'}},'\u00d7')));
+    const list=h('div',{style:{padding:'16px 24px 0'}},
+      h('div',{style:{fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+        color:C.sub}},this.t('fsScanLogL')),
+      h('div',{className:'yscroll',style:{marginTop:4,maxHeight:210,overflow:'auto'}},
+        log.length?rows:h('div',{style:{padding:'22px 0',textAlign:'center',fontSize:12.5,
+          color:C.faint}},this.t('fsScanNone'))));
+    const foot=h('div',{style:{display:'flex',justifyContent:'flex-end',marginTop:18,
+      padding:'13px 20px',borderTop:'1px solid '+C.line,background:'#f8faf3'}},
+      h('button',{onClick:close,style:this.btn('ghost')},this.t('dsoClose')));
+    return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
+        backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',
+        zIndex:60,padding:24}},
+      h('div',{onClick:ev=>ev.stopPropagation(),className:'yscroll',
+        style:{width:'min(560px,96vw)',maxHeight:'92vh',overflow:'auto',background:C.white,
+          borderRadius:16,boxShadow:'0 30px 70px rgba(0,0,0,.32)'}},
+        head, box, list, foot));
   }
   renderFinStKpis(){
     const list=this.finGroups(); let inQ=0,packQ=0,shipQ=0; const seen={};
@@ -5159,7 +5881,8 @@ class Component extends DCLogic {
       this.dfSearchBox(q,v=>this.set({fsQ:v}),false,'fsSearch'));
     // O nhap gon: khong vien, chi gach chan net roi -- giong o ky tren phieu
     const inp=(val,onCh,o)=>h('input',{value:val,placeholder:(o&&o.ph)||'',
-      inputMode:(o&&o.num)?'numeric':undefined,title:(o&&o.title)||undefined,
+      inputMode:(o&&o.num)?'numeric':undefined,size:(o&&o.num)?5:undefined,
+      title:(o&&o.title)||undefined,
       onChange:e=>onCh(e.target.value),
       style:{width:'100%',border:'none',background:'none',padding:'2px 0',
         borderBottom:'1px dashed '+((val===''||val==null)?'#c8ccc2':'transparent'),
@@ -5167,14 +5890,31 @@ class Component extends DCLogic {
         fontSize:(o&&o.num)?12.5:12,fontWeight:(o&&o.num)?700:500,color:C.ink,outline:'none'}});
     const num=(v,bg,col)=>h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
       fontWeight:700,color:col||C.ink}},v);
+    const yday=this.fsYesterday(), today=this.dsoToday();
+    const autoTip=this.t('fsPackAuto')+' '+this.FS_PCS_CTN+' '+this.t('fsPcsCtn');
     const body=rows.map((g,i)=>{
-      const bg=i%2?'#f7f9f3':C.white, head=this.fsPoHead(rows,i);
-      const packed=this.fsPacked(g), unpack=this.fsUnpacked(g);
+      const bg=i%2?'#f7f9f3':C.white, head=this.fsFgHead(rows,i), fg=this.fsFgRow(g);
+      const packed=this.fsPacked(g), unpack=this.fsUnpacked(g), packOver=this.fsPackOver(g);
+      const packY=this.fsPackDay(g,yday), packT=this.fsPackDay(g,today);
+      const ctnO=this.fsCtnOrd(g), ctnP=this.fsCtnPacked(g), ctnU=this.fsCtnUnpacked(g);
+      const ctnPk=this.fsCtnPk(g), ctnBc=this.fsCtnBc(g);
+      const ctnY=this.fsCtnDay(g,yday), ctnT=this.fsCtnDay(g,today);
+      const ctnCap=this.fsCtnCap(g,today), ctnOver=this.fsCtnOver(g);
+      const scanT=this.fsScanDay(g,today), scanN=this.fsScanN(g), bcN=this.fsCtnBc(g);
+      const ctnTip=this.t('fsCtnTip')
+        +(ctnCap!=null?(' \u00b7 '+this.t('fsCtnCap')+' '+this.fmt(ctnCap)):'');
+      // Da quet hom nay thi o nay thanh so chi doc: bay 2 con so (o nhap hien
+      // phan go tay, cot tong hien ca quet) thi nhin nhu bang tinh sai.
+      const ctnMixTip=this.fmt(scanT)+' '+this.t('fsCtnScanT')
+        +' + '+this.fmt(this.fsCtnMan(g,today))+' '+this.t('fsCtnManT');
       const order=this.fsOrderQ(g), ship=this.fsShippedQ(g), stock=this.fsStockQ(g);
-      // O cua so cap PO: dong dau in so, cac dong mau tiep theo de trong
-      const po=(v,col)=>h('td',{title:head?this.t('fsPoTip'):undefined,
+      // O lay tu Ke hoach xuat FG: in o dong dau cua cum, cac dong sau de trong.
+      // Chua do ra dong nao khop ca 3 truong thi de '—' kem chu thich, chu khong
+      // in 0 -- 0 la 'co dong, so bang khong', khac han 'chua co dong nao'.
+      const po=(v,col)=>h('td',{title:head?this.t(fg?'fsPoTip':'fsNoFgTip'):undefined,
         style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
-          color:head?(v?(col||C.ink):C.faint):'transparent'}}, head?this.fmt(v):'\u00a0');
+          color:head?((fg&&v)?(col||C.ink):C.faint):'transparent'}},
+        head?(fg?this.fmt(v):'\u2014'):'\u00a0');
       return h('tr',{key:g.key},
         h('td',{style:{...S.td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},
           g.lines.join(', ')||'\u2014'),
@@ -5184,45 +5924,127 @@ class Component extends DCLogic {
         h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},g.po),
         h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},g.color),
         po(order),
-        h('td',{style:{...S.td,background:bg,textAlign:'right'}},
-          inp(packed?String(packed):'',v=>this.fsPackedSet(g,v),
-            {num:true,ph:'0',title:this.t('fsPackTip')+' '+this.fmt(g.in)})),
+        h('td',{title:this.t('fsPackYTip'),style:{...S.td,background:bg,textAlign:'right',
+          fontFamily:S.mono,fontWeight:700,color:packY?C.ink:C.faint}},this.fmt(packY)),
+        h('td',{title:autoTip,style:{...S.td,background:bg,textAlign:'right',
+          fontFamily:S.mono,fontWeight:700,color:packT?C.ink:C.faint}},this.fmt(packT)),
+        h('td',{title:this.t(packOver?'fsPackOverTip':'fsPackCTip'),
+          style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+            color:packOver?'#c0392b':(packed?C.dark:C.faint)}},this.fmt(packed)),
         num(this.fmt(unpack),bg,unpack?'#b0791b':C.faint),
+        ctnPk
+          // Packing list la so cua ca PO -> in o dong dau cua cum thoi, y het
+          // cot SL DON / DA XUAT / TON KHO. Chip nho ben trai la so barcode.
+          ? h('td',{title:head?(this.t('fsCtnOrdPk')
+              +(ctnBc?(' · '+this.fmt(ctnBc)+' '+this.t('fgBcN')):'')):undefined,
+              style:{...S.td,background:bg,textAlign:'right'}},
+              head?h('div',{style:{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:5}},
+                ctnBc?h('span',{title:this.t('fsCtnBcTip'),
+                  style:{fontSize:9.5,fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.tint,
+                    border:'1px solid '+C.border,borderRadius:999,padding:'1px 5px'}},
+                  this.fmt(ctnBc)):null,
+                h('span',{style:{fontFamily:S.mono,fontWeight:700,color:C.dark}},this.fmt(ctnPk)))
+              :' ')
+          : h('td',{style:{...S.td,background:bg,textAlign:'right'}},
+              inp(ctnO?String(ctnO):'',v=>this.fsCtnOrdSet(g,v),
+                {num:true,ph:'0',title:this.t('fsCtnOrdTip')})),
+        h('td',{title:this.t('fsCtnYTip'),style:{...S.td,background:bg,textAlign:'right',
+          fontFamily:S.mono,fontWeight:700,color:ctnY?C.ink:C.faint}},this.fmt(ctnY)),
+        scanT
+          ? h('td',{title:ctnMixTip,style:{...S.td,background:bg,textAlign:'right',
+              fontFamily:S.mono,fontWeight:700,color:C.dark}},this.fmt(ctnT))
+          : h('td',{style:{...S.td,background:bg,textAlign:'right'}},
+              inp(ctnT?String(ctnT):'',v=>this.fsCtnSet(g,today,v),
+                {num:true,ph:'0',title:ctnTip})),
+        h('td',{title:this.t(ctnOver?'fsCtnOverTip':'fsCtnCTip'),
+          style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+            color:ctnOver?'#c0392b':(ctnP?C.dark:C.faint)}},this.fmt(ctnP)),
+        // Con lai cung o cap PO khi so thung do packing list -> chi in dong dau.
+        h('td',{title:(!ctnPk||head)?this.t('fsCtnUTip'):undefined,
+          style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+            color:(ctnPk&&!head)?'transparent':(ctnU?'#b0791b':C.faint)}},
+          (ctnPk&&!head)?'\u00a0':(ctnU==null?'\u2014':this.fmt(ctnU))),
         po(ship,'#1c6b52'),
         po(stock,C.dark),
-        h('td',{style:{...S.td,background:bg,borderRight:'none',minWidth:150}},
-          inp(this.fsRemark(g),v=>this.fsRemarkSet(g,v),{ph:this.t('fsRemarkPh')})));
+        h('td',{style:{...S.td,background:bg,minWidth:150}},
+          inp(this.fsRemark(g),v=>this.fsRemarkSet(g,v),{ph:this.t('fsRemarkPh')})),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
+          h('button',{disabled:!bcN,title:this.t(bcN?'fsScanTip':'fsScanNoBc'),
+            onClick:()=>{ if(bcN) this.fsScanShow(g); },
+            style:{display:'inline-flex',alignItems:'center',gap:6,borderRadius:8,
+              padding:'4px 10px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',
+              border:'1px solid '+(bcN?C.primary:C.border),background:bcN?C.tint:C.white,
+              color:bcN?C.dark:C.faint,cursor:bcN?'pointer':'not-allowed'}},
+            this.bcIc(), this.t('fsScanBtn'),
+            bcN?h('span',{style:{fontFamily:S.mono,fontSize:10.5,color:C.sub}},
+              this.fmt(scanN)+'/'+this.fmt(bcN)):null)));
     });
-    const cols=[['fsCLine',0],['fsCBrand',0],['fsCStyle',0],['fsCPo',0],['fsCColor',0],
-      ['fsCOrder',1],['fsCPacked',1],['fsCUnpack',1],['fsCShip',1],['fsCStock',1],['fsCRemark',0]];
+    // Tieu de 2 hang. {g,sub} = 1 o om 3 cot con (DA DONG GOI pcs va THUNG DA
+    // DONG); cot thuong keo cao ca 2 hang. Thu tu: khoi pcs xong roi den khoi
+    // thung, cuoi cung la DA XUAT / TON KHO / GHI CHU.
+    // tip la CHUOI da dung san, khong phai khoa i18n -- o HOM NAY cua khoi pcs
+    // can chen ca ti le vao chu thich.
+    const SUBP=[['fsCPackY',this.t('fsPackYTip')],['fsCPackT',autoTip],
+                ['fsCPackC',this.t('fsPackCTip')]];
+    const SUBC=[['fsCPackY',this.t('fsCtnYTip')],['fsCPackT',this.t('fsCtnTip')],
+                ['fsCPackC',this.t('fsCtnCTip')]];
+    const spec=[{k:'fsCLine'},{k:'fsCBrand'},{k:'fsCStyle'},{k:'fsCPo'},{k:'fsCColor'},
+      {k:'fsCOrder',r:1},{g:'fsCPacked',gt:autoTip,sub:SUBP},{k:'fsCUnpack',r:1},
+      {k:'fsCOrderC',r:1},{g:'fsCPackedC',sub:SUBC},{k:'fsCUnpackC',r:1},
+      {k:'fsCShip',r:1},{k:'fsCStock',r:1},{k:'fsCRemark'},{k:'fsCAct'}];
+    const nCol=spec.reduce((a,c)=>a+(c.sub?c.sub.length:1),0);
+    // Hang 2 phai la 1 mang phang, moi o 1 key rieng -- long mang vao nhau thi
+    // React canh bao trung key giua 2 nhom.
+    const sub2=[]; spec.forEach(c=>{ if(c.sub) c.sub.forEach(([k,tip],j)=>
+      sub2.push([c.g+'-'+j,k,tip])); });
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'1180px',borderCollapse:'collapse'}},
-        h('thead',null,h('tr',null,
-          cols.map(([k,r],ci)=>h('th',{key:k,style:{...S.th,
-            ...(r?{textAlign:'right'}:{}),...(ci===cols.length-1?{borderRight:'none'}:{})}},
-            this.t(k))))),
-        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:cols.length,
+      h('table',{style:{width:'100%',minWidth:'2080px',borderCollapse:'collapse'}},
+        h('thead',null,
+          h('tr',null, spec.map((c,ci)=>c.sub
+            ? h('th',{key:'g'+ci,colSpan:c.sub.length,title:c.gt||undefined,
+                style:{...S.th,textAlign:'center',borderBottom:'1px solid '+C.line}},this.t(c.g))
+            : h('th',{key:c.k,rowSpan:2,style:{...S.th,...(c.r?{textAlign:'right'}:{}),
+                ...(ci===spec.length-1?{borderRight:'none'}:{})}},this.t(c.k)))),
+          h('tr',null, sub2.map(([key,k,tip])=>h('th',{key,title:tip,
+            style:{...S.th,textAlign:'right',fontSize:10,letterSpacing:'.3px',width:104}},this.t(k))))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:nCol,
           style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
           this.t(all.length?'fsNoHit':'fsEmpty'))))));
     return this.dsoCard('fsPanel','fsSub','Finishing Status',tbl,{full:true,action});
   }
 
   // ---- F.G Shipment Plan ---------------------------------------------------
-  // Hạt giống lấy thẳng từ Kế hoạch sản xuất: mỗi (mã hàng · PO) = 1 lô xuất,
+  // Hạt giống lấy thẳng từ Kế hoạch sản xuất: mỗi (mã hàng · PO) = 1 lô xuất.
+  // Cột COLOR gom mọi màu của lô: khóa (mã hàng | PO) dò ra tác nghiệp cắt rồi
+  // lấy danh sách màu ở BẢNG TỔNG THEO MÀU, xem fgColors().
   // ETD = ngày kết thúc chuyền + FG_LEAD ngày cho hoàn thiện + kiểm + đóng cont.
   FG_LEAD=7;
-  FG_ST={plan:['fgStPlan','#69707a','#f2f4ee','#e4e7de'],
-         ready:['fgStReady','#4A7A0B','#eef7dc','#cfe3a6'],
-         ship:['fgStShip','#1c6b52','#e3f5ee','#b6ddcd'],
-         late:['fgStLate','#c0392b','#fdecea','#eccfca']};
+  FG_LOAD_LEAD=2;                       // ngày đóng hàng = ETD - 2 ngày
+  FG_FACTORY='YIC Hà Nam';
+  FG_MODES=['SEA','AIR','EXPRESS','TRUCK'];
+  // BẢNG TỔNG THEO MÀU: danh sách màu của tác nghiệp cắt (bỏ nhóm phụ liệu 'aux')
+  fgColors(pl){ const out=[];
+    ((pl&&pl.sections)||[]).forEach(sec=>{ if(sec.grp==='aux') return;
+      const c=String(sec.fab||'').trim(); if(c&&out.indexOf(c)<0) out.push(c); });
+    return out; }
+  // Dò tác nghiệp cắt của (mã hàng | PO) — cùng cách khớp PO như khcTurns()
+  fgPlanFor(style,po){ const plans=this.khcPlansFor(this.genStyleKey(style));
+    if(!plans.length) return null;
+    const pd=String(po||'').replace(/\D/g,'');
+    if(pd){ const hit=plans.find(pl=>{ const q=String(pl.qrPo||pl.po||'').replace(/\D/g,'');
+      return q&&(q===pd||q.indexOf(pd)>=0||pd.indexOf(q)>=0); }); if(hit) return hit; }
+    return plans[0]; }
   fgSeed(){ const out=[], seen={};
     (this.PS().groups||[]).forEach(g=>(g.rows||[]).forEach(r=>(r.orders||[]).forEach(o=>{
       const style=this.psCode(o.code); if(!style) return;
       const po=this.orderPo(o);
       const k=style+'|'+po; if(seen[k]) return; seen[k]=1;
       const e=this.pd(o.end), etd=new Date(e.getFullYear(),e.getMonth(),e.getDate()+this.FG_LEAD);
-      out.push({id:'fg'+(out.length+1),brand:this.brandOf(o)||'',style,po,
-        qty:this.psQty(o)||0,etd:this.psFmtD(etd),ship:0,note:''}); })));
+      const ld=new Date(etd.getFullYear(),etd.getMonth(),etd.getDate()-this.FG_LOAD_LEAD);
+      const cs=this.fgColors(this.psPlan(o)||this.fgPlanFor(style,po));
+      out.push({id:'fg'+(out.length+1),brand:this.brandOf(o)||'',season:this.fgSeason(etd),
+        factory:this.FG_FACTORY,style,po,color:cs.join(' + '),qty:this.psQty(o)||0,ship:0,
+        load:this.psFmtD(ld),etd:this.psFmtD(etd),mode:'SEA',dest:'',cbm:'',note:''}); })));
     return out.sort((a,b)=>String(a.etd).localeCompare(String(b.etd))
       ||String(a.style).localeCompare(String(b.style))||String(a.po).localeCompare(String(b.po))); }
   // Gieo 1 lần khi có Kế hoạch sản xuất; sau đó bảng là dữ liệu người dùng sửa được.
@@ -5235,7 +6057,8 @@ class Component extends DCLogic {
   fgAll(){ return this.state.fgRows||[]; }
   // ETD go vao duoc ca 2 dang: '2026-09-10' (trong state) va '10/09/2026' (tren bang)
   fgList(q){ const l=this.fgAll(); q=String(q||'').trim().toLowerCase(); if(!q) return l;
-    return l.filter(r=>[r.brand,r.style,r.po,r.etd,this.dsoDay(r.etd),r.note]
+    return l.filter(r=>[r.brand,r.season,r.factory,r.style,r.po,r.color,r.mode,r.dest,
+      r.load,this.dsoDay(r.load),r.etd,this.dsoDay(r.etd),r.note]
       .join(' ').toLowerCase().indexOf(q)>=0); }
   fgSet(id,patch){ this.setState(s=>({fgRows:(s.fgRows||[]).map(r=>r.id===id?{...r,...patch}:r)})); }
   fgDel(id){ this.setState(s=>({fgRows:(s.fgRows||[]).filter(r=>r.id!==id),
@@ -5243,29 +6066,158 @@ class Component extends DCLogic {
   fgAdd(){ this.setState(s=>{ const l=s.fgRows||[]; let n=0;
       l.forEach(r=>{ const m=String(r.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
       const id='fg'+(n+1); this._fgNew=id;
-      return {fgRows:[...l,{id,brand:'',style:'',po:'',qty:0,etd:this.dsoToday(),ship:0,note:''}],fgSeeded:1}; });
+      return {fgRows:[...l,{id,brand:'',season:'',factory:this.FG_FACTORY,style:'',po:'',color:'',
+        qty:0,ship:0,load:this.dsoToday(),etd:this.dsoToday(),mode:'SEA',dest:'',cbm:'',note:''}],fgSeeded:1}; });
     setTimeout(()=>{ if(this._mounted&&this._fgNew) this.set({fgEdit:this._fgNew,fgQ:''}); },0); }
   fgNum(v){ return Math.max(0,parseInt(String(v).replace(/[^0-9]/g,''),10)||0); }
+  // CBM giữ nguyên chuỗi khi đang gõ (cho phép '1.', '0.05') — chỉ chặn ký tự lạ.
+  fgDec(v){ return String(v).replace(/[^0-9.]/g,'').replace(/^\./,'0.').replace(/(\..*)\./g,'$1'); }
+  fgCbmTxt(v){ const n=Number(v); return n>0?n.toFixed(2):'—'; }
+  fgSeason(d){ const m=d.getMonth()+1;
+    return (m<=6?'SS':'AW')+String(d.getFullYear()).slice(-2); }
   fgReadyQty(r){ return this.finFgQty(r.style,r.po); }
-  fgBal(r){ return Math.max(0,(Number(r.qty)||0)-(Number(r.ship)||0)); }
-  fgPct(r){ const q=Number(r.qty)||0; return q?Math.min(100,Math.round((Number(r.ship)||0)/q*100)):0; }
-  fgStatus(r){ const q=Number(r.qty)||0, sh=Number(r.ship)||0;
-    if(q>0&&sh>=q) return 'ship';
-    if(r.etd&&String(r.etd)<this.dsoToday()) return 'late';
-    if(q>0&&this.fgReadyQty(r)>=q) return 'ready';
-    return 'plan'; }
+  // SL CÂN ĐỐI = SL đã xuất − SL đơn hàng: âm = còn thiếu, dương = xuất vượt.
+  fgBal(r){ return (Number(r.ship)||0)-(Number(r.qty)||0); }
+  // Tre ETD: con hang chua xuat ma da qua ngay ETD.
+  fgLate(r){ return !!(r.etd&&String(r.etd)<this.dsoToday()
+    &&(Number(r.ship)||0)<(Number(r.qty)||0)); }
   fgExport(){ const X=window.XLSX; if(!X||!X.utils){ this.fgSay(this.t('mtNoXlsx')); return; }
     const rows=this.fgList(this.state.fgQ||'');
-    const head=['fgBrand','fgStyle','fgPo','fgQty','fgEtd','fgReady','fgShipped','fgBal','fgPct','fgSt','fgNote'];
+    const head=['fgBrand','fgSeason','fgFactory','fgStyle','fgPo','fgColor','fgQty','fgShipped','fgBal',
+      'fgLoad','fgEtd','fgMode','fgDest','fgCbm','fgNote'];
     const aoa=[[this.t('fgTitle')],['YIC HÀ NAM · '+this.todayStamp()],[],head.map(k=>this.t(k))];
-    rows.forEach(r=>aoa.push([r.brand||'',r.style||'',r.po||'',Number(r.qty)||0,r.etd||'',
-      this.fgReadyQty(r),Number(r.ship)||0,this.fgBal(r),this.fgPct(r)+'%',
-      this.t(this.FG_ST[this.fgStatus(r)][0]),r.note||'']));
-    const ws=X.utils.aoa_to_sheet(aoa); ws['!cols']=[14,18,12,12,13,12,12,12,9,13,26].map(w=>({wch:w}));
+    rows.forEach(r=>aoa.push([r.brand||'',r.season||'',r.factory||'',r.style||'',r.po||'',r.color||'',
+      Number(r.qty)||0,Number(r.ship)||0,this.fgBal(r),r.load||'',r.etd||'',r.mode||'',r.dest||'',
+      Number(r.cbm)||0,r.note||'']));
+    const ws=X.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[14,10,14,18,12,14,15,16,16,13,13,11,16,8,26].map(w=>({wch:w}));
     const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'FG Shipment');
     X.writeFile(wb,'YIC-HaNam_FG-Shipment-Plan.xlsx'); }
   fgSay(m){ this.set({fgMsg:m}); clearTimeout(this._fgT);
     this._fgT=setTimeout(()=>{ if(this._mounted) this.set({fgMsg:''}); },4000); }
+
+  // ==========================================================================
+  // PACKING LIST + BARCODE cua 1 lo xuat
+  // --------------------------------------------------------------------------
+  // Khoa theo id dong Ke hoach xuat (ma hang | PO | mau) chu khong theo PO tran:
+  // bang Tinh trang hoan thien do nguoc ve dung 1 dong qua fsFgRow(g), nen so
+  // thung cua packing list chay thang vao cot SL THUNG DON HANG cua dong do.
+  //
+  //   fgPk[fgRowId] = {name,at,ctn,rows}   packing list -> TONG SO THUNG
+  //   fgBc[fgRowId] = {name,at,list:[...]} danh sach barcode dong thung
+  //
+  // Barcode phai co packing list truoc: barcode la ma cua tung thung, khong co
+  // packing list thi khong biet lo nay dang co bao nhieu thung de doi chieu.
+  FG_BC_MAX=20000;                       // tran de khong lam vo localStorage
+  fgPkOf(r){ return (this.state.fgPk||{})[r&&r.id]||null; }
+  fgBcOf(r){ return (this.state.fgBc||{})[r&&r.id]||null; }
+  fgPkCtn(r){ const p=this.fgPkOf(r); return p?(Number(p.ctn)||0):0; }
+  // Header do khach hang dat ten, moi noi mot kieu -> quet 12 dong dau tim hang
+  // tieu de, khong khop thi tra ve -1 va ben goi tu quyet dinh.
+  fgHdr(aoa,PAT){ const n=s=>this.dfFold(s).replace(/\s+/g,' ');
+    for(let i=0;i<Math.min((aoa||[]).length,12);i++){ const r=aoa[i]||[], m={};
+      r.forEach((c,j)=>{ const v=n(c); if(!v) return;
+        PAT.forEach(([f,re])=>{ if(m[f]==null&&re.test(v)) m[f]=j; }); });
+      if(Object.keys(m).length) return {hi:i,map:m}; }
+    return {hi:-1,map:{}}; }
+  // TONG SO THUNG, theo do tin cay giam dan:
+  //   1. o ghi ro 'TONG SO THUNG / TOTAL CARTON' -> lay so ben canh
+  //   2. cot SO THUNG (carton no) -> dem so thung KHAC NHAU (1 thung nhieu dong size)
+  //   3. cot SL THUNG (ctn qty)   -> cong lai
+  fgPkParse(aoa){
+    const n=s=>this.dfFold(s).replace(/\s+/g,' ');
+    const num=v=>{ const s=String(v==null?'':v).replace(/[^0-9.]/g,''); const x=parseFloat(s);
+      return isFinite(x)?Math.round(x):0; };
+    const TOT=/(tong (so )?(thung|carton|ctn)|total (no of )?(carton|ctn)s?|carton (qty|total)|grand total ctns?)/;
+    for(let i=0;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
+      for(let j=0;j<r.length;j++){ if(!TOT.test(n(r[j]))) continue;
+        for(let k=j+1;k<Math.min(j+5,r.length);k++){ const v=num(r[k]); if(v>0) return {ctn:v,rows:0}; } } }
+    const PAT=[['no',/(so thung|carton no|ctn no|carton ?#|ctn ?#|carton number|^carton$|^ctn$)/],
+               ['qty',/(sl thung|so luong thung|ctn qty|carton qty|qty ?\/ ?ctn|total ctn|no ?of ?ctn|box qty)/]];
+    const {hi,map}=this.fgHdr(aoa,PAT);
+    if(hi<0) return {ctn:0,rows:0};
+    let rows=0; const seen={}; let sum=0;
+    for(let i=hi+1;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
+      if(map.no!=null){ const v=String(r[map.no]==null?'':r[map.no]).trim();
+        if(v&&!TOT.test(n(v))&&!seen[v]){ seen[v]=1; } }
+      if(map.qty!=null){ const q=num(r[map.qty]); if(q>0) sum+=q; }
+      if((r||[]).some(c=>String(c==null?'':c).trim()!=='')) rows++; }
+    const dis=Object.keys(seen).length;
+    return {ctn:dis||sum,rows};
+  }
+  // Barcode: uu tien cot co tieu de barcode; khong co tieu de thi khong doan bua.
+  fgBcParse(aoa){
+    const PAT=[['bc',/(barcode|bar code|ma vach|ma so thung|upc|ean|gtin|sscc|scan ?code)/]];
+    const {hi,map}=this.fgHdr(aoa,PAT);
+    if(hi<0||map.bc==null) return [];
+    const out=[], seen={};
+    for(let i=hi+1;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
+      const v=String(r[map.bc]==null?'':r[map.bc]).trim();
+      if(!v||v.length<4||seen[v]) continue; seen[v]=1; out.push(v);
+      if(out.length>=this.FG_BC_MAX) break; }
+    return out; }
+  async fgSheet(file){ const X=window.XLSX;
+    if(!X||!X.read){ this.fgSay(this.t('mtNoXlsx')); return null; }
+    const buf=await file.arrayBuffer();
+    const wb=X.read(new Uint8Array(buf),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    return X.utils.sheet_to_json(ws,{header:1,blankrows:false}); }
+  async fgPkImport(r,file){ if(!r||!file) return;
+    try{ const aoa=await this.fgSheet(file); if(!aoa) return;
+      const got=this.fgPkParse(aoa);
+      if(!got.ctn){ this.fgSay(this.t('fgPkNone')); return; }
+      this.setState(s=>({fgPk:{...(s.fgPk||{}),
+        [r.id]:{name:file.name,at:Date.now(),ctn:got.ctn,rows:got.rows}}}));
+      this.fgSay(this.t('fgPkOk')+' '+this.fmt(got.ctn)+' '+this.t('fgPkCtn'));
+    }catch(e){ this.fgSay(this.t('mtImportErr')); } }
+  async fgBcImport(r,file){ if(!r||!file) return;
+    if(!this.fgPkOf(r)){ this.fgSay(this.t('fgBcNeed')); return; }
+    try{ const aoa=await this.fgSheet(file); if(!aoa) return;
+      const list=this.fgBcParse(aoa);
+      if(!list.length){ this.fgSay(this.t('fgBcNone')); return; }
+      this.setState(s=>({fgBc:{...(s.fgBc||{}),
+        [r.id]:{name:file.name,at:Date.now(),list}}}));
+      const cut=list.length>=this.FG_BC_MAX;
+      this.fgSay(this.t('fgBcOk')+' '+this.fmt(list.length)+' '+this.t(cut?'fgBcCut':'fgBcN'));
+    }catch(e){ this.fgSay(this.t('mtImportErr')); } }
+  // Bo packing list thi bo luon barcode -- barcode khong dung mot minh duoc.
+  fgPkClear(r){ this.setState(s=>{ const p={...(s.fgPk||{})}, b={...(s.fgBc||{})};
+    delete p[r.id]; delete b[r.id]; return {fgPk:p,fgBc:b}; }); }
+  fgBcClear(r){ this.setState(s=>{ const b={...(s.fgBc||{})}; delete b[r.id]; return {fgBc:b}; }); }
+  // Nut nhap file: label boc input type=file an di -- cung kieu voi Line Setting.
+  fgImpBtn(label,title,onFile,on,extra){ const h=React.createElement, C=this.C;
+    const st={border:'1px solid '+(on?C.primary:C.border),background:on?C.tint:C.white,
+      color:on?C.dark:C.sub,borderRadius:8,padding:'4px 10px',fontSize:11.5,fontWeight:700,
+      cursor:'pointer',whiteSpace:'nowrap',display:'inline-flex',alignItems:'center',gap:5,...(extra||{})};
+    return h('label',{title,style:st,'style-hover':{background:C.tint}}, label,
+      h('input',{type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'},
+        onChange:e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(f) onFile(f); }})); }
+
+  // 2 nut nhap file cua 1 lo xuat + so lieu da nhap. Barcode chi mo khi da co
+  // packing list; chua co thi hien nut mo nhat, khong bam duoc.
+  fgImpCell(r){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const pk=this.fgPkOf(r), bc=this.fgBcOf(r);
+    const chip=(txt,title,onX,clrTip)=>h('span',{title,
+      style:{display:'inline-flex',alignItems:'center',gap:4,fontSize:10.5,fontWeight:700,
+        fontFamily:S.mono,color:C.dark,background:C.tint,border:'1px solid '+C.border,
+        borderRadius:999,padding:'2px 4px 2px 8px',whiteSpace:'nowrap'}}, txt,
+      h('button',{title:clrTip,onClick:onX,style:{border:'none',background:'none',color:'#c0392b',
+        cursor:'pointer',fontSize:13,lineHeight:1,padding:'0 3px',fontFamily:'inherit'}},'×'));
+    return h('div',{style:{display:'inline-flex',gap:6,flexWrap:'wrap',alignItems:'center'}},
+      this.fgImpBtn(this.t('fgPkImp'),this.t(pk?'fgPkHas':'fgPkTip'),
+        f=>this.fgPkImport(r,f),!!pk),
+      pk?chip(this.fmt(pk.ctn)+' '+this.t('fgPkCtn'),
+        pk.name+' · '+this.dsoSlipWhen(pk.at),()=>this.fgPkClear(r),this.t('fgPkClr')):null,
+      pk?this.fgImpBtn(this.t('fgBcImp'),this.t(bc?'fgBcHas':'fgBcTip'),
+          f=>this.fgBcImport(r,f),!!bc)
+        :h('span',{title:this.t('fgBcNeed'),
+            style:{border:'1px dashed '+C.border,background:'none',color:C.faint,borderRadius:8,
+              padding:'4px 10px',fontSize:11.5,fontWeight:700,whiteSpace:'nowrap',cursor:'not-allowed'}},
+            this.t('fgBcImp')),
+      bc?chip(this.fmt((bc.list||[]).length)+' '+this.t('fgBcN'),
+        bc.name+' · '+this.dsoSlipWhen(bc.at),()=>this.fgBcClear(r),this.t('fgBcClr')):null);
+  }
 
   renderFgBody(){
     const h=React.createElement;
@@ -5278,7 +6230,7 @@ class Component extends DCLogic {
   renderFgKpis(){
     const l=this.fgAll(); let qty=0,ship=0,ready=0,late=0;
     l.forEach(r=>{ qty+=Number(r.qty)||0; ship+=Number(r.ship)||0; ready+=this.fgReadyQty(r);
-      if(this.fgStatus(r)==='late') late++; });
+      if(this.fgLate(r)) late++; });
     return this.finKpis([
       [this.t('fgK1'),this.fmtn(qty),this.t('fgK1s')],
       [this.t('fgK2'),this.fmtn(ready),this.t('fgK2s')],
@@ -5299,7 +6251,6 @@ class Component extends DCLogic {
       this.mtBtn(this.t('exportXls'),()=>this.fgExport(),{color:C.primary,borderColor:C.border,padding:'6px 12px',fontSize:12}));
     const body=rows.map((r,i)=>{
       const ed=this.state.fgEdit===r.id, bg=i%2?'#f7f9f3':C.white;
-      const st=this.FG_ST[this.fgStatus(r)], rd=this.fgReadyQty(r), qty=Number(r.qty)||0;
       const txt=(f,mono)=>ed
         ? h('input',{value:r[f]==null?'':r[f],onChange:e=>this.fgSet(r.id,{[f]:e.target.value}),
             style:{...S.inp,...(mono?{}:{fontFamily:'inherit'})}})
@@ -5308,48 +6259,55 @@ class Component extends DCLogic {
         ? h('input',{value:r[f]||'',inputMode:'numeric',onChange:e=>this.fgSet(r.id,{[f]:this.fgNum(e.target.value)}),
             style:{...S.inp,textAlign:'right'}})
         : this.fmt(r[f]);
+      const day=(f)=>ed
+        ? h('input',{type:'date',value:r[f]||'',onChange:e=>this.fgSet(r.id,{[f]:e.target.value}),style:{...S.inp}})
+        : (r[f]?this.dsoDay(r[f]):'—');
+      const mode=()=>ed
+        ? h('select',{value:r.mode||'',onChange:e=>this.fgSet(r.id,{mode:e.target.value}),
+            style:{...S.inp,padding:'4px 6px',cursor:'pointer'}},
+            [''].concat(this.FG_MODES).map(m=>h('option',{key:m||'blank',value:m},m||'—')))
+        : (String(r.mode||'').trim()||'—');
+      const cbm=()=>ed
+        ? h('input',{value:r.cbm==null?'':r.cbm,inputMode:'decimal',
+            onChange:e=>this.fgSet(r.id,{cbm:this.fgDec(e.target.value)}),style:{...S.inp,textAlign:'right'}})
+        : this.fgCbmTxt(r.cbm);
+      const cell=(el,extra)=>h('td',{style:{...S.td,background:bg,...(extra||{})}},el);
       return h('tr',{key:r.id},
-        h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
-        h('td',{style:{...S.td,background:bg,fontWeight:600}},txt('brand')),
-        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700,color:C.primary}},txt('style',true)),
-        h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},txt('po',true)),
-        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},num('qty')),
-        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,whiteSpace:'nowrap'}},
-          ed?h('input',{type:'date',value:r.etd||'',onChange:e=>this.fgSet(r.id,{etd:e.target.value}),
-                style:{...S.inp}})
-            :this.dsoDay(r.etd)),
-        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
-          color:qty&&rd>=qty?C.primary:(rd?C.ink:C.faint)},title:this.t('fgReadyTip')},this.fmt(rd)),
-        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},num('ship')),
-        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
-          color:this.fgBal(r)?C.ink:C.faint}},this.fmt(this.fgBal(r))),
-        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
-          color:this.fgPct(r)>=100?C.primary:C.sub}},this.fgPct(r)+'%'),
-        h('td',{style:{...S.td,background:bg,whiteSpace:'nowrap'}},
-          h('span',{style:{fontSize:11,fontWeight:700,color:st[1],background:st[2],border:'1px solid '+st[3],
-            borderRadius:999,padding:'3px 9px'}},this.t(st[0]))),
-        h('td',{style:{...S.td,background:bg,color:C.sub,wordBreak:'break-word'}},txt('note')),
+        cell(i+1,{textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}),
+        cell(txt('brand'),{fontWeight:600}),
+        cell(txt('season',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
+        cell(txt('factory')),
+        cell(txt('style',true),{fontFamily:S.mono,fontWeight:700,color:C.primary}),
+        cell(txt('po',true),{fontFamily:S.mono}),
+        cell(txt('color')),
+        cell(num('qty'),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
+        cell(num('ship'),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
+        cell(this.fmt(this.fgBal(r)),{textAlign:'right',fontFamily:S.mono,fontWeight:600,
+          color:this.fgBal(r)<0?'#c0392b':(this.fgBal(r)>0?C.primary:C.faint)}),
+        cell(day('load'),{fontFamily:S.mono,whiteSpace:'nowrap'}),
+        cell(day('etd'),{fontFamily:S.mono,whiteSpace:'nowrap'}),
+        cell(mode(),{fontFamily:S.mono,fontWeight:600,whiteSpace:'nowrap'}),
+        cell(txt('dest')),
+        cell(cbm(),{textAlign:'right',fontFamily:S.mono}),
+        cell(txt('note'),{color:C.sub,wordBreak:'break-word'}),
         h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
-          h('div',{style:{display:'flex',gap:6}},
+          h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}},
             ed?this.mtBtn(this.t('lsDone'),()=>this.set({fgEdit:null}),{border:'1px solid '+C.primary,background:C.tint})
               :this.mtBtn(this.t('lsEdit'),()=>this.set({fgEdit:r.id})),
-            this.mtBtn(this.t('mtDel'),()=>this.fgDel(r.id),{color:'#c0392b',borderColor:'#eccfca'}))));
+            this.mtBtn(this.t('mtDel'),()=>this.fgDel(r.id),{color:'#c0392b',borderColor:'#eccfca'}),
+            this.fgImpCell(r))));
     });
+    const cols=[['fgNo',0],['fgBrand',0],['fgSeason',0],['fgFactory',0],['fgStyle',0],['fgPo',0],
+      ['fgColor',0],['fgQty',1],['fgShipped',1],['fgBal',1],['fgLoad',0],['fgEtd',0],['fgMode',0],
+      ['fgDest',0],['fgCbm',1],['fgNote',0],['mtAct',0]];
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'1320px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'2560px',borderCollapse:'collapse'}},
         h('thead',null,h('tr',null,
-          h('th',{style:{...S.th,textAlign:'center',paddingLeft:8,width:46}},this.t('mtNo')),
-          h('th',{style:S.th},this.t('fgBrand')), h('th',{style:S.th},this.t('fgStyle')),
-          h('th',{style:S.th},this.t('fgPo')),
-          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgQty')),
-          h('th',{style:S.th},this.t('fgEtd')),
-          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgReady')),
-          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgShipped')),
-          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgBal')),
-          h('th',{style:{...S.th,textAlign:'right'}},this.t('fgPct')),
-          h('th',{style:S.th},this.t('fgSt')), h('th',{style:S.th},this.t('fgNote')),
-          h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
-        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:13,
+          cols.map(([k,rt],ci)=>h('th',{key:k,style:{...S.th,
+            ...(rt?{textAlign:'right'}:{}),
+            ...(ci===0?{textAlign:'center',paddingLeft:8,width:46}:{}),
+            ...(ci===cols.length-1?{borderRight:'none'}:{})}},this.t(k))))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:cols.length,
           style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
           this.t(all.length?'fgNoHit':'fgEmpty'))))));
     const bodyEl=h('div',null, tbl,
