@@ -238,17 +238,17 @@ class Component extends DCLogic {
     this.psSeedPlans();
     const weeks=this.seed();
     this.state = {
-      page:'gantt', cutTab:'capacity', dsoTab:'cfg', dsoSub:'line', lset:{}, lsEdit:null, dsoLine:null, mlvLine:null, mlvFs:false, dsoDone:{}, dsoDoneV:2, dsoHand:{}, dsoHandQ:{}, dsoSlips:[], dsoHandWho:{}, dsoHandAsk:null, gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
+      page:'gantt', cutTab:'capacity', dsoTab:'cfg', dsoSub:'line', lset:{}, lsEdit:null, dsoLine:null, mlvLine:null, mlvFs:false, dsoDone:{}, dsoDoneV:2, dsoHand:{}, dsoHandQ:{}, dsoSlips:[], dsoSlipSeq:{}, dsoHandWho:{}, dsoHandAsk:null, gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
       tab:'weekly', openMonth:this.CURWK.split(' · ')[0], week:this.CURWK, lang:'vi',
       weeks,
-      edit:null, bedit:null, bform:null, addLine:null, khcPlan:null, qrOpen:null, ps:this.psClone(window.PSCHED), psTrash:[], recvLog:[], conf:null, psAdd:null, psTrashOpen:false, sidebarOpen:false, navOpen:{'PRODUCTION PLAN':true,'DASHBOARD':true,'SEWING':true,'FINISHING':true}, dragOver:false, dayOpen:null, daily:{}, freq:{}, wsc:{}, whOpen:null, whQ:'', whErr:'',
+      edit:null, bedit:null, bform:null, bslip:null, bqNo:{}, bqSeq:{}, addLine:null, khcPlan:null, qrOpen:null, ps:this.psClone(window.PSCHED), psTrash:[], recvLog:[], conf:null, psAdd:null, psTrashOpen:false, sidebarOpen:false, navOpen:{'PRODUCTION PLAN':true,'DASHBOARD':true,'SEWING':true,'FINISHING':true}, dragOver:false, dayOpen:null, daily:{}, freq:{}, wsc:{}, whOpen:null, whQ:'', whErr:'',
       bundle:this.initBundle((weeks[this.CURWK]||{rows:[]}).rows), bundleV:3, wip:{},
       dsoAlerts:this.initAlerts(), dsoAlEdit:false, dsoAlHit:null,
       dsoMtypeRows:null, dsoMtypeDet:{}, mtSel:null, mtEdit:null, mtMsg:'',
-      dsoDefects:this.initDefects(), dsoDefLog:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'',
+      dsoDefects:this.initDefects(), dsoDefLog:{}, dsoDefTime:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'',
       dsoPassLog:{},
       dsoHistQ:'', dsoDefQ:'', dsoHandBulk:null,
-      finRecv:{}, finStage:{}, finQ:'', fsQ:'', fsEdit:null,
+      finRecv:{}, finStage:{}, finQ:'', fsQ:'', fsRemark:{},
       fgRows:[], fgSeeded:0, fgQ:'', fgEdit:null, fgMsg:'', snapMsg:'',
       files:[{name:'KH cắt-199-PO10848-CHOT.xlsx',sheets:2},{name:'KH cắt-199-PO10502-HANAM.xlsx',sheets:2},{name:'KH cắt-VW5159-M2-BLK-PO4446+4841.xlsx',sheets:8},{name:'KH cắt-1003117-PO10130.xlsx',sheets:6},{name:'KH cắt-VW5159-M11-CHOT.xlsx',sheets:8}],
     };
@@ -258,7 +258,7 @@ class Component extends DCLogic {
   }
 
   SKEY='yic.sewplan.v2';
-  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','mlvLine','mlvFs','dsoDone','dsoPassLog','dsoDoneV','dsoHand','dsoHandQ','dsoSlips','dsoHandWho','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog','finRecv','finStage','fgRows','fgSeeded'];
+  PERSIST=['weeks','week','openMonth','tab','page','cutTab','dsoTab','dsoSub','dsoLine','mlvLine','mlvFs','dsoDone','dsoPassLog','dsoDoneV','dsoHand','dsoHandQ','dsoSlips','dsoSlipSeq','dsoHandWho','bqNo','bqSeq','lang','cap','capTurns','capOrder','multPlain','multEmb','bundle','bundleV','recvLog','wip','daily','files','ps','psTrash','navOpen','gz','gopen','khcPlan','freq','wsc','dsoAlerts','lset','dsoMtypeRows','dsoMtypeDet','mtSel','dsoDefects','dsoDefLog','dsoDefTime','finRecv','finStage','fsRemark','fgRows','fgSeeded'];
   // Mọi thay đổi dữ liệu được lưu lại — refresh vẫn giữ nguyên
   restore(){ const defPage=this.state.page; let saved=null;
     try{ const raw=window.localStorage.getItem(this.SKEY); if(!raw) return; const o=JSON.parse(raw)||{}; saved=o;
@@ -583,6 +583,12 @@ class Component extends DCLogic {
       bgProdDay:'Ngày sản xuất', bgStatus:'Trạng thái', bgPending:'Chờ xác nhận',
       bgSize:'Cỡ', bgQty:'Số lượng giao', bgTotal:'Tổng nhận', bgCum:'Lũy kế đến phiếu này',
       bgCumTip:'Tổng đã giao sang hoàn thiện của mã hàng · PO · màu này, tính đến phiếu này',
+      bqTitle:'PHIẾU GIAO NHẬN BÁN THÀNH PHẨM',
+      bqDay:'Ngày giao:', bqCust:'Khách hàng:', bqLine:'Cho chuyền may:', bqStyle:'Mã hàng:',
+      bqC1:'Mẫu', bqC2:'Bàn', bqC3:'Cỡ', bqC4:'Số lượng', bqC5:'Số PO #',
+      bqC6:'Xuất đi nước', bqC7:'Ngày giao hàng',
+      bqNote:'Ghi chú:', bqSign1:'Người giao', bqSign2:'Người nhận', bqSign3:'Tổ trưởng Bộ phận cắt',
+      bqOk:'Xác nhận đã nhận', bqOpenTip:'Bấm để mở phiếu giao nhận bán thành phẩm',
       bgSignFrom:'Người giao (May)', bgSignTo:'Người nhận (Hoàn thiện)',
       bgPrint:'In / Lưu PDF', bgView:'Xem / in phiếu bàn giao',
       dsoHandOver:'Giao sang hoàn thiện', dsoHanded:'Đã giao', dsoUndoHand:'Hủy phiếu bàn giao gần nhất của dòng này',
@@ -598,9 +604,9 @@ class Component extends DCLogic {
       bgBack:'Quay lại', bgReq:'Bắt buộc',
       bgNeedWho:'Nhập người giao và người nhận trước khi xác nhận',
       dsoNoUnhanded:'Không còn hàng nào chờ giao — tất cả đã giao sang hoàn thiện.',
-      dsoDefHist:'Lịch sử hàng lỗi theo ngày', dsoDefHistSub:'Mỗi lần bấm LỖI được ghi lại kèm lý do',
+      dsoDefHist:'Lịch sử hàng lỗi theo ngày', dsoDefHistSub:'Mỗi lần bấm LỖI được ghi lại kèm giờ và lý do',
       dsoDefHistEmpty:'Chưa ghi hàng lỗi nào — bấm LỖI ở card size để ghi.',
-      dsoColSize:'SIZE', dsoColReason:'LÝ DO', dsoColDefQty:'SỐ LƯỢNG LỖI',
+      dsoColSize:'SIZE', dsoColReason:'LÝ DO', dsoColDefQty:'SỐ LƯỢNG LỖI', dsoColTime:'GIỜ',
       mlvIncTip:'Thu nhập / 1 người theo giờ làm của chuyền',
       mlvSwitch:'Đổi chuyền', mlvTeam:'TỔ', mlvPerHour:'SẢN LƯỢNG / GIỜ', mlvQual:'CHẤT LƯỢNG',
       mlvFull:'Toàn màn hình', mlvExitFull:'Thoát toàn màn hình',
@@ -715,9 +721,15 @@ class Component extends DCLogic {
       fiSearch:'Tìm số phiếu, chuyền, mã hàng, PO, màu…', fiNoHit:'Không có phiếu nào khớp từ khóa',
       fiEmpty:'Chưa có phiếu bàn giao nào — sang MAY · Sản lượng may hàng ngày để phát hành phiếu.',
       fsBc:'Tình trạng hoàn thiện', fsTitle:'Tình Trạng Hoàn Thiện',
-      fsPanel:'Tiến Độ Qua Các Công Đoạn', fsSub:'Hàng đã nhận chạy qua Ủi → Kiểm cuối → Đóng gói → Nhập kho TP — mỗi công đoạn không vượt được công đoạn trước',
-      fsK1:'ĐÃ NHẬN', fsK1s:'pcs hoàn thiện đã nhận', fsK2:'ĐANG LÀM', fsK2s:'pcs chưa nhập kho thành phẩm',
-      fsK3:'ĐÃ ĐÓNG GÓI', fsK3s:'pcs qua công đoạn đóng gói', fsK4:'NHẬP KHO TP', fsK4s:'pcs thành phẩm đã nhập kho',
+      fsPanel:'Tình Trạng Đóng Gói · Xuất Hàng', fsSub:'Hàng đã nhận vào hoàn thiện — đã đóng gói, chưa đóng gói, đã xuất và tồn kho. SL đơn · Đã xuất · Tồn kho là số của cả PO nên chỉ hiện ở dòng đầu mỗi PO',
+      fsK1:'ĐÃ NHẬN', fsK1s:'pcs hoàn thiện đã nhận', fsK2:'CHƯA ĐÓNG GÓI', fsK2s:'pcs đã nhận nhưng chưa đóng gói',
+      fsK3:'ĐÃ ĐÓNG GÓI', fsK3s:'pcs qua công đoạn đóng gói', fsK4:'TỒN KHO', fsK4s:'pcs đã đóng gói chưa xuất',
+      fsCLine:'CHUYỀN', fsCBrand:'KHÁCH HÀNG', fsCStyle:'MÃ HÀNG', fsCPo:'PO#', fsCColor:'MÀU',
+      fsCOrder:'SL ĐƠN', fsCPacked:'ĐÃ ĐÓNG GÓI', fsCUnpack:'CHƯA ĐÓNG GÓI',
+      fsCShip:'ĐÃ XUẤT', fsCStock:'TỒN KHO', fsCRemark:'GHI CHÚ',
+      fsPoTip:'Số của cả PO — chỉ hiện ở dòng đầu của PO đó',
+      fsPackTip:'Sửa được — tối đa bằng số đã nhận',
+      fsRemarkPh:'Ghi chú…',
       fsIn:'ĐÃ NHẬN', fsIron:'ỦI', fsQc:'KIỂM CUỐI', fsPack:'ĐÓNG GÓI', fsFg:'NHẬP KHO TP',
       fsWip:'ĐANG LÀM', fsPct:'TIẾN ĐỘ', fsAll:'Đẩy hết', fsClr:'Xóa số', fsCount:'nhóm hàng',
       fsCapTip:'Tối đa theo công đoạn trước:',
@@ -759,6 +771,12 @@ class Component extends DCLogic {
       bgProdDay:'Production date', bgStatus:'Status', bgPending:'Awaiting confirmation',
       bgSize:'Size', bgQty:'Qty handed', bgTotal:'Total received', bgCum:'Cumulative incl. this slip',
       bgCumTip:'Total handed to finishing for this style · PO · colour, up to and including this slip',
+      bqTitle:'SEMI-FINISHED GOODS HANDOVER SLIP',
+      bqDay:'Delivery date:', bqCust:'Customer:', bqLine:'To sewing line:', bqStyle:'Style:',
+      bqC1:'Colour', bqC2:'Table', bqC3:'Size', bqC4:'Quantity', bqC5:'PO #',
+      bqC6:'Export to', bqC7:'Ship date',
+      bqNote:'Note:', bqSign1:'Handed by', bqSign2:'Received by', bqSign3:'Cutting supervisor',
+      bqOk:'Confirm received', bqOpenTip:'Click to open the semi-finished goods handover slip',
       bgSignFrom:'Handed by (Sewing)', bgSignTo:'Received by (Finishing)',
       bgPrint:'Print / Save PDF', bgView:'View / print handover slip',
       dsoHandOver:'Hand over to finishing', dsoHanded:'Handed over', dsoUndoHand:'Void the latest handover slip of this row',
@@ -774,9 +792,9 @@ class Component extends DCLogic {
       bgBack:'Back', bgReq:'Required',
       bgNeedWho:'Enter both names before confirming',
       dsoNoUnhanded:'Nothing left to hand over — everything has gone to finishing.',
-      dsoDefHist:'Daily defecting history', dsoDefHistSub:'Every FAIL tap is recorded with its reason',
+      dsoDefHist:'Daily defecting history', dsoDefHistSub:'Every FAIL tap is recorded with its time and reason',
       dsoDefHistEmpty:'No defect recorded yet — tap FAIL on a size card to log one.',
-      dsoColSize:'SIZE', dsoColReason:'REASON', dsoColDefQty:'DEFECT QTY',
+      dsoColSize:'SIZE', dsoColReason:'REASON', dsoColDefQty:'DEFECT QTY', dsoColTime:'TIME',
       mlvIncTip:'Income per person at this line\u2019s work hours',
       mlvSwitch:'Switch line', mlvTeam:'TEAM', mlvPerHour:'OUTPUT / HOUR', mlvQual:'QUALITY',
       mlvFull:'Full screen', mlvExitFull:'Exit full screen',
@@ -891,9 +909,15 @@ class Component extends DCLogic {
       fiSearch:'Search slip no., line, style, PO, colour…', fiNoHit:'No slip matches the search',
       fiEmpty:'No handover slip yet — go to SEWING · Daily Sewing Output to issue one.',
       fsBc:'Finishing Status', fsTitle:'Finishing Status',
-      fsPanel:'Progress Through The Stages', fsSub:'Received goods flow Iron → Final QC → Pack → FG warehouse — no stage can pass the one before it',
-      fsK1:'RECEIVED', fsK1s:'pcs received into finishing', fsK2:'IN PROGRESS', fsK2s:'pcs not yet in the FG warehouse',
-      fsK3:'PACKED', fsK3s:'pcs through the packing stage', fsK4:'FG WAREHOUSE', fsK4s:'pcs booked into finished goods',
+      fsPanel:'Packing · Shipment Status', fsSub:'Goods received into finishing — packed, un-packed, shipped and in stock. Order / Shipped / Stock are PO-level figures, shown on the first row of each PO',
+      fsK1:'RECEIVED', fsK1s:'pcs received into finishing', fsK2:'UN-PACKED', fsK2s:'pcs received but not packed',
+      fsK3:'PACKED', fsK3s:'pcs through the packing stage', fsK4:'STOCK', fsK4s:'pcs packed but not shipped',
+      fsCLine:'Line', fsCBrand:'Brand', fsCStyle:'Style', fsCPo:'PO#', fsCColor:'Color',
+      fsCOrder:'Order Qty', fsCPacked:'Packed Qty', fsCUnpack:'Un-Packed Qty',
+      fsCShip:'Shipped Qty', fsCStock:'Stock Qty', fsCRemark:'Remark',
+      fsPoTip:'PO-level figure — shown on the first row of that PO only',
+      fsPackTip:'Editable — capped at the received qty',
+      fsRemarkPh:'Remark…',
       fsIn:'RECEIVED', fsIron:'IRON', fsQc:'FINAL QC', fsPack:'PACK', fsFg:'FG WAREHOUSE',
       fsWip:'IN PROGRESS', fsPct:'PROGRESS', fsAll:'Push all', fsClr:'Clear', fsCount:'groups',
       fsCapTip:'Capped by the previous stage:',
@@ -1178,7 +1202,90 @@ class Component extends DCLogic {
             h('div',{style:{fontSize:12,color:C.faint,marginTop:2}},this.t('reqSub')+' · '+this.state.week)),
           h('button',{style:this.btn('ghost'),title:this.t('exportTip'),onClick:()=>this.exportExcel()},this.ic('grid'),this.t('exportXls'))),
         h('div',{style:{padding:'16px 16px 8px'}}, this.getWeek().rows.length? this.renderBundleGrid() : h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('demandEmpty')))),
-      this.renderRecvLog());
+      this.renderRecvLog(), this.renderBqSlip());
+  }
+
+  // ================= Phieu giao nhan ban thanh pham =====================
+  // Dung khuon to phieu giay QT.GRSBM11-09: khung do, 7 cot, Ghi chu, 3 o ky.
+  // Cac o Xuat di nuoc / Ngay giao hang de trong dung nhu to giay -- du lieu
+  // nay khong co trong app, nguoi giao dien tay sau khi in.
+  BQ_ROWS=10;          // so dong ke san tren to phieu
+  renderBqSlip(){
+    const d=this.bSlipData(); if(!d) return null;
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    // Mau lay tu theme he thong (this.C), khong con khung do nhu to giay goc:
+    //   net ke  -> C.border (cung token voi vien bang cua app)
+    //   so lieu -> C.dark   (xanh dam, giong cot so cua cac bang khac)
+    //   dau bang-> nen '#f8faf3' + chu C.sub, dung nhu S.th cua app
+    const INK=C.ink, LN=C.border, VAL=C.dark, HEAD='#f8faf3';
+    const close=()=>this.bSlipClose();
+    // 1 truong: nhan + gia tri tren net gach roi
+    const fld=(label,val)=>h('div',{key:label,style:{display:'flex',alignItems:'baseline',gap:7,minWidth:0}},
+      h('span',{style:{flex:'none',fontSize:13,fontWeight:700,color:C.sub}},label),
+      h('span',{style:{flex:1,minWidth:0,borderBottom:'1px dotted '+LN,paddingBottom:1,
+        fontSize:14,fontWeight:700,color:VAL,fontFamily:mono,whiteSpace:'nowrap',
+        overflow:'hidden',textOverflow:'ellipsis'}},val||'\u00a0'));
+    const cols=[['bqC1','14%'],['bqC2','9%'],['bqC3','9%'],['bqC4','12%'],['bqC5','20%'],
+      ['bqC6','16%'],['bqC7','20%']];
+    const cbase={border:'1px solid '+LN,padding:'6px 7px',fontSize:12.5,verticalAlign:'middle'};
+    const th=h('tr',null,cols.map(([k,w])=>h('th',{key:k,style:{...cbase,width:w,background:HEAD,
+      fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+      color:C.sub,textAlign:'center',lineHeight:1.3}},this.t(k))));
+    const cell=(v,o)=>h('td',{key:(o&&o.k)||v,style:{...cbase,textAlign:(o&&o.al)||'center',
+      fontFamily:(o&&o.mono)?mono:'inherit',fontWeight:(o&&o.b)?700:600,
+      color:(o&&o.b)?VAL:INK,height:26}},
+      v==null||v===''?'\u00a0':v);
+    const body=[];
+    d.lines.forEach((x,i)=>body.push(h('tr',{key:'r'+i},
+      cell(i?'':d.color,{k:'c',al:'left'}), cell(x.tb,{k:'tb',mono:true}),
+      cell(x.size,{k:'sz',b:true}), cell(this.fmt(x.qty),{k:'q',mono:true,b:true}),
+      cell(i?'':d.po,{k:'po',mono:true}), cell('',{k:'ex'}), cell('',{k:'sd'}))));
+    for(let i=d.lines.length;i<this.BQ_ROWS;i++)
+      body.push(h('tr',{key:'e'+i},cols.map(([k])=>cell('',{k:k}))));
+    // Khoi ky: dung khuon giong phieu ban giao cua Daily Sewing Output
+    const sign=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:22,
+        padding:'0 6px',marginTop:24}},
+      ['bqSign1','bqSign2','bqSign3'].map(k=>h('div',{key:k,style:{textAlign:'center'}},
+        h('div',{style:{height:40}}),
+        h('div',{style:{borderTop:'1px solid '+LN,paddingTop:7,fontSize:12,fontWeight:600,
+          color:C.faint}},this.t(k)))));
+    const frame=h('div',{style:{border:'1px solid '+LN,borderRadius:12,background:C.white,
+        padding:'14px 16px 16px'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:12}},
+        h('span',{style:{flex:'none',background:C.primary,color:'#fff',fontSize:14,fontWeight:800,
+          letterSpacing:'.5px',padding:'3px 9px',borderRadius:7,lineHeight:1.3}},'YIC'),
+        h('div',{style:{flex:1}}),
+        h('span',{style:{flex:'none',fontSize:12.5,fontWeight:700,color:C.dark,fontFamily:mono}},
+          d.no||'\u2014')),
+      h('div',{style:{fontSize:18,fontWeight:800,color:INK,letterSpacing:'.2px',margin:'9px 0 11px'}},
+        this.t('bqTitle')),
+      h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',columnGap:30,rowGap:8,
+        marginBottom:13}},
+        fld(this.t('bqDay'),d.day), fld(this.t('bqCust'),d.brand),
+        fld(this.t('bqLine'),d.line), fld(this.t('bqStyle'),d.style)),
+      h('table',{style:{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}},
+        h('thead',null,th), h('tbody',null,body)),
+      h('div',{style:{display:'flex',alignItems:'baseline',gap:8,marginTop:12}},
+        h('span',{style:{flex:'none',fontSize:13,fontWeight:700,color:C.sub}},this.t('bqNote')),
+        h('span',{style:{flex:1,borderBottom:'1px dotted '+LN,height:15}})));
+    const foot=h('div',{'data-noprint':'',style:{display:'flex',alignItems:'center',gap:10,
+        marginTop:22,paddingTop:16,borderTop:'1px solid '+C.line,flexWrap:'wrap'}},
+      h('div',{style:{flex:1,minWidth:8}}),
+      h('button',{onClick:close,style:this.btn('ghost')},this.t('dsoClose')),
+      h('button',{onClick:()=>window.print(),style:this.btn('ghost')},
+        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9},
+          h('path',{d:'M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v7H8z'})),this.t('bgPrint')),
+      h('button',{onClick:()=>this.bSlipReceive(),style:this.btn('primary')},
+        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M5 12l4 4 10-10'})),this.t('bqOk')));
+    const panel=h('div',{'data-bg-panel':'',className:'yscroll',onClick:ev=>ev.stopPropagation(),
+        style:{width:'min(880px,96vw)',maxHeight:'94vh',overflow:'auto',background:C.white,
+          borderRadius:14,boxShadow:'0 30px 70px rgba(0,0,0,.32)',padding:'20px 22px 18px'}},
+      frame,sign,foot);
+    const over=h('div',{'data-bg-overlay':'',onClick:close,style:{position:'fixed',inset:0,
+        background:'rgba(24,28,22,.5)',backdropFilter:'blur(2px)',display:'flex',
+        alignItems:'center',justifyContent:'center',zIndex:88,padding:20}},panel);
+    return (RD&&RD.createPortal)?RD.createPortal(over,document.body):over;
   }
 
   renderRecvLog(){
@@ -1289,6 +1396,84 @@ class Component extends DCLogic {
     this.setState(st=>{ const bb=st.bundle[k]; if(!bb||!bb.days||!bb.days[d]) return null;
       const days={...bb.days}; days[d]={...days[d],status:this.nextStatus(this.cellStatus(days[d]))};
       return {bundle:{...st.bundle,[k]:{...bb,days:days}}}; }); }
+  // Bam tag trang thai: dang CHO NHAN thi mo phieu giao nhan BTP (o day moi xac
+  // nhan da nhan). Cac trang thai khac van dao vong ngay tren o nhu truoc.
+  bStatusTap(r,d,ev){ if(ev){ ev.stopPropagation(); ev.preventDefault(); }
+    const cell=this.bcellAt(r.id,d);
+    if(cell&&this.cellStatus(cell)==='waiting') return this.bSlipOpen(r,d);
+    this.cycleStatus(r,d); }
+  // Ma phieu giao nhan BTP: CS-yyyymmdd-nnn, nnn la so thu tu trong NGAY PHAT
+  // HANH (khong phai ngay giao -- ngay giao la 1 o rieng tren phieu).
+  //
+  // Ma thuoc ve TO GIAY, khong thuoc ve o luoi. O co the bi xoa rong roi dung
+  // lai, hoac doi luot cat / size / so luong / mau -- luc do chinh app coi la
+  // yeu cau moi (bformStatus tra ve 'requested'). To in ra khac han to truoc,
+  // nen phai mang so khac. Vi vay ma duoc luu kem CHU KY NOI DUNG: chu ky lech
+  // la cap so moi. Mo lai / in lai to dang cho thi chu ky trung -> giu so cu.
+  bqNoKey(r,day){ return this.bKey(r)+'|'+day; }
+  bqSig(r,day){ const c=this.bcellAt(r.id,day); if(!c) return '';
+    const ri=this.getWeek().rows.findIndex(x=>x.id===r.id);
+    return [c.turn||'',c.size||'',c.supply||'',this.bundleColor(r,ri)].join('|'); }
+  bqNoOf(r,day){ const v=(this.state.bqNo||{})[this.bqNoKey(r,day)];
+    if(!v||!v.no) return '';
+    return v.sig===this.bqSig(r,day)?v.no:''; }
+  // So thu tu trong ngay CHI TANG. Khong dem so ban ghi dang co: tra 1 so ve
+  // (doi noi dung, xac nhan xong) roi dem lai se cap trung so da in.
+  bqSeqAt(st,day){ const pre='CS-'+day+'-';
+    let n=Number((st.bqSeq||{})[day])||0;
+    const m=st.bqNo||{};
+    // Ban luu dau tien luu thang chuoi ma (chua co chu ky) -- van phai tinh
+    // vao day, khong thi bo dem tut lai va cap trung so da in.
+    Object.keys(m).forEach(k=>{ const v=m[k], s=String((v&&v.no)||v||'');
+      if(s.indexOf(pre)===0) n=Math.max(n,Number(s.slice(pre.length))||0); });
+    return n; }
+  // Cap so luc mo phieu. Khong tra ve gia tri: setState la bat dong bo, ben
+  // goi doc lai bang bqNoOf sau khi state da cap nhat.
+  bqNoIssue(r,day){ if(this.bqNoOf(r,day)) return;
+    const k=this.bqNoKey(r,day), day8=this.dsoSlipDay(Date.now()), sig=this.bqSig(r,day);
+    this.setState(st=>{ const n=this.bqSeqAt(st,day8)+1;
+      return {bqSeq:{...(st.bqSeq||{}),[day8]:n},
+        bqNo:{...(st.bqNo||{}),[k]:{no:'CS-'+day8+'-'+String(n).padStart(3,'0'),sig:sig}}}; }); }
+  // Xac nhan da nhan = to giay do khep lai. Lan giao sau cua cung o phai la to
+  // moi, nen tra ma ve; bo dem chi tang nen so cu khong bao gio duoc dung lai.
+  bqNoRelease(r,day){ const k=this.bqNoKey(r,day);
+    this.setState(st=>{ const m={...(st.bqNo||{})}; delete m[k]; return {bqNo:m}; }); }
+  // Class tren <body> de @media print chi in ra to phieu -- dung chung voi
+  // phieu ban giao cua Daily Sewing Output (xem style.css, bg-slip-open)
+  bSlipOpen(r,d){ this.bqNoIssue(r,d); this.set({bslip:{rid:r.id,day:d}});
+    document.body.classList.add('bg-slip-open'); }
+  bSlipClose(){ this.set({bslip:null}); document.body.classList.remove('bg-slip-open'); }
+  // Xac nhan tren phieu = dao trang thai Cho nhan -> Da nhan roi dong phieu
+  bSlipReceive(){ const s=this.state.bslip; if(!s) return;
+    const r=this.getWeek().rows.find(x=>x.id===s.rid);
+    if(r){ this.bqNoRelease(r,s.day); this.cycleStatus(r,s.day); }
+    this.bSlipClose(); }
+  // 'DD/MM/YYYY' cua dung ngay trong tuan dang xem
+  bSlipDate(day){ const st=this.psWeekRange(this.state.week)[0], i=this.DAYS.indexOf(day);
+    const d=new Date(st.getFullYear(),st.getMonth(),st.getDate()+(i<0?0:i));
+    const p=n=>String(n).padStart(2,'0');
+    return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear(); }
+  // PO lay tu tac nghiep cat cua ma hang; nhieu PO thi ghep lai
+  bSlipPo(style){ const ps=(this.khcPlansFor(style)||[]).map(p=>String(p.qrPo||'').trim()).filter(Boolean);
+    return [...new Set(ps)].join(' / '); }
+  bSlipData(){ const s=this.state.bslip; if(!s) return null;
+    const rows=this.getWeek().rows, ri=rows.findIndex(x=>x.id===s.rid), r=rows[ri];
+    if(!r) return null;
+    const cell=this.bcellAt(s.rid,s.day); if(!cell) return null;
+    const cat=this.cutTurns(r.style);
+    const turns=(cell.turns||[]).map(id=>cat.find(t=>t.id===id)).filter(Boolean);
+    const qty=cell.qty||{};
+    // 1 dong / 1 co. Cot BAN = cac luot cat co cat co do (khop cach ghi tay
+    // tren phieu giay: ban 3 - S - 121, ban 4 - XS - 121).
+    const lines=this.SORDER.filter(z=>(Number(qty[z])||0)>0).map(z=>({
+      size:z, qty:Number(qty[z])||0,
+      tb:turns.filter(t=>(this.turnSizes(t)[z]||0)>0).map(t=>t.id).join(', ')
+         ||(cell.turns||[]).join(', ')}));
+    return {row:r,cell:cell,lines:lines,no:this.bqNoOf(r,s.day),
+      color:this.bundleColor(r,ri), day:this.bSlipDate(s.day),
+      brand:r.brand||'', line:String(r.line||'').replace(/^Line\s*/i,''),
+      style:r.style||'', po:this.bSlipPo(r.style)}; }
+
   statusTag(st,o){ const h=React.createElement; o=o||{}; const c=this.STC[st]||this.STC.waiting;
     const style={display:'inline-flex',alignItems:'center',gap:o.sm?4:5,flex:'none',border:'1px solid '+c.bd,
       background:c.bg,color:c.fg,borderRadius:99,padding:o.lg?'4px 11px':(o.sm?'2px 7px 2px 5px':'2px 8px 2px 6px'),
@@ -1297,7 +1482,7 @@ class Component extends DCLogic {
     const kids=[h('span',{key:'d',style:{width:o.lg?7:(o.sm?5:6),height:o.lg?7:(o.sm?5:6),borderRadius:'50%',background:c.dot,flex:'none'}}),
       this.t(this.STKEY[st]||'stWaiting')];
     if(!o.onClick) return h('span',{style:style},kids);
-    return h('button',{onClick:o.onClick,title:this.t('stCycleTip'),
+    return h('button',{onClick:o.onClick,title:o.title||this.t('stCycleTip'),
       style:{...style,cursor:'pointer',transition:'background .12s,border-color .12s'}},kids); }
 
   reqDayCell(r,d,b,chosen,stripe,weekend){
@@ -1325,7 +1510,8 @@ class Component extends DCLogic {
         // dai 1 (55%): trang thai (bam de dao vong) + tong so luong
         h('div',{style:{flex:'55 1 0',minHeight:0,display:'flex',alignItems:'center',justifyContent:'space-between',
           gap:6,padding:'0 10px'}},
-          this.statusTag(this.cellStatus(cell),{sm:true,onClick:ev=>this.cycleStatus(r,d,ev)}),
+          this.statusTag(this.cellStatus(cell),{sm:true,onClick:ev=>this.bStatusTap(r,d,ev),
+            title:this.cellStatus(cell)==='waiting'?this.t('bqOpenTip'):undefined}),
           h('span',{style:{fontSize:19,fontWeight:700,fontFamily:mono,color:C.ink,lineHeight:1,flex:'none',
             letterSpacing:'-.4px'}},this.fmt(tot))),
         // dai 2 (45%): Cut turn: C1 C2
@@ -2162,11 +2348,17 @@ class Component extends DCLogic {
   dsoTapFail(){ this.setState(st=>st.dsoTap?{dsoTap:{...st.dsoTap,stage:'fail'},dsoTapQ:''}:null); }
   // Hang loi ghi theo (ngay, chuyen, style, PO, mau, size) + ma loi -> dem duoc
   // ca so luong loi va loi nao hay gap. KHONG cong vao san luong hoan thanh.
-  dsoDefTake(c,d){ const k=this.dsoDoneKey(c);
+  // Doc new Date() MOT lan roi dung chung cho ca khoa ngay lan moc gio: doc 2
+  // lan, bam dung luc doi ngay -> so luong vao ngay nay ma moc gio vao ngay kia.
+  // Moc HH:MM ghi song song sang dsoDefTime theo khoa (o size + ma loi) --
+  // dsoDefLog GIU NGUYEN hinh dang so dem nen may dang co du lieu cu van doc duoc.
+  dsoDefTake(c,d){ const now=new Date(), k=this.dsoDoneKey(c,this.psFmtD(now)), at=this.dsoHM(now);
     const code=String(d.code||'').trim()||String(d.name||'').trim()||'?';
     this.setState(st=>{ const m={...(st.dsoDefLog||{})}, cur={...(m[k]||{})};
       cur[code]=(Number(cur[code])||0)+1; m[k]=cur;
-      return {dsoDefLog:m,dsoTap:null,dsoTapQ:''}; }); }
+      const tm={...(st.dsoDefTime||{})}, tk=k+'|'+code;
+      tm[tk]=(tm[tk]||[]).concat(at);
+      return {dsoDefLog:m,dsoDefTime:tm,dsoTap:null,dsoTapQ:''}; }); }
   // Tong luy ke moi ngay, giong dsoDoneOf
   dsoDefOf(c){ const m=this.state.dsoDefLog||{};
     const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
@@ -2601,10 +2793,24 @@ class Component extends DCLogic {
     return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()
       +' \u00b7 '+p(d.getHours())+':'+p(d.getMinutes()); }
   dsoSlipList(){ return this.state.dsoSlips||[]; }
+  // So thu tu trong ngay CHI TANG, khong bao gio quay dau.
+  // Truoc day dem so phieu con song (list.length+1): huy 1 phieu la so tut lai,
+  // to sau in trung so cua to da phat hanh. Doc them so lon nhat da dong dau
+  // tren cac phieu con luu, de ban luu co san khong dung lai so.
+  dsoSlipSeqAt(st,day){ const pre='SF-'+day+'-';
+    let n=Number((st.dsoSlipSeq||{})[day])||0;
+    (st.dsoSlips||[]).forEach(x=>{ const s=String(x.no||'');
+      if(s.indexOf(pre)===0) n=Math.max(n,Number(s.slice(pre.length))||0); });
+    return n; }
+  // Ma phieu ban giao May -> Hoan thien: SF-yyyymmdd-nnn.
+  //   da chot  -> tra dung 'no' da dong dau (so chung tu khong doi)
+  //   ban nhap -> xem truoc so ke tiep cua hom nay
+  //   da chot ma KHONG co so (ban luu doi cu, hoac dong 'da giao' khong co
+  //   phieu) -> '—'. Tuyet doi khong bia so moi cho mot to sap in.
   dsoSlipNo(s){ if(s.no) return s.no;
-    const day=this.dsoSlipDay(s.ts||Date.now());
-    const n=this.dsoSlipList().filter(x=>this.dsoSlipDay(x.ts)===day).length+1;
-    return 'BG-'+day+'-'+String(n).padStart(3,'0'); }
+    if(s.ts) return '\u2014';
+    const day=this.dsoSlipDay(Date.now());
+    return 'SF-'+day+'-'+String(this.dsoSlipSeqAt(this.state,day)+1).padStart(3,'0'); }
   // Tong da giao (moi chuyen, moi ngay) cua 1 ma hang \u00b7 PO \u00b7 mau
   dsoHandedTot(style,po,color){ let n=0;
     this.dsoHistory(null).forEach(r=>{ if(r.style===style&&r.po===po&&r.color===color)
@@ -2628,11 +2834,15 @@ class Component extends DCLogic {
       alloc:[{key:row.key,day:row.day,line:row.line,sizes:row.sizes,qty:row.qty}]}; }
   // Phat hanh phieu: ghi so da giao vao so, danh dau dong nao da giao xong,
   // luu phieu lai roi mo chinh to phieu do ra.
-  dsoSlipCommit(slip){ const ts=Date.now(), id='BG'+ts;
-    const rec={...slip,id:id,ts:ts,no:this.dsoSlipNo({ts}),
+  dsoSlipCommit(slip){ const ts=Date.now(), id='BG'+ts, day=this.dsoSlipDay(ts);
+    const base={...slip,id:id,ts:ts,
       cum:slip.cum!=null?slip.cum:(this.dsoHandedTot(slip.style,slip.po,slip.color)+slip.qty)};
-    delete rec.back;
+    delete base.back;
     this.setState(st=>{ const q={...(st.dsoHandQ||{})}, hd={...(st.dsoHand||{})}, done=st.dsoDone||{};
+      // Cap so NGAY TRONG updater roi tang bo dem trong cung mot lan ghi:
+      // hai lan phat hanh khong the ra cung so, va huy phieu khong tra so lai.
+      const seq=this.dsoSlipSeqAt(st,day)+1;
+      const rec={...base,no:'SF-'+day+'-'+String(seq).padStart(3,'0')};
       (rec.alloc||[]).forEach(a=>Object.keys(a.sizes||{}).forEach(z=>{
         const k=a.key+'|'+z; q[k]=(Number(q[k])||0)+(Number(a.sizes[z])||0); }));
       (rec.alloc||[]).forEach(a=>{ let full=true;
@@ -2643,9 +2853,9 @@ class Component extends DCLogic {
       const who={...(st.dsoHandWho||{})};
       if(slip.id&&slip.id!==id){ if(who[slip.id]) who[id]=who[slip.id]; delete who[slip.id]; }
       return {dsoHandQ:q,dsoHand:hd,dsoSlips:[...(st.dsoSlips||[]),rec],dsoHandWho:who,
+        dsoSlipSeq:{...(st.dsoSlipSeq||{}),[day]:seq},
         dsoHandAsk:rec,dsoHandBulk:null}; });
-    document.body.classList.add('bg-slip-open');
-    return rec; }
+    document.body.classList.add('bg-slip-open'); }
   // Huy 1 to phieu: tra lai so luong cho tat ca cac dong tren phieu
   dsoSlipVoid(id){ this.setState(st=>{ const list=st.dsoSlips||[];
     const s=list.find(x=>x.id===id); if(!s) return null;
@@ -2694,16 +2904,26 @@ class Component extends DCLogic {
   dsoDefName(code){ const c=String(code||'').trim();
     const d=this.defects().find(x=>String(x.code||'').trim()===c);
     return d?String(d.name||'').trim():''; }
-  // 1 dong = 1 (ngay, chuyen, style, PO, mau, size, ma loi). Bo trong 'line' -> moi chuyen.
-  dsoDefHistory(line){ const m=this.state.dsoDefLog||{}, out=[];
+  // 1 dong = 1 (ngay, GIO, chuyen, style, PO, mau, size, ma loi). Bam nhieu lan
+  // trong CUNG mot phut cho cung ma loi thi gop lai 1 dong voi so luong -- bang
+  // van gon ma khong mat moc gio nao.
+  // Ban ghi cu (truoc khi co dsoDefTime) khong co moc gio: phan con thieu do vao
+  // 1 dong at:'' de tong so luong luon khop voi dsoDefLog.
+  // Bo trong 'line' -> moi chuyen.
+  dsoDefHistory(line){ const m=this.state.dsoDefLog||{}, tm=this.state.dsoDefTime||{}, out=[];
     const oi=z=>{ const i=this.SORDER.indexOf(z); return i<0?99:i; };
     Object.keys(m).forEach(k=>{ const p=k.split('|'); if(p.length!==6) return;
       if(line&&p[1]!==line) return;
       const o=m[k]||{};
-      Object.keys(o).forEach(code=>{ const q=Number(o[code])||0; if(q<=0) return;
-        out.push({key:k+'|'+code,day:p[0],line:p[1],style:p[2],po:p[3],color:p[4],
-          size:p[5],code:code,qty:q}); }); });
+      Object.keys(o).forEach(code=>{ let q=Number(o[code])||0; if(q<=0) return;
+        const base={day:p[0],line:p[1],style:p[2],po:p[3],color:p[4],size:p[5],code:code};
+        const ls=(tm[k+'|'+code]||[]).slice(0,q), by={}, ord=[];
+        ls.forEach(at=>{ if(by[at]===undefined){ by[at]=0; ord.push(at); } by[at]++; });
+        ord.forEach(at=>{ out.push({...base,key:k+'|'+code+'|'+at,at:at,qty:by[at]}); });
+        q-=ls.length;
+        if(q>0) out.push({...base,key:k+'|'+code+'|-',at:'',qty:q}); }); });
     return out.sort((a,b)=>String(b.day).localeCompare(String(a.day))
+      ||String(b.at).localeCompare(String(a.at))
       ||String(a.line).localeCompare(String(b.line))||String(a.style).localeCompare(String(b.style))
       ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color))
       ||oi(a.size)-oi(b.size)||String(a.code).localeCompare(String(b.code))); }
@@ -3120,7 +3340,7 @@ class Component extends DCLogic {
   renderDsoDefHistory(line){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const all=this.dsoDefHistory(line), q=this.state.dsoDefQ||'';
-    const rows=all.filter(r=>this.dsoRowHit(r,q,r.code+' '+this.dsoDefName(r.code)));
+    const rows=all.filter(r=>this.dsoRowHit(r,q,r.at+' '+r.code+' '+this.dsoDefName(r.code)));
     const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
       color:C.sub,textAlign:'left',borderBottom:'2px solid '+C.border,borderRight:'1px solid '+C.line,
       background:'#f8faf3',whiteSpace:'nowrap',position:'sticky',top:0,zIndex:1};
@@ -3143,6 +3363,8 @@ class Component extends DCLogic {
     const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white, nm=this.dsoDefName(r.code);
       return h('tr',{key:r.key},
         h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:600,whiteSpace:'nowrap'}},this.dsoDay(r.day)),
+        h('td',{style:{...td,background:bg,fontFamily:mono,fontWeight:700,whiteSpace:'nowrap',
+          color:r.at?C.dark:C.faint}},r.at||'\u2014'),
         line?null:h('td',{style:{...td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},r.line),
         h('td',{style:{...td,background:bg,fontFamily:mono,wordBreak:'break-all'}},r.style),
         h('td',{style:{...td,background:bg,fontFamily:mono,whiteSpace:'nowrap'}},r.po),
@@ -3158,9 +3380,10 @@ class Component extends DCLogic {
     return h('div',null,head,
       h('div',{style:{border:'1px solid '+C.border,borderRadius:13,overflow:'hidden'}},
         h('div',{className:'yscroll',style:{overflow:'auto',maxHeight:this.dsoHistH('def')}},
-          h('table',{style:{width:'100%',minWidth:(line?840:940)+'px',borderCollapse:'collapse'}},
+          h('table',{style:{width:'100%',minWidth:(line?910:1010)+'px',borderCollapse:'collapse'}},
             h('thead',null,h('tr',null,
               h('th',{style:{...th,paddingLeft:14}},this.t('dsoColDay')),
+              h('th',{style:th},this.t('dsoColTime')),
               line?null:h('th',{style:th},this.t('lsCol1')),
               h('th',{style:th},this.t('lsCol2')),
               h('th',{style:th},this.t('dsoColPo')),
@@ -4502,6 +4725,7 @@ class Component extends DCLogic {
       if(e.key==='Escape'&&this.state.conf) this.set({conf:null});
       if(e.key==='Escape'&&this.state.dsoTap) this.dsoTapClose();
       if(e.key==='Escape'&&this.state.mlvFs) this.set({mlvFs:false});
+      if(e.key==='Escape'&&this.state.bslip) this.bSlipClose();
       if(e.key==='Escape'&&this.state.dsoHandBulk) this.set({dsoHandBulk:null});
       if(e.key==='Escape'&&this.state.dsoHandAsk) this.dsoSlipClose();
       if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')&&(this.state.psTrash||[]).length){ e.preventDefault(); this.psUndo(); } };
@@ -4840,7 +5064,8 @@ class Component extends DCLogic {
     this._finGC={rec,sl,out}; return out; }
   finGroupList(q){ const list=this.finGroups(); q=String(q||'').trim().toLowerCase();
     if(!q) return list;
-    return list.filter(g=>[g.style,g.po,g.color,g.lines.join(' ')].join(' ').toLowerCase().indexOf(q)>=0); }
+    return list.filter(g=>[g.style,g.po,g.color,g.lines.join(' '),
+      this.fsBrand(g),this.fsRemark(g)].join(' ').toLowerCase().indexOf(q)>=0); }
   // So THO da go, chua kep tran
   finRawQ(key,st){ return Math.max(0,Number((this.state.finStage||{})[key+'|'+st])||0); }
   // So HIEN THI cua cong doan i: khong vuot duoc DA NHAN, cung khong vuot duoc
@@ -4864,9 +5089,39 @@ class Component extends DCLogic {
     this.FIN_STAGES.forEach(([id])=>{ m[g.key+'|'+id]=g.in; }); return {finStage:m}; }); }
   finClear(g){ this.setState(s=>{ const m={...(s.finStage||{})};
     this.FIN_STAGES.forEach(([id])=>{ delete m[g.key+'|'+id]; }); return {finStage:m}; }); }
-  // Thành phẩm đã nhập kho của 1 mã hàng · PO (cộng mọi màu) — nguồn cho F.G Shipment
+  // ---- Finishing Status: dong goi / da xuat / ton kho ---------------------
+  // Bang chi con cot DONG GOI go tay, nen doc SO THO roi kep theo DA NHAN.
+  // KHONG dung finStageQ: ham do kep theo ca Ui / Kiem cuoi, ma hai cong doan
+  // do khong con cot nao de go -> pack se dung 0 mai.
+  fsPacked(g){ return Math.min(g.in,this.finRawQ(g.key,'pack')); }
+  fsUnpacked(g){ return Math.max(0,g.in-this.fsPacked(g)); }
+  fsPackedSet(g,v){ const n=Math.max(0,Math.min(g.in,parseInt(String(v).replace(/[^0-9]/g,''),10)||0));
+    this.setState(s=>({finStage:{...(s.finStage||{}),[g.key+'|pack']:n}})); }
+  // SL don / Da xuat lay tu Ke hoach xuat FG, o do 1 dong = 1 (ma hang | PO)
+  fsFgRow(g){ return this.fgAll().find(r=>r.style===g.style&&String(r.po)===String(g.po))||null; }
+  fsOrderQ(g){ const r=this.fsFgRow(g); return r?(Number(r.qty)||0):0; }
+  // brandForStyle chi quet don DANG CHAY -> don da qua tuan se ra rong.
+  // Dong Ke hoach xuat FG khoa theo (ma hang | PO) va mang san khach hang.
+  fsBrand(g){ const r=this.fsFgRow(g); return (r&&r.brand)||this.brandForStyle(g.style)||''; }
+  fsShippedQ(g){ const r=this.fsFgRow(g); return r?(Number(r.ship)||0):0; }
+  fsPackedPo(g){ let n=0;
+    this.finGroups().forEach(x=>{ if(x.style===g.style&&x.po===g.po) n+=this.fsPacked(x); });
+    return n; }
+  // Ton kho = da dong goi (ca PO, moi mau) - da xuat
+  fsStockQ(g){ return Math.max(0,this.fsPackedPo(g)-this.fsShippedQ(g)); }
+  // SL don / Da xuat / Ton la so cua CA PO -> chi in o dong dau cua PO do, de
+  // khong ai cong doc theo cot ra so gap doi. finGroups() da sap theo
+  // ma hang -> PO -> mau nen cac dong cung PO luon lien nhau.
+  fsPoHead(rows,i){ const g=rows[i], p=rows[i-1];
+    return !p||p.style!==g.style||String(p.po)!==String(g.po); }
+  fsRemark(g){ return (this.state.fsRemark||{})[g.key]||''; }
+  fsRemarkSet(g,v){ this.setState(s=>({fsRemark:{...(s.fsRemark||{}),[g.key]:v}})); }
+  // Thành phẩm sẵn sàng xuất của 1 mã hàng · PO (cộng mọi màu) — nguồn cho F.G Shipment.
+  // Truoc doc cong doan 'fg'; bang Finishing Status khong con cot go cho Ui /
+  // Kiem cuoi / Nhap kho nen so do se dung 0 mai. Dong goi la moc cuoi con go
+  // duoc, va hang da dong goi dung la hang san sang xuat.
   finFgQty(style,po){ let n=0;
-    this.finGroups().forEach(g=>{ if(g.style===style&&g.po===po) n+=this.finLast(g); });
+    this.finGroups().forEach(g=>{ if(g.style===style&&g.po===po) n+=this.fsPacked(g); });
     return n; }
 
   renderFinStBody(){
@@ -4878,15 +5133,22 @@ class Component extends DCLogic {
       this.renderFinStTable());
   }
   renderFinStKpis(){
-    const list=this.finGroups(); let inQ=0,fgQ=0,packQ=0;
-    list.forEach(g=>{ inQ+=g.in; fgQ+=this.finLast(g); packQ+=this.finStageId(g,'pack'); });
-    const wip=Math.max(0,inQ-fgQ);
+    const list=this.finGroups(); let inQ=0,packQ=0,shipQ=0; const seen={};
+    list.forEach(g=>{ inQ+=g.in; packQ+=this.fsPacked(g);
+      // Da xuat la so cua PO -> chi cong 1 lan cho moi (ma hang | PO)
+      const k=g.style+'|'+g.po; if(!seen[k]){ seen[k]=1; shipQ+=this.fsShippedQ(g); } });
+    const unpack=Math.max(0,inQ-packQ), stock=Math.max(0,packQ-shipQ);
     return this.finKpis([
       [this.t('fsK1'),this.fmtn(inQ),this.t('fsK1s')],
-      [this.t('fsK2'),this.fmtn(wip),this.t('fsK2s'),wip>0],
+      [this.t('fsK2'),this.fmtn(unpack),this.t('fsK2s'),unpack>0],
       [this.t('fsK3'),this.fmtn(packQ),this.t('fsK3s')],
-      [this.t('fsK4'),this.fmtn(fgQ),this.t('fsK4s')]]);
+      [this.t('fsK4'),this.fmtn(stock),this.t('fsK4s')]]);
   }
+  // Bang tinh trang hoan thien: 1 dong = 1 (ma hang | PO | mau) da nhan.
+  // Cot go tay: DA DONG GOI va GHI CHU -- o nhap luon mo, khong co che do sua
+  // rieng, vi bang khong con cot hanh dong.
+  // SL DON / DA XUAT / TON KHO la so cua CA PO (Ke hoach xuat FG chi co den
+  // cap ma hang | PO, khong tach mau) -> chi in o dong dau cua moi PO.
   renderFinStTable(){
     const h=React.createElement, C=this.C, S=this.mtStyles();
     const q=this.state.fsQ||'', all=this.finGroups(), rows=this.finGroupList(q);
@@ -4895,53 +5157,51 @@ class Component extends DCLogic {
         border:'1px solid '+C.border,borderRadius:999,padding:'4px 10px',whiteSpace:'nowrap'}},
         this.fmt(all.length)+' '+this.t('fsCount')),
       this.dfSearchBox(q,v=>this.set({fsQ:v}),false,'fsSearch'));
-    const bar=(pct)=>h('div',{style:{display:'flex',alignItems:'center',gap:7}},
-      h('div',{style:{flex:'1 1 60px',minWidth:44,height:6,borderRadius:99,background:'#edefe9',overflow:'hidden'}},
-        h('div',{style:{height:'100%',width:Math.min(100,pct)+'%',
-          background:pct>=100?C.primary:(pct>=60?'#8fb35e':'#d9a13c'),borderRadius:99}})),
-      h('span',{style:{width:34,textAlign:'right',fontSize:11.5,fontFamily:S.mono,fontWeight:700,
-        color:pct>=100?C.primary:C.ink,flex:'none'}},pct+'%'));
+    // O nhap gon: khong vien, chi gach chan net roi -- giong o ky tren phieu
+    const inp=(val,onCh,o)=>h('input',{value:val,placeholder:(o&&o.ph)||'',
+      inputMode:(o&&o.num)?'numeric':undefined,title:(o&&o.title)||undefined,
+      onChange:e=>onCh(e.target.value),
+      style:{width:'100%',border:'none',background:'none',padding:'2px 0',
+        borderBottom:'1px dashed '+((val===''||val==null)?'#c8ccc2':'transparent'),
+        textAlign:(o&&o.num)?'right':'left',fontFamily:(o&&o.num)?S.mono:'inherit',
+        fontSize:(o&&o.num)?12.5:12,fontWeight:(o&&o.num)?700:500,color:C.ink,outline:'none'}});
+    const num=(v,bg,col)=>h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
+      fontWeight:700,color:col||C.ink}},v);
     const body=rows.map((g,i)=>{
-      const ed=this.state.fsEdit===g.key, bg=i%2?'#f7f9f3':C.white, pct=this.finPct(g);
-      const cells=this.FIN_STAGES.map(([id],si)=>{
-        const v=this.finStageQ(g,si), cap=this.finCap(g,si);
-        return h('td',{key:id,style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
-          fontWeight:700,color:v?(v>=cap?C.dark:C.ink):C.faint}},
-          ed?h('input',{value:v||'',placeholder:'0',inputMode:'numeric',title:this.t('fsCapTip')+' '+this.fmt(cap),
-              onChange:e=>this.finStageSet(g,si,e.target.value),
-              style:{...S.inp,textAlign:'right'}})
-            :h('span',{title:this.fmt(v)+' / '+this.fmt(cap)},this.fmt(v)));
-      });
+      const bg=i%2?'#f7f9f3':C.white, head=this.fsPoHead(rows,i);
+      const packed=this.fsPacked(g), unpack=this.fsUnpacked(g);
+      const order=this.fsOrderQ(g), ship=this.fsShippedQ(g), stock=this.fsStockQ(g);
+      // O cua so cap PO: dong dau in so, cac dong mau tiep theo de trong
+      const po=(v,col)=>h('td',{title:head?this.t('fsPoTip'):undefined,
+        style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+          color:head?(v?(col||C.ink):C.faint):'transparent'}}, head?this.fmt(v):'\u00a0');
       return h('tr',{key:g.key},
-        h('td',{style:{...S.td,background:bg,textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}},i+1),
-        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700,color:C.primary}},g.style),
+        h('td',{style:{...S.td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},
+          g.lines.join(', ')||'\u2014'),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},
+          this.fsBrand(g)||'\u2014'),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700}},g.style),
         h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},g.po),
         h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},g.color),
-        h('td',{style:{...S.td,background:bg,fontSize:11.5,color:C.sub,wordBreak:'break-word'}},g.lines.join(', ')||'—'),
-        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700}},this.fmt(g.in)),
-        ...cells,
-        h('td',{style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
-          color:this.finWip(g)?'#b0791b':C.faint}},this.fmt(this.finWip(g))),
-        h('td',{style:{...S.td,background:bg,minWidth:110}},bar(pct)),
-        h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
-          h('div',{style:{display:'flex',gap:6}},
-            ed?this.mtBtn(this.t('lsDone'),()=>this.set({fsEdit:null}),{border:'1px solid '+C.primary,background:C.tint})
-              :this.mtBtn(this.t('lsEdit'),()=>this.set({fsEdit:g.key})),
-            this.mtBtn(this.t('fsAll'),()=>this.finPushAll(g),{color:C.primary,borderColor:C.border}),
-            this.mtBtn(this.t('fsClr'),()=>this.finClear(g),{color:'#c0392b',borderColor:'#eccfca'}))));
+        po(order),
+        h('td',{style:{...S.td,background:bg,textAlign:'right'}},
+          inp(packed?String(packed):'',v=>this.fsPackedSet(g,v),
+            {num:true,ph:'0',title:this.t('fsPackTip')+' '+this.fmt(g.in)})),
+        num(this.fmt(unpack),bg,unpack?'#b0791b':C.faint),
+        po(ship,'#1c6b52'),
+        po(stock,C.dark),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',minWidth:150}},
+          inp(this.fsRemark(g),v=>this.fsRemarkSet(g,v),{ph:this.t('fsRemarkPh')})));
     });
+    const cols=[['fsCLine',0],['fsCBrand',0],['fsCStyle',0],['fsCPo',0],['fsCColor',0],
+      ['fsCOrder',1],['fsCPacked',1],['fsCUnpack',1],['fsCShip',1],['fsCStock',1],['fsCRemark',0]];
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'1280px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'1180px',borderCollapse:'collapse'}},
         h('thead',null,h('tr',null,
-          h('th',{style:{...S.th,textAlign:'center',paddingLeft:8,width:46}},this.t('mtNo')),
-          h('th',{style:S.th},this.t('fiStyle')), h('th',{style:S.th},this.t('fiPo')),
-          h('th',{style:S.th},this.t('fiColor')), h('th',{style:S.th},this.t('fiLine')),
-          h('th',{style:{...S.th,textAlign:'right'}},this.t('fsIn')),
-          ...this.FIN_STAGES.map(([id,k])=>h('th',{key:id,style:{...S.th,textAlign:'right'}},this.t(k))),
-          h('th',{style:{...S.th,textAlign:'right'}},this.t('fsWip')),
-          h('th',{style:S.th},this.t('fsPct')),
-          h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
-        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:9+this.FIN_STAGES.length,
+          cols.map(([k,r],ci)=>h('th',{key:k,style:{...S.th,
+            ...(r?{textAlign:'right'}:{}),...(ci===cols.length-1?{borderRight:'none'}:{})}},
+            this.t(k))))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:cols.length,
           style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
           this.t(all.length?'fsNoHit':'fsEmpty'))))));
     return this.dsoCard('fsPanel','fsSub','Finishing Status',tbl,{full:true,action});
