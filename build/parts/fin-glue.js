@@ -4,12 +4,15 @@
   MOD = {
     id: 'finishing', key: 'yic.mes.finishing', seedVar: 'FINISHING_SEED', bcRoot: 'modFin',
     nav: [['FINISHING', [['Finishing In', 1, 'finIn'], ['Finishing Status', 1, 'finSt'],
-                         ['F.G Shipment Plan', 1, 'fgShip']]]],
-    pages: { finIn: 'renderFinInBody', finSt: 'renderFinStBody', fgShip: 'renderFgBody' },
-    bc: { finIn: 'fiBc', finSt: 'fsBc', fgShip: 'fgBc' },
+                         ['F.G Shipment Plan', 1, 'fgShip'],
+                         ['Finishing Inventory', 1, 'finInv']]]],
+    pages: { finIn: 'renderFinInBody', finSt: 'renderFinStBody', fgShip: 'renderFgBody',
+             finInv: 'renderFivBody' },
+    bc: { finIn: 'fiBc', finSt: 'fsBc', fgShip: 'fgBc', finInv: 'fivBc' },
   };
   PERSIST_MOD = ['finRecv', 'finStage', 'fsRemark', 'fsPackD', 'fsCtnO', 'fsCtnD', 'fsScan',
-    'finTab', 'ftRows', 'ftSeeded', 'ftSel', 'fgRows', 'fgSeeded', 'fgPk', 'fgBc', 'dsoHandWho'];
+    'finTab', 'ftRows', 'ftSeeded', 'ftSel', 'fgRows', 'fgSeeded', 'fgPk', 'fgBc', 'fgAgw',
+    'fivMonth', 'dsoHandWho'];
 
   // ==========================================================================
   // Du lieu tu seed.js — thay cho window.PSCHED / window.KHC / window.MLIST
@@ -52,7 +55,8 @@
       return { id: 'fg' + (i + 1), brand: o.brand || '', season: this.fgSeason(etd),
         factory: this.FG_FACTORY, style: o.style, po: o.po, color: (o.colors || []).join(' + '),
         qty: o.qty || 0, ship: 0, load: this.psFmtD(ld), etd: this.psFmtD(etd),
-        mode: 'SEA', dest: '', cbm: '', note: '' };
+        mode: 'SEA', dest: '', cusNo: '', truckNo: '', driver: '', driverTel: '',
+        cbm: '', note: '' };
     }).sort((a, b) => String(a.etd).localeCompare(String(b.etd))
       || String(a.style).localeCompare(String(b.style))
       || String(a.po).localeCompare(String(b.po)));
@@ -70,8 +74,10 @@
       fsQ: '', fsRemark: {}, fsPackD: {}, fsCtnO: {}, fsCtnD: {},
       fsScan: {}, fsScanAt: null, fsScanQ: '', fsScanMsg: null,
       finTab: 'gmt', ftRows: [], ftSeeded: 0, ftQ: '', ftSel: {}, ftPick: null, ftPickDraft: null,
-      fgRows: [], fgSeeded: 0, fgQ: '', fgEdit: null, fgMsg: '', fgPk: {}, fgBc: {},
+      fgRows: [], fgSeeded: 0, fgQ: '', fgEdit: null, fgMsg: '', fgPk: {}, fgBc: {}, fgAgw: {},
       fgSel: null, fgPg: 1, fgPp: 100,
+      // '' = thang hien tai; fivM() tu suy ra nen khong phai stamp ngay o day
+      fivMonth: '', fivQ: '',
     };
     this.restore();
   }

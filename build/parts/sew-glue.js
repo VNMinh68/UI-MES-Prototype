@@ -79,7 +79,7 @@
     this.scrollRef = React.createRef(); this.panelRef = React.createRef(); this.dailyRef = React.createRef();
     const weeks = this.seed();
     this.state = { ...this.coreState(),
-      page: 'sewing', cutTab: 'capacity', dsoTab: 'cfg', dsoSub: 'line', lset: {}, lsEdit: null,
+      page: 'sewing', cutTab: 'capacity', dsoTab: 'sprod', dsoSub: 'line', dsoLineTab: 'perf', lset: {}, lsEdit: null,
       dsoLine: null, mlvLine: null, mlvFs: false, dsoDone: {}, dsoDoneV: 2, dsoHand: {}, dsoHandQ: {},
       dsoSlips: [], dsoSlipSeq: {}, dsoHandWho: {}, dsoHandAsk: null,
       cap: {}, capTurns: {}, capOrder: null, dragRow: null, multPlain: 3, multEmb: 6,
@@ -91,7 +91,7 @@
       dsoAlerts: this.initAlerts(), dsoAlEdit: false, dsoAlHit: null,
       dsoMtypeRows: null, dsoMtypeDet: {}, mtSel: null, mtEdit: null, mtMsg: '',
       dsoDefects: this.initDefects(), dsoDefLog: {}, dsoDefTime: {}, dfEdit: null, dfQ: '', dfMsg: '',
-      dsoTap: null, dsoTapQ: '',
+      dsoTap: null, dsoTapQ: '', dsoTapSel: {},
       dsoPassLog: {},
       dsoHistQ: '', dsoDefQ: '', dsoHandBulk: null,
       // Ban tablet cua trang chi tiet chuyen: o dang chon, ngay cua bang Top 3,

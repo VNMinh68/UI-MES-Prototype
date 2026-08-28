@@ -167,10 +167,10 @@
       resetAsk:'Xóa toàn bộ thay đổi đã lưu và tải lại trang?',
       exportXls:'Xuất Excel',
       tipPlanCol:'Lấy từ đơn hàng trong seed của module — sửa ở seed.js cùng thư mục',
-      factory:'NHÀ MÁY',
       left:'còn ',
       fiBc:'Nhận hàng hoàn thiện',
       fsBc:'Tình trạng hoàn thiện',
+      fivBc:'Tồn kho hoàn thiện',
       fgBc:'Kế hoạch xuất hàng',
       snapTitle:'DỮ LIỆU LOCAL',
       snapExport:'Xuất ảnh chụp',
@@ -236,10 +236,10 @@
       resetAsk:'Clear all saved changes and reload the page?',
       exportXls:'Export Excel',
       tipPlanCol:'From the orders in the module seed — edit seed.js in the same folder',
-      factory:'FACTORY',
       left:'left ',
       fiBc:'Finishing In',
       fsBc:'Finishing Status',
+      fivBc:'Finishing Inventory',
       fgBc:'F.G Shipment Plan',
       snapTitle:'LOCAL DATA',
       snapExport:'Export snapshot',
@@ -974,8 +974,8 @@ class Finishing extends MESCore {
       fiMdEmpty:'Dòng này chưa có phiếu bàn giao nào — sang MAY · Sản lượng may hàng ngày để phát hành phiếu.',
       fiShortTip:'Còn thiếu so với SL đơn hàng',
       fiOverTip:'Nhận vượt SL đơn hàng',
-      fiTab1:'Hàng may',
-      fiTab2:'Phụ liệu hoàn thiện',
+      fiTab1:'Hàng may vào',
+      fiTab2:'Vật tư đóng gói vào',
       ftPanel:'Phụ Liệu Hoàn Thiện Nhận Vào',
       ftSub:'Một dòng cho mỗi mã hàng · PO — SL đơn hàng là tổng SL cần của phụ liệu loại TRIMS trong danh mục, SL thực nhận gõ trong chính danh mục đó khi phụ liệu về kho',
       ftK1:'SL ĐƠN HÀNG',
@@ -1056,6 +1056,19 @@ class Finishing extends MESCore {
       fsCShip:'ĐÃ XUẤT',
       fsCStock:'TỒN KHO',
       fsCRemark:'GHI CHÚ',
+      fivTitle:'Tồn Kho Hoàn Thiện',
+      fivPanel:'Tồn Kho Hoàn Thiện Theo Tháng',
+      fivSub:'Chốt đến hết tháng được chọn — TỒN CUỐI THÁNG TRƯỚC chốt ở cuối tháng liền trước, ĐÃ NHẬN TRONG THÁNG chỉ tính handover nhận trong chính tháng đó, ĐÃ ĐÓNG GÓI là số LŨY KẾ tính từ đầu. Bảng chỉ đọc.',
+      fivCLast:'TỒN CUỐI THÁNG TRƯỚC',
+      fivCInhand:'ĐÃ NHẬN TRONG THÁNG',
+      fivCBal:'SL CÂN ĐỐI',
+      fivCLastTip:'Tồn kho chốt ở ngày cuối của tháng liền trước tháng đang xem',
+      fivCInhandTip:'Tổng SL nhận handover từ MAY trong chính tháng đang xem — không lũy kế',
+      fivCBalTip:'Tự tính = SL ĐƠN trừ ĐÃ NHẬN TRONG THÁNG của cả PO, không gõ tay được',
+      fivMonthL:'Tháng',
+      fivMonthTip:'Chốt số đến hết tháng này — chỉ chọn theo tháng, không chọn từ ngày tới ngày',
+      fivAsOf:'Chốt đến',
+      fivEmpty:'Chưa có hàng nào nhận vào tính đến hết tháng này — chọn tháng khác.',
       fsPoTip:'Lấy ở dòng Kế hoạch xuất hàng khớp cả mã hàng · PO · màu — mấy màu dùng chung một dòng thì chỉ hiện ở dòng đầu',
       fsNoFgTip:'Chưa có dòng Kế hoạch xuất hàng nào khớp mã hàng · PO · màu này — sang Kế hoạch xuất hàng thêm dòng, hoặc bấm Nạp lại từ seed',
       fsPackAuto:'Tự sinh từ số thùng đã đóng —',
@@ -1116,10 +1129,14 @@ class Finishing extends MESCore {
       fgQty:'SL ĐƠN HÀNG',
       fgShipped:'SL ĐÃ XUẤT',
       fgBal:'SL CÂN ĐỐI',
-      fgLoad:'NGÀY ĐÓNG HÀNG',
+      fgLoad:'HOD',
       fgEtd:'ETD',
       fgMode:'PHƯƠNG THỨC',
       fgDest:'ĐIỂM ĐẾN',
+      fgCusNo:'SỐ TỜ KHAI',
+      fgTruck:'SỐ XE',
+      fgDriver:'TÊN TÀI XẾ',
+      fgTel:'SĐT TÀI XẾ',
       fgCbm:'CBM',
       fgNote:'GHI CHÚ',
       fgAdd:'Thêm lô xuất',
@@ -1155,12 +1172,12 @@ class Finishing extends MESCore {
       fgPkCbm:'TỔNG CBM',
       fgPkCtnN:'TỔNG THÙNG',
       fgDCtn:'SỐ THÙNG',
-      fgDSize:'SIZE / TRỌNG LƯỢNG',
+      fgDSize:'SIZE',
       fgDQc:"SL PCS/THÙNG",
       fgDGw:'GW/THÙNG (KG)',
-      fgDNw:'NW/THÙNG (KG)',
-      fgDBox:'KÍCH THƯỚC THÙNG (CM)',
-      fgDCbm:'CBM/THÙNG',
+      fgDAgw:'GW THỰC TẾ (KG)',
+      fgDAgwTip:'Mặc định lấy theo GW/THÙNG của packing list — gõ số để ghi đè, xoá trống thì trả lại mặc định',
+      fgDExpTip:'Xuất cả lô ra .xlsx để in — cột GW THỰC TẾ bỏ trống để cân xong ghi tay vào',
       fgDBc:'BARCODE',
       fgDEmpty:'Chưa có packing list — bấm nút Packing list ở trên để nhập file.',
       fgDNone:'Không đọc được chi tiết đóng thùng trong file. Cần hàng tiêu đề có SỐ THÙNG (FIRST BOX ~ LAST BOX / BOX QUANTITY) và cột SL PCS/THÙNG.',
@@ -1220,8 +1237,8 @@ class Finishing extends MESCore {
       fiMdEmpty:'No handover slip on this row yet — go to SEWING · Daily Sewing Output to issue one.',
       fiShortTip:'Short against the ordered quantity',
       fiOverTip:'Received over the ordered quantity',
-      fiTab1:'Garment',
-      fiTab2:'Finishing trims',
+      fiTab1:'Garment In',
+      fiTab2:'Packing Material In',
       ftPanel:'Finishing Trims Received',
       ftSub:'One row per style · PO — order quantity is the total need of every TRIMS item on the materials list; actual quantity is keyed into that same list as the trims arrive',
       ftK1:'ORDER QTY',
@@ -1302,6 +1319,19 @@ class Finishing extends MESCore {
       fsCShip:'Shipped Qty',
       fsCStock:'Stock Qty',
       fsCRemark:'Remark',
+      fivTitle:'Finishing Inventory',
+      fivPanel:'Finishing Inventory By Month',
+      fivSub:'Position as at the end of the month selected — LAST MONTH STOCK closes at the end of the previous month, INHAND QTY counts only the handovers received inside that month, PACKED QTY is the cumulative figure. Read-only.',
+      fivCLast:'Last Month Stock',
+      fivCInhand:"Inhand Q'ty",
+      fivCBal:"Balance Q'ty",
+      fivCLastTip:'Stock closed off on the last day of the month before the one selected',
+      fivCInhandTip:'Total quantity handed over from Sewing inside the month selected — not cumulative',
+      fivCBalTip:"Auto — Order Qty less this month's Inhand Qty across the whole PO; not keyed in",
+      fivMonthL:'Month',
+      fivMonthTip:'Cuts every figure off at the end of this month — month granularity only, no from-date / to-date',
+      fivAsOf:'As at',
+      fivEmpty:'Nothing had been received into finishing by the end of this month — pick another month.',
       fsPoTip:'From the F.G Shipment row matching style · PO · colour — when several colours share one row the figure shows on the first of them',
       fsNoFgTip:'No F.G Shipment row matches this style · PO · colour — add one there, or hit Reseed from plan',
       fsPackAuto:'Auto from packed cartons —',
@@ -1362,10 +1392,14 @@ class Finishing extends MESCore {
       fgQty:'ORDER QUANTITY',
       fgShipped:'SHIPPED QUANTITY',
       fgBal:'BALANCE QUANTITY',
-      fgLoad:'LOADING DATE',
+      fgLoad:'HOD',
       fgEtd:'ETD',
       fgMode:'SHIP MODE',
       fgDest:'DESTINATION',
+      fgCusNo:'CUSTOM NO',
+      fgTruck:'TRUCK NO',
+      fgDriver:'DRIVER NAME',
+      fgTel:'DRIVER TEL NO',
       fgCbm:'CBM',
       fgNote:'RE-MARK',
       fgAdd:'Add shipment',
@@ -1401,12 +1435,12 @@ class Finishing extends MESCore {
       fgPkCbm:'TOTAL CBM',
       fgPkCtnN:'TOTAL CARTONS',
       fgDCtn:'CARTON NO',
-      fgDSize:'SIZE / WEIGHT',
+      fgDSize:'SIZE',
       fgDQc:"Q'TY OF PCS/CTN",
       fgDGw:'GROSS WT/CTN (KG)',
-      fgDNw:'NET WT/CTN (KG)',
-      fgDBox:'BOX SIZE (CM)',
-      fgDCbm:'CBM/CTN',
+      fgDAgw:'ACTUAL GROSS WT (KG)',
+      fgDAgwTip:'Defaults to the packing list GROSS WT/CTN — key a figure to override it, clear the cell to fall back',
+      fgDExpTip:'Export the whole shipment to .xlsx for printing — the ACTUAL GROSS WT column is left blank to fill in by hand',
       fgDBc:'BARCODE',
       fgDEmpty:'No packing list yet — hit the Packing list button above to import one.',
       fgDNone:'The carton detail could not be read. The file needs a header row with CARTON NO (FIRST BOX ~ LAST BOX / BOX QUANTITY) and a pcs-per-carton column.',
@@ -1431,12 +1465,15 @@ class Finishing extends MESCore {
   MOD = {
     id: 'finishing', key: 'yic.mes.finishing', seedVar: 'FINISHING_SEED', bcRoot: 'modFin',
     nav: [['FINISHING', [['Finishing In', 1, 'finIn'], ['Finishing Status', 1, 'finSt'],
-                         ['F.G Shipment Plan', 1, 'fgShip']]]],
-    pages: { finIn: 'renderFinInBody', finSt: 'renderFinStBody', fgShip: 'renderFgBody' },
-    bc: { finIn: 'fiBc', finSt: 'fsBc', fgShip: 'fgBc' },
+                         ['F.G Shipment Plan', 1, 'fgShip'],
+                         ['Finishing Inventory', 1, 'finInv']]]],
+    pages: { finIn: 'renderFinInBody', finSt: 'renderFinStBody', fgShip: 'renderFgBody',
+             finInv: 'renderFivBody' },
+    bc: { finIn: 'fiBc', finSt: 'fsBc', fgShip: 'fgBc', finInv: 'fivBc' },
   };
   PERSIST_MOD = ['finRecv', 'finStage', 'fsRemark', 'fsPackD', 'fsCtnO', 'fsCtnD', 'fsScan',
-    'finTab', 'ftRows', 'ftSeeded', 'ftSel', 'fgRows', 'fgSeeded', 'fgPk', 'fgBc', 'dsoHandWho'];
+    'finTab', 'ftRows', 'ftSeeded', 'ftSel', 'fgRows', 'fgSeeded', 'fgPk', 'fgBc', 'fgAgw',
+    'fivMonth', 'dsoHandWho'];
 
   // ==========================================================================
   // Du lieu tu seed.js — thay cho window.PSCHED / window.KHC / window.MLIST
@@ -1479,7 +1516,8 @@ class Finishing extends MESCore {
       return { id: 'fg' + (i + 1), brand: o.brand || '', season: this.fgSeason(etd),
         factory: this.FG_FACTORY, style: o.style, po: o.po, color: (o.colors || []).join(' + '),
         qty: o.qty || 0, ship: 0, load: this.psFmtD(ld), etd: this.psFmtD(etd),
-        mode: 'SEA', dest: '', cbm: '', note: '' };
+        mode: 'SEA', dest: '', cusNo: '', truckNo: '', driver: '', driverTel: '',
+        cbm: '', note: '' };
     }).sort((a, b) => String(a.etd).localeCompare(String(b.etd))
       || String(a.style).localeCompare(String(b.style))
       || String(a.po).localeCompare(String(b.po)));
@@ -1497,8 +1535,10 @@ class Finishing extends MESCore {
       fsQ: '', fsRemark: {}, fsPackD: {}, fsCtnO: {}, fsCtnD: {},
       fsScan: {}, fsScanAt: null, fsScanQ: '', fsScanMsg: null,
       finTab: 'gmt', ftRows: [], ftSeeded: 0, ftQ: '', ftSel: {}, ftPick: null, ftPickDraft: null,
-      fgRows: [], fgSeeded: 0, fgQ: '', fgEdit: null, fgMsg: '', fgPk: {}, fgBc: {},
+      fgRows: [], fgSeeded: 0, fgQ: '', fgEdit: null, fgMsg: '', fgPk: {}, fgBc: {}, fgAgw: {},
       fgSel: null, fgPg: 1, fgPp: 100,
+      // '' = thang hien tai; fivM() tu suy ra nen khong phai stamp ngay o day
+      fivMonth: '', fivQ: '',
     };
     this.restore();
   }
@@ -2118,13 +2158,38 @@ class Finishing extends MESCore {
         g.in+=p.qty; g.at=Math.max(g.at,r.ts||0);
         Object.keys(p.sizes||{}).forEach(z=>{ g.sizes[z]=(g.sizes[z]||0)+(Number(p.sizes[z])||0); });
         const ln=String(p.line||'').trim(); if(ln&&g.lines.indexOf(ln)<0) g.lines.push(ln); }); });
+    // O LINE in 'LINE 1, LINE 2' -> thu tu trong cum cung phai tang dan.
+    out.forEach(g=>g.lines.sort((x,y)=>this.finLineCmp(x,y)));
     out.sort((a,b)=>String(a.style).localeCompare(String(b.style))
       ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color)));
     this._finGC={rec,sl,out}; return out; }
   finGroupList(q){ const list=this.finGroups(); q=String(q||'').trim().toLowerCase();
-    if(!q) return list;
-    return list.filter(g=>[g.style,g.po,g.color,g.lines.join(' '),
-      this.fsBrand(g),this.fsRemark(g)].join(' ').toLowerCase().indexOf(q)>=0); }
+    const out=!q?list.slice():list.filter(g=>[g.style,g.po,g.color,g.lines.join(' '),
+      this.fsBrand(g),this.fsRemark(g)].join(' ').toLowerCase().indexOf(q)>=0);
+    return this.finByLine(out); }
+  // Line la chuoi ('LINE 11') -> phai so sanh bang SO, khong thi 'LINE 11'
+  // dung truoc 'LINE 2'. Khong doc ra so thi day xuong cuoi bang.
+  finLineNo(s){ const m=String(s||'').match(/\d+/); return m?Number(m[0]):Infinity; }
+  finLineCmp(x,y){ const a=this.finLineNo(x), b=this.finLineNo(y);
+    return a===b?String(x).localeCompare(String(y)):a-b; }
+  // Line nho nhat cua 1 dong; dong chua gan line nao coi nhu vo cuc -> xuong cuoi.
+  finGLine(g){ return (g.lines||[]).reduce((a,l)=>Math.min(a,this.finLineNo(l)),Infinity); }
+  // Sap bang theo LINE tang dan, NHUNG khong duoc pha cum: cac dong cung mot
+  // dong Ke hoach xuat (fsFgKey) phai lien nhau, khong thi fsFgHead in lai so
+  // cap PO o nhieu dong -> cot SL DON / DA XUAT / TON KHO cong doc ra gap doi.
+  // -> xep CUM theo line nho nhat cua cum; trong cum giu thu tu cu cua
+  //    finGroups() (ma hang -> PO -> mau).
+  finByLine(list){ const at={}, cl=[];
+    list.forEach(g=>{ const k=this.fsFgKey(g); let c=at[k];
+      if(!c){ c=at[k]={line:Infinity,rows:[]}; cl.push(c); }
+      c.line=Math.min(c.line,this.finGLine(g)); c.rows.push(g); });
+    // Trong cum cung xep theo line -> ca cum doc len la tang dan; hai mau cung
+    // line thi giu thu tu mau cu (Array.sort on dinh).
+    cl.forEach(c=>c.rows.sort((x,y)=>{ const a=this.finGLine(x), b=this.finGLine(y);
+      return a===b?0:a-b; }));
+    // Infinity-Infinity=NaN pha ham so sanh -> bang nhau thi tra 0 truoc.
+    cl.sort((a,b)=>a.line===b.line?0:a.line-b.line);
+    return cl.reduce((a,c)=>a.concat(c.rows),[]); }
   // So THO da go, chua kep tran
   finRawQ(key,st){ return Math.max(0,Number((this.state.finStage||{})[key+'|'+st])||0); }
   // So HIEN THI cua cong doan i: khong vuot duoc DA NHAN, cung khong vuot duoc
@@ -2322,8 +2387,8 @@ class Finishing extends MESCore {
   // Ton kho = da dong goi cua cum - da xuat cua chinh dong do
   fsStockQ(g){ return Math.max(0,this.fsPackedFg(g)-this.fsShippedQ(g)); }
   // In so o dong dau cua cum thoi, khong thi may mau chung 1 dong Ke hoach xuat
-  // se cong doc theo cot ra gap doi. finGroups() da sap theo ma hang -> PO ->
-  // mau nen cac dong cung cum luon lien nhau.
+  // se cong doc theo cot ra gap doi. Bang truyen vao list tu finGroupList() ->
+  // finByLine() bao dam cac dong cung cum luon lien nhau.
   fsFgHead(rows,i){ const p=rows[i-1];
     return !p||this.fsFgKey(rows[i])!==this.fsFgKey(p); }
   fsRemark(g){ return (this.state.fsRemark||{})[g.key]||''; }
@@ -2575,6 +2640,186 @@ class Finishing extends MESCore {
     return this.dsoCard('fsPanel','fsSub','Finishing Status',tbl,{full:true,action});
   }
 
+  // ==========================================================================
+  // Finishing Inventory — chot ton kho theo TUNG THANG
+  // --------------------------------------------------------------------------
+  // Bang y het Packing · Shipment Status, khac dung 2 cho:
+  //   1. PACKED QTY / PACKED CARTON QTY khong con la nhom 3 o (Hom qua / Hom
+  //      nay / Tong luy ke) nua -- moi cot chi 1 o, mang so LUY KE.
+  //   2. Luy ke tinh den HET thang duoc chon, khong phai den hom nay.
+  //
+  // Ton kho la mot VI TRI tai mot thoi diem, khong phai san luong trong ky:
+  // chon thang 6 nghia la "chot den 30/06", KHONG phai "chi nhung gi dong
+  // trong thang 6". Co the vay CHUA DONG GOI / TON KHO moi co nghia.
+  //
+  // Bang CHI DOC: bo cot HANH DONG (nut quet) va 2 o go tay cua man Tinh trang
+  // -- go so vao mot thang da qua thi ghi sai ngay.
+  // ==========================================================================
+  fivM(){ return this.state.fivMonth||this.dsoToday().slice(0,7); }
+  // Moc chot = ngay cuoi cua thang. new Date(y,mo,0) la ngay cuoi thang mo
+  // (mo dem tu 1). Ngay o dang ISO nen so sanh CHUOI la du.
+  fivEnd(){ const m=this.fivM(), y=Number(m.slice(0,4)), mo=Number(m.slice(5,7));
+    return this.psFmtD(new Date(y,mo,0)); }
+  fivMLabel(m){ const p=String(m||'').split('-');
+    return p.length>1?(p[1]+'/'+p[0]):String(m||''); }
+  // Thang co trong o chon: moi thang co ngay dong thung, ngay quet, hay ngay
+  // nhan hang. Luon them thang hien tai de o chon khong bao gio rong.
+  fivMonths(){ const s=new Set([this.dsoToday().slice(0,7)]);
+    const cd=this.state.fsCtnD||{};
+    Object.keys(cd).forEach(k=>{ const d=k.slice(k.lastIndexOf('|')+1);
+      if(/^\d{4}-\d{2}/.test(d)) s.add(d.slice(0,7)); });
+    const sc=this.state.fsScan||{};
+    Object.keys(sc).forEach(k=>{ const v=sc[k];
+      if(v&&v.ts) s.add(this.psFmtD(new Date(v.ts)).slice(0,7)); });
+    const rec=this.finRecvMap();
+    Object.keys(rec).forEach(k=>{ const r=rec[k];
+      if(r&&r.ts) s.add(this.psFmtD(new Date(r.ts)).slice(0,7)); });
+    return [...s].sort().reverse(); }
+
+  // ---- so luy ke den het thang -------------------------------------------
+  // So thung = go tay (fsCtnD theo ngay) + quet (fsScan theo dau thoi gian),
+  // chi lay nhung ngay <= moc chot. Dau '|' o cuoi tien to tranh dinh nham
+  // mau khac co ten bat dau giong nhau.
+  // Moc chot la THAM SO: cot TON CUOI THANG TRUOC dung lai dung may ham nay
+  // voi moc lui ve cuoi thang lien truoc.
+  fivCtnTo(g,end){ const pre=g.key+'|'; let n=0;
+    const m=this.state.fsCtnD||{};
+    Object.keys(m).forEach(k=>{ if(k.indexOf(pre)!==0) return;
+      if(k.slice(pre.length)<=end) n+=Math.max(0,Number(m[k])||0); });
+    const o=this.fsScanSums()[g.key];
+    if(o) Object.keys(o.day).forEach(d=>{ if(d<=end) n+=o.day[d]||0; });
+    return n; }
+  fivCtn(g){ return this.fivCtnTo(g,this.fivEnd()); }
+  fivPcsTo(g,end){ return this.fsPcs(this.fivCtnTo(g,end)); }
+  fivPcs(g){ return this.fivPcsTo(g,this.fivEnd()); }
+  // Ngay cuoi thang LIEN TRUOC. new Date(y,mo-1,0) = ngay cuoi thang (mo-1);
+  // thang 1 thi tu lui ve 31/12 nam truoc.
+  fivPrevEnd(){ const m=this.fivM(), y=Number(m.slice(0,4)), mo=Number(m.slice(5,7));
+    return this.psFmtD(new Date(y,mo-1,0)); }
+  // Hang nhan vao tinh den het thang: chi cong to phieu da nhan TRUOC moc.
+  // Nho lai theo dung 3 mieng state ma ham doc, y nhu finGroups().
+  fivInMap(){ const end=this.fivEnd(), rec=this.finRecvMap(), sl=this.state.dsoSlips;
+    const c=this._fivIn; if(c&&c.end===end&&c.rec===rec&&c.sl===sl) return c.out;
+    const out={};
+    this.finSlips().forEach(s=>{ const r=rec[s.id]; if(!r||!r.ts) return;
+      if(this.psFmtD(new Date(r.ts))>end) return;
+      this.finParts(s).forEach(p=>{ const k=[p.style,p.po,p.color].join('|');
+        out[k]=(out[k]||0)+p.qty; }); });
+    this._fivIn={end,rec,sl,out}; return out; }
+  fivIn(g){ return this.fivInMap()[g.key]||0; }
+  fivUnpack(g){ return Math.max(0,this.fivIn(g)-this.fivPcs(g)); }
+  fivOver(g){ return Math.max(0,this.fivPcs(g)-this.fivIn(g)); }
+  // Cap PO: cong so cua moi mau cung tro ve 1 dong Ke hoach xuat -- y het
+  // fsCtnPackedFg / fsPackedFg ben man Tinh trang.
+  fivPcsFgTo(g,end){ const k=this.fsFgKey(g); let n=0;
+    this.finGroups().forEach(x=>{ if(this.fsFgKey(x)===k) n+=this.fivPcsTo(x,end); });
+    return n; }
+  fivStockTo(g,end){ return Math.max(0,this.fivPcsFgTo(g,end)-this.fsShippedQ(g)); }
+  fivStock(g){ return this.fivStockTo(g,this.fivEnd()); }
+  // TON CUOI THANG TRUOC = dung phep tinh ton kho, moc lui ve cuoi thang truoc.
+  fivLast(g){ return this.fivStockTo(g,this.fivPrevEnd()); }
+  // ---- DA NHAN TRONG THANG (khong luy ke) ---------------------------------
+  // Handover tu MAY nhan TRONG chinh thang dang xem. Khac fivIn() -- cai kia
+  // luy ke tu dau den het thang, cai nay chi trong thang.
+  fivInMonMap(){ const m=this.fivM(), rec=this.finRecvMap(), sl=this.state.dsoSlips;
+    const c=this._fivIM; if(c&&c.m===m&&c.rec===rec&&c.sl===sl) return c.out;
+    const out={};
+    this.finSlips().forEach(s=>{ const r=rec[s.id]; if(!r||!r.ts) return;
+      if(this.psFmtD(new Date(r.ts)).slice(0,7)!==m) return;
+      this.finParts(s).forEach(p=>{ const k=[p.style,p.po,p.color].join('|');
+        out[k]=(out[k]||0)+p.qty; }); });
+    this._fivIM={m,rec,sl,out}; return out; }
+  fivInMon(g){ return this.fivInMonMap()[g.key]||0; }
+  fivInMonFg(g){ const k=this.fsFgKey(g); let n=0;
+    this.finGroups().forEach(x=>{ if(this.fsFgKey(x)===k) n+=this.fivInMon(x); });
+    return n; }
+  // SL CAN DOI = SL DON - DA NHAN TRONG THANG. SL don la so cap PO nen phai
+  // tru TONG da nhan cua ca cum, khong thi don 2 mau tru ra sai.
+  fivBalQ(g){ return this.fsOrderQ(g)-this.fivInMonFg(g); }
+  // Chi hien dong DA CO HANG truoc moc chot -- chot thang 6 thi khong hien don
+  // moi ve thang 8. Thu tu thua cua finGroupList(): line tang dan, cum nguyen.
+  fivRows(q){ return this.finGroupList(q).filter(g=>this.fivIn(g)>0); }
+  fivAll(){ return this.finGroups().filter(g=>this.fivIn(g)>0); }
+
+  renderFivBody(){
+    const h=React.createElement;
+    return h('div',{ref:this.scrollRef,className:'yscroll','data-screen-label':'Finishing Inventory',
+      style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
+      this.renderTitle('fivTitle','S-09-FINISH-INV · UI Proto'),
+      this.renderFivTable());
+  }
+  renderFivTable(){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const q=this.state.fivQ||'', all=this.fivAll(), rows=this.fivRows(q);
+    const ms=this.fivMonths(), cur=this.fivM();
+    const chip=(v)=>h('span',{key:v,style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,
+      color:C.dark,background:C.tint,border:'1px solid '+C.border,borderRadius:999,
+      padding:'4px 10px',whiteSpace:'nowrap'}},v);
+    // Filter chi den cap THANG: mot o chon, khong co tu ngay / den ngay.
+    const pick=h('div',{style:{display:'flex',alignItems:'center',gap:7}},
+      h('span',{style:{fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+        color:C.sub,whiteSpace:'nowrap'}},this.t('fivMonthL')),
+      h('select',{value:cur,title:this.t('fivMonthTip'),
+        onChange:e=>this.set({fivMonth:e.target.value}),
+        style:{border:'1px solid '+C.border,borderRadius:8,padding:'5px 9px',fontSize:12,
+          fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.white,cursor:'pointer'}},
+        ms.map(m=>h('option',{key:m,value:m},this.fivMLabel(m)))));
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+      pick,
+      chip(this.t('fivAsOf')+' '+this.dsoDay(this.fivEnd())),
+      chip(this.fmt(all.length)+' '+this.t('fsCount')),
+      this.dfSearchBox(q,v=>this.set({fivQ:v}),false,'fsSearch'));
+    const num=(v,bg,col,tip)=>h('td',{title:tip?this.t(tip):undefined,
+      style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
+        fontWeight:700,color:col||C.ink}},v);
+    const body=rows.map((g,i)=>{
+      const bg=i%2?'#f7f9f3':C.white, head=this.fsFgHead(rows,i), fg=this.fsFgRow(g);
+      const pcs=this.fivPcs(g);
+      const unp=this.fivUnpack(g), over=this.fivOver(g);
+      const last=this.fivLast(g), inh=this.fivInMon(g), balQ=this.fivBalQ(g);
+      const order=this.fsOrderQ(g), ship=this.fsShippedQ(g), stock=this.fivStock(g);
+      // O cap PO (Ke hoach xuat khong tach mau) -> chi in o dong dau cua cum.
+      const po=(v,col,tip)=>h('td',{
+        title:head?this.t(tip||(fg?'fsPoTip':'fsNoFgTip')):undefined,
+        style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+          color:head?((fg&&v)?(col||C.ink):C.faint):'transparent'}},
+        head?(fg?this.fmt(v):'\u2014'):'\u00a0');
+      return h('tr',{key:g.key},
+        h('td',{style:{...S.td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},
+          g.lines.join(', ')||'\u2014'),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},this.fsBrand(g)||'\u2014'),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700}},g.style),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},g.po),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},g.color),
+        po(order),
+        // TON CUOI THANG TRUOC va SL CAN DOI la so cap PO -> chi in o dong dau
+        // cua cum, y het SL DON / DA XUAT / TON KHO.
+        po(last,C.dark,'fivCLastTip'),
+        // DA NHAN TRONG THANG la so cua tung mau -> in moi dong.
+        num(this.fmt(inh),bg,inh?C.ink:C.faint,'fivCInhandTip'),
+        po(balQ,balQ<0?'#c0392b':C.ink,'fivCBalTip'),
+        // LUY KE: vuot so da nhan -> to do, y nhu cot TONG LUY KE ben Tinh trang
+        num(this.fmt(pcs),bg,over?'#c0392b':(pcs?C.dark:C.faint)),
+        num(this.fmt(unp),bg,unp?'#b0791b':C.faint),
+        po(ship,'#1c6b52'),
+        po(stock,C.dark),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',minWidth:150,color:C.sub,
+          wordBreak:'break-word'}},this.fsRemark(g)||'\u2014'));
+    });
+    const cols=[['fsCLine',0],['fsCBrand',0],['fsCStyle',0],['fsCPo',0],['fsCColor',0],
+      ['fsCOrder',1],['fivCLast',1],['fivCInhand',1],['fivCBal',1],
+      ['fsCPacked',1],['fsCUnpack',1],['fsCShip',1],['fsCStock',1],['fsCRemark',0]];
+    const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1720px',borderCollapse:'collapse'}},
+        h('thead',null,h('tr',null,cols.map(([k,rt],ci)=>h('th',{key:k,
+          style:{...S.th,...(rt?{textAlign:'right'}:{}),
+            ...(ci===cols.length-1?{borderRight:'none'}:{})}},this.t(k))))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:cols.length,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
+          this.t(all.length?'fsNoHit':'fivEmpty'))))));
+    return this.dsoCard('fivPanel','fivSub','Finishing Inventory',tbl,{full:true,action});
+  }
+
   // ---- F.G Shipment Plan ---------------------------------------------------
   // Hạt giống lấy thẳng từ Kế hoạch sản xuất: mỗi (mã hàng · PO) = 1 lô xuất.
   // Cột COLOR gom mọi màu của lô: khóa (mã hàng | PO) dò ra tác nghiệp cắt rồi
@@ -2594,6 +2839,7 @@ class Finishing extends MESCore {
   // ETD go vao duoc ca 2 dang: '2026-09-10' (trong state) va '10/09/2026' (tren bang)
   fgList(q){ const l=this.fgAll(); q=String(q||'').trim().toLowerCase(); if(!q) return l;
     return l.filter(r=>[r.brand,r.season,r.factory,r.style,r.po,r.color,r.mode,r.dest,
+      r.cusNo,r.truckNo,r.driver,r.driverTel,
       r.load,this.dsoDay(r.load),r.etd,this.dsoDay(r.etd),r.note]
       .join(' ').toLowerCase().indexOf(q)>=0); }
   fgSet(id,patch){ this.setState(s=>({fgRows:(s.fgRows||[]).map(r=>r.id===id?{...r,...patch}:r)})); }
@@ -2603,7 +2849,8 @@ class Finishing extends MESCore {
       l.forEach(r=>{ const m=String(r.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
       const id='fg'+(n+1); this._fgNew=id;
       return {fgRows:[...l,{id,brand:'',season:'',factory:this.FG_FACTORY,style:'',po:'',color:'',
-        qty:0,ship:0,load:this.dsoToday(),etd:this.dsoToday(),mode:'SEA',dest:'',cbm:'',note:''}],fgSeeded:1}; });
+        qty:0,ship:0,load:this.dsoToday(),etd:this.dsoToday(),mode:'SEA',dest:'',
+        cusNo:'',truckNo:'',driver:'',driverTel:'',cbm:'',note:''}],fgSeeded:1}; });
     setTimeout(()=>{ if(this._mounted&&this._fgNew) this.set({fgEdit:this._fgNew,fgQ:''}); },0); }
   fgNum(v){ return Math.max(0,parseInt(String(v).replace(/[^0-9]/g,''),10)||0); }
   // CBM giữ nguyên chuỗi khi đang gõ (cho phép '1.', '0.05') — chỉ chặn ký tự lạ.
@@ -2619,16 +2866,44 @@ class Finishing extends MESCore {
     &&(Number(r.ship)||0)<(Number(r.qty)||0)); }
   fgExport(){ const X=window.XLSX; if(!X||!X.utils){ this.fgSay(this.t('mtNoXlsx')); return; }
     const rows=this.fgList(this.state.fgQ||'');
-    const head=['fgBrand','fgSeason','fgFactory','fgStyle','fgPo','fgColor','fgQty','fgShipped','fgBal',
-      'fgLoad','fgEtd','fgMode','fgDest','fgCbm','fgNote'];
+    const head=['fgBrand','fgStyle','fgPo','fgColor','fgQty',
+      'fgLoad','fgEtd','fgMode','fgDest','fgCusNo','fgTruck','fgDriver','fgTel',
+      'fgCbm','fgNote'];
     const aoa=[[this.t('fgTitle')],['YIC HÀ NAM · '+this.todayStamp()],[],head.map(k=>this.t(k))];
-    rows.forEach(r=>aoa.push([r.brand||'',r.season||'',r.factory||'',r.style||'',r.po||'',r.color||'',
-      Number(r.qty)||0,Number(r.ship)||0,this.fgBal(r),r.load||'',r.etd||'',r.mode||'',r.dest||'',
+    rows.forEach(r=>aoa.push([r.brand||'',r.style||'',r.po||'',r.color||'',
+      Number(r.qty)||0,r.load||'',r.etd||'',r.mode||'',r.dest||'',
+      r.cusNo||'',r.truckNo||'',r.driver||'',r.driverTel||'',
       Number(r.cbm)||0,r.note||'']));
     const ws=X.utils.aoa_to_sheet(aoa);
-    ws['!cols']=[14,10,14,18,12,14,15,16,16,13,13,11,16,8,26].map(w=>({wch:w}));
+    ws['!cols']=[14,18,12,14,15,13,13,11,16,14,10,16,14,8,26].map(w=>({wch:w}));
     const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'FG Shipment');
     X.writeFile(wb,'YIC-HaNam_FG-Shipment-Plan.xlsx'); }
+  // ---- To in bang chi tiet thung ------------------------------------------
+  // Xuat DUNG bang trong modal, chi khac mot cho: cot GW THUC TE de TRONG de in
+  // ra, can tung thung roi ghi tay vao. Xuat CA LO chu khong theo trang dang
+  // xem -- to in phai du thung.
+  fgDExport(){ const X=window.XLSX; if(!X||!X.utils){ this.fgSay(this.t('mtNoXlsx')); return; }
+    const r=this.fgSelRow(); if(!r) return;
+    const tot=this.fgPkCtnN(r); if(!tot){ this.fgSay(this.t('fgDEmpty')); return; }
+    const head=['mtNo','fgDCtn','fgStyle','fgColor','fgPo','fgDSize','fgDQc','fgDGw','fgDAgw'];
+    const pair=(k,v)=>this.t(k)+': '+(v==null||v===''?'\u2014':v);
+    const aoa=[[this.t('fgMdPanel')],
+      ['YIC H\u00c0 NAM \u00b7 '+this.todayStamp()],
+      [pair('fgStyle',r.style)+'   '+pair('fgPo',r.po)+'   '+pair('fgColor',r.color)],
+      [pair('fgEtd',r.etd?this.dsoDay(r.etd):'')+'   '+pair('fgDest',r.dest)
+        +'   '+pair('fgPkCtnN',this.fmt(tot))],
+      [], head.map(k=>this.t(k))];
+    // '' o cuoi moi dong = o GW THUC TE bo trong
+    this.fgPkSlice(r,0,tot).forEach(({i,no,l})=>aoa.push([i+1,no,
+      l.style||r.style||'',l.color||'',l.po||r.po||'',this.fgSzTxt(l),
+      Number(l.qc)||0,Number(l.gw)||0,'']));
+    const ws=X.utils.aoa_to_sheet(aoa);
+    // 4 dong dau la tieu de to in -> gop het be ngang cho de doc khi in.
+    ws['!merges']=[0,1,2,3].map(y=>({s:{r:y,c:0},e:{r:y,c:head.length-1}}));
+    ws['!cols']=head.map((k,ci)=>({wch:ci?18:6}));
+    const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'Carton Detail');
+    X.writeFile(wb,('YIC-HaNam_Carton-Detail_'+(r.style||'')+'_'+(r.po||''))
+      .replace(/[^0-9A-Za-z]+/g,'-').replace(/-+$/,'')+'.xlsx'); }
   fgSay(m){ this.set({fgMsg:m}); clearTimeout(this._fgT);
     this._fgT=setTimeout(()=>{ if(this._mounted) this.set({fgMsg:''}); },4000); }
 
@@ -2874,14 +3149,30 @@ class Finishing extends MESCore {
     return out; }
   fgKg(n){ n=Number(n)||0; return n?n.toFixed(2):'—'; }
   fgM3(n){ n=Number(n)||0; return n?n.toFixed(4):'—'; }
-  fgBoxTxt(l){ const d=[l.L,l.W,l.H].map(x=>Number(x)||0);
-    return d.every(x=>x>0)?d.map(x=>this.fmtn(x)).join(' × '):'—'; }
+  // ---- GW THUC TE cua tung thung ------------------------------------------
+  // Packing list cho GW ly thuyet; can bai thuc te lech thi go lai o day. Luu
+  // rieng trong state.fgAgw, KHONG sua vao fgPk -- nhap lai file thi so cua
+  // file ve dung nguyen, con so da go van con.
+  // Khoa = (dong Ke hoach xuat | chi so thung trong ca lo). fgPkSlice dem i tu
+  // 0 cho ca lo nen khoa khong doi khi sang trang khac.
+  fgAgwKey(r,i){ return r.id+'|'+i; }
+  fgAgwRaw(r,i){ const v=(this.state.fgAgw||{})[this.fgAgwKey(r,i)];
+    return v==null?'':String(v); }
+  // Chua go thi tra ve dung GW cua packing list -> mac dinh bang GW/THUNG.
+  fgAgwOf(r,i,l){ const v=this.fgAgwRaw(r,i);
+    return v===''?(Number(l.gw)||0):(Number(v)||0); }
+  // So do trong o nhap: da go thi giu nguyen chuoi da go (dang go '12.' cung
+  // khong bi nhay), chua go thi in GW mac dinh.
+  fgAgwVal(r,i,l){ const v=this.fgAgwRaw(r,i); if(v!=='') return v;
+    const g=Number(l.gw)||0; return g?g.toFixed(2):''; }
+  // Xoa trong = bo ghi de, o quay ve mac dinh.
+  fgAgwSet(r,i,v){ const k=this.fgAgwKey(r,i), s=this.fgDec(v);
+    this.setState(st=>{ const m={...(st.fgAgw||{})};
+      if(s==='') delete m[k]; else m[k]=s; return {fgAgw:m}; }); }
   // Thung 1 size -> 'M'; thung ghep -> '2XL ×8 + 4XL ×20'
   fgSzTxt(l){ const s=(l&&l.sz)||[]; if(!s.length) return '—';
     const mix=s.length>1;
     return s.map(x=>x.name+(mix?' ×'+this.fmt(x.qty):'')).join(' + '); }
-  fgSzWt(l){ const s=((l&&l.sz)||[]).filter(x=>Number(x.unit)>0);
-    return s.length?s.map(x=>Number(x.unit).toFixed(2)).join(' / ')+' kg/pcs':''; }
   fgPgN(tot,pp){ return Math.max(1,Math.ceil(tot/pp)); }
 
   renderFgModal(){
@@ -2961,38 +3252,49 @@ class Finishing extends MESCore {
           h('span',null,this.t('fgBcFile')+': ',h('b',{style:{color:bc?C.sub:C.faint}},
             bc?(bc.name+' · '+this.dsoSlipWhen(bc.at)):this.t('fgNoFile'))))));
     // Bang chi tiet: 1 dong = 1 thung
-    const cols=[['mtNo',0,46],['fgDCtn',0,96],['fgStyle',0,180],['fgColor',0,110],['fgPo',0,96],
-      ['fgDSize',0,'auto'],['fgDQc',1,104],['fgDGw',1,116],['fgDNw',1,116],['fgDBox',0,150],
-      ['fgDCbm',1,104]].concat(bl.length?[['fgDBc',0,168]]:[]);
-    const body=page.map(({i,no,l})=>{ const bg=i%2?'#f7f9f3':C.white, wt=this.fgSzWt(l);
-      const cell=(v,ex)=>h('td',{style:{...S.td,background:bg,...(ex||{})}},v);
+    const cols=[['mtNo',0],['fgDCtn',0],['fgStyle',0],['fgColor',0],['fgPo',0],
+      ['fgDSize',0],['fgDQc',1],['fgDGw',1],['fgDAgw',1]];
+    const body=page.map(({i,no,l})=>{ const bg=i%2?'#f7f9f3':C.white;
+      // tableLayout fixed -> ma hang dai kieu 'VW5159 -/M2/FW26' phai cat duoc
+      // trong o, khong thi no day tran ra ngoai cot.
+      const cell=(v,ex)=>h('td',{style:{...S.td,background:bg,wordBreak:'break-word',
+        ...(ex||{})}},v);
+      const ovr=this.fgAgwRaw(r,i)!=='';
       return h('tr',{key:i},
         cell(this.fmt(i+1),{textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}),
         cell(this.fmt(no),{textAlign:'center',fontFamily:S.mono,fontWeight:700,color:C.primary}),
         cell(l.style||r.style||'—',{fontFamily:S.mono,fontSize:11.5}),
         cell(l.color||'—',{fontWeight:600}),
         cell(l.po||r.po||'—',{fontFamily:S.mono,fontSize:11.5,color:C.sub}),
-        cell(h('div',null,
-          h('span',{style:{fontFamily:S.mono,fontWeight:700,color:C.ink}},this.fgSzTxt(l)),
-          wt?h('span',{style:{fontFamily:S.mono,fontSize:10.5,color:C.faint,marginLeft:7}},wt):null)),
+        cell(this.fgSzTxt(l),{fontFamily:S.mono,fontWeight:700,color:C.ink}),
         cell(this.fmt(l.qc),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
         cell(this.fgKg(l.gw),{textAlign:'right',fontFamily:S.mono}),
-        cell(this.fgKg(l.nw),{textAlign:'right',fontFamily:S.mono}),
-        cell(this.fgBoxTxt(l),{fontFamily:S.mono,fontSize:11.5,whiteSpace:'nowrap'}),
-        cell(this.fgM3(l.cbm),{textAlign:'right',fontFamily:S.mono,fontSize:11.5}),
-        bl.length?cell(bl[i]||'—',{fontFamily:S.mono,fontSize:11,
-          color:bl[i]?C.dark:C.faint,wordBreak:'break-all'}):null);
+        // O nhap luon mo, khong co che do sua rieng. Con la mac dinh thi gach
+        // chan net roi + chu nhat; go ghi de roi thi dam len -- nhin ca cot la
+        // biet thung nao da can bai lai.
+        cell(h('input',{value:this.fgAgwVal(r,i,l),inputMode:'decimal',placeholder:'0.00',
+          title:this.t('fgDAgwTip'),onChange:e=>this.fgAgwSet(r,i,e.target.value),
+          style:{width:'100%',border:'none',background:'none',padding:'2px 0',outline:'none',
+            borderBottom:'1px dashed '+(ovr?'transparent':'#c8ccc2'),textAlign:'right',
+            fontFamily:S.mono,fontSize:12.5,fontWeight:ovr?700:500,
+            color:ovr?C.ink:C.sub}}),{textAlign:'right'}));
     });
     const empty=h('tr',null,h('td',{colSpan:cols.length,
       style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none',
         maxWidth:0,whiteSpace:'normal',lineHeight:1.5}},
       this.t(noneKey)));
+    // Chia deu: moi cot mot phan bang nhau. Phai co tableLayout:'fixed' thi
+    // be rong cua colgroup moi duoc ton trong -- de auto, trinh duyet tu can
+    // theo noi dung va cot lai lech nhau.
+    const cw=(100/cols.length).toFixed(4)+'%';
     const tbl=h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:150}},
-      h('table',{style:{width:'100%',minWidth:'1180px',borderCollapse:'collapse'}},
-        h('colgroup',null,cols.map(([k,,w])=>h('col',{key:k,
-          style:{width:w==='auto'?'auto':w+'px'}}))),
+      h('table',{style:{width:'100%',minWidth:'1020px',borderCollapse:'collapse',
+          tableLayout:'fixed'}},
+        h('colgroup',null,cols.map(([k])=>h('col',{key:k,style:{width:cw}}))),
+        // Tieu de phai xuong dong duoc: 'ACTUAL GROSS WT (KG)' de mot dong thi
+        // no keo cot rong ra, chia deu bao nhieu cung vo nghia.
         h('thead',null,h('tr',null,cols.map(([k,rt],ci)=>h('th',{key:k,
-          style:{...S.th,position:'sticky',top:0,zIndex:1,
+          style:{...S.th,position:'sticky',top:0,zIndex:1,whiteSpace:'normal',
             ...(rt?{textAlign:'right'}:{}),
             ...(ci<2?{textAlign:'center',paddingLeft:8}:{}),
             ...(ci===cols.length-1?{borderRight:'none'}:{})}},this.t(k))))),
@@ -3021,6 +3323,9 @@ class Finishing extends MESCore {
         style:{border:'1px solid '+C.border,borderRadius:8,padding:'5px 7px',fontSize:11.5,
           fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.white,cursor:'pointer'}},
         this.FG_PP.map(v=>h('option',{key:v,value:v},v+' '+this.t('fgPgSize')))):null,
+      tot?h('span',{title:this.t('fgDExpTip')},
+        this.mtBtn(this.t('exportXls'),()=>this.fgDExport(),
+          {color:C.primary,borderColor:C.border,padding:'5px 11px',fontSize:11.5})):null,
       h('button',{onClick:close,style:this.btn('ghost')},this.t('dsoClose')));
     return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
         backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',
@@ -3090,19 +3395,18 @@ class Finishing extends MESCore {
           style:{cursor:ed?'default':'pointer'}},
         cell(i+1,{textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}),
         cell(txt('brand'),{fontWeight:600}),
-        cell(txt('season',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
-        cell(txt('factory')),
         cell(txt('style',true),{fontFamily:S.mono,fontWeight:700,color:C.primary}),
         cell(txt('po',true),{fontFamily:S.mono}),
         cell(txt('color')),
         cell(num('qty'),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
-        cell(num('ship'),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
-        cell(this.fmt(this.fgBal(r)),{textAlign:'right',fontFamily:S.mono,fontWeight:600,
-          color:this.fgBal(r)<0?'#c0392b':(this.fgBal(r)>0?C.primary:C.faint)}),
         cell(day('load'),{fontFamily:S.mono,whiteSpace:'nowrap'}),
         cell(day('etd'),{fontFamily:S.mono,whiteSpace:'nowrap'}),
         cell(mode(),{fontFamily:S.mono,fontWeight:600,whiteSpace:'nowrap'}),
         cell(txt('dest')),
+        cell(txt('cusNo',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
+        cell(txt('truckNo',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
+        cell(txt('driver'),{whiteSpace:'nowrap'}),
+        cell(txt('driverTel',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
         cell(cbm(),{textAlign:'right',fontFamily:S.mono}),
         cell(txt('note'),{color:C.sub,wordBreak:'break-word'}),
         h('td',{onClick:ev=>ev.stopPropagation(),
@@ -3113,11 +3417,12 @@ class Finishing extends MESCore {
             this.mtBtn(this.t('mtDel'),()=>this.fgDel(r.id),{color:'#c0392b',borderColor:'#eccfca'}),
             this.fgImpCell(r))));
     });
-    const cols=[['fgNo',0],['fgBrand',0],['fgSeason',0],['fgFactory',0],['fgStyle',0],['fgPo',0],
-      ['fgColor',0],['fgQty',1],['fgShipped',1],['fgBal',1],['fgLoad',0],['fgEtd',0],['fgMode',0],
-      ['fgDest',0],['fgCbm',1],['fgNote',0],['mtAct',0]];
+    const cols=[['fgNo',0],['fgBrand',0],['fgStyle',0],['fgPo',0],
+      ['fgColor',0],['fgQty',1],['fgLoad',0],['fgEtd',0],['fgMode',0],
+      ['fgDest',0],['fgCusNo',0],['fgTruck',0],['fgDriver',0],['fgTel',0],
+      ['fgCbm',1],['fgNote',0],['mtAct',0]];
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'2560px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'2680px',borderCollapse:'collapse'}},
         h('thead',null,h('tr',null,
           cols.map(([k,rt],ci)=>h('th',{key:k,style:{...S.th,
             ...(rt?{textAlign:'right'}:{}),

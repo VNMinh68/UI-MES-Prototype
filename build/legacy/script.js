@@ -238,14 +238,14 @@ class Component extends DCLogic {
     this.psSeedPlans();
     const weeks=this.seed();
     this.state = {
-      page:'gantt', cutTab:'capacity', dsoTab:'cfg', dsoSub:'line', lset:{}, lsEdit:null, dsoLine:null, mlvLine:null, mlvFs:false, dsoDone:{}, dsoDoneV:2, dsoHand:{}, dsoHandQ:{}, dsoSlips:[], dsoSlipSeq:{}, dsoHandWho:{}, dsoHandAsk:null, gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
+      page:'gantt', cutTab:'capacity', dsoTab:'sprod', dsoSub:'line', dsoLineTab:'perf', lset:{}, lsEdit:null, dsoLine:null, mlvLine:null, mlvFs:false, dsoDone:{}, dsoDoneV:2, dsoHand:{}, dsoHandQ:{}, dsoSlips:[], dsoSlipSeq:{}, dsoHandWho:{}, dsoHandAsk:null, gsel:null, gz:1, gopen:{}, cap:{}, capTurns:{}, capOrder:null, dragRow:null, multPlain:3, multEmb:6,
       tab:'weekly', openMonth:this.CURWK.split(' · ')[0], week:this.CURWK, lang:'vi',
       weeks,
       edit:null, bedit:null, bform:null, bslip:null, bqNo:{}, bqSeq:{}, addLine:null, khcPlan:null, qrOpen:null, ps:this.psClone(window.PSCHED), psTrash:[], recvLog:[], conf:null, psAdd:null, psTrashOpen:false, sidebarOpen:false, navOpen:{'PRODUCTION PLAN':true,'DASHBOARD':true,'SEWING':true,'FINISHING':true}, dragOver:false, dayOpen:null, daily:{}, freq:{}, wsc:{}, whOpen:null, whQ:'', whErr:'',
       bundle:this.initBundle((weeks[this.CURWK]||{rows:[]}).rows), bundleV:3, wip:{},
       dsoAlerts:this.initAlerts(), dsoAlEdit:false, dsoAlHit:null,
       dsoMtypeRows:null, dsoMtypeDet:{}, mtSel:null, mtEdit:null, mtMsg:'',
-      dsoDefects:this.initDefects(), dsoDefLog:{}, dsoDefTime:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'',
+      dsoDefects:this.initDefects(), dsoDefLog:{}, dsoDefTime:{}, dfEdit:null, dfQ:'', dfMsg:'', dsoTap:null, dsoTapQ:'', dsoTapSel:{},
       dsoPassLog:{},
       dsoHistQ:'', dsoDefQ:'', dsoHandBulk:null,
       // Ban tablet cua trang chi tiet chuyen: o dang chon, ngay cua bang Top 3,
@@ -625,7 +625,8 @@ class Component extends DCLogic {
       dsoTapAdd:'Bấm để ghi kết quả kiểm (ĐẠT / LỖI)', dsoTapSub:'Trủ 1 (bấm nhầm)', dsoNoCut:'Chuyền này chưa có tác nghiệp cắt',
       dsoTapTitle:'Ghi Kết Quả Kiểm', dsoTapTip:'Bấm ĐẠT để +1 thành phẩm, hoặc LỖI để chọn lý do',
       dsoPass:'ĐẠT', dsoPassSub:'+1 sản phẩm đã làm', dsoFail:'LỖI', dsoFailSub:'Chọn lý do lỗi',
-      dsoPick:'Chọn Lý Do Lỗi', dsoPickSub:'Bấm 1 dòng để ghi hàng lỗi cho size này', dsoPickBack:'← Quay lại',
+      dsoPick:'Chọn Lý Do Lỗi', dsoPickSub:'Chọn 1 hoặc nhiều lỗi rồi bấm Xong', dsoPickBack:'← Quay lại',
+      dsoPickSel:'đã chọn', dsoPickClear:'Bỏ chọn', dsoPickNone:'Chọn ít nhất 1 lỗi trước khi bấm Xong',
       dsoDefEmpty:'Thư viện lỗi đang trống — vào Cài Đặt · Thư Viện Lỗi để thêm.',
       dsoDefLogged:'lỗi đã ghi', dsoClose:'Đóng',
       dsoKOut:'Sản lượng', dsoKQc:'Cân đối QC', dsoKPassT:'Đạt', dsoKRej:'Loại bỏ',
@@ -644,13 +645,18 @@ class Component extends DCLogic {
       dsoMeasSoon:'Bảng đo thông số sẽ thiết kế ở bước sau — đang chờ spec chi tiết.',
       dsoChkSoon:'Bảng kiểm sẽ thiết kế ở bước sau — đang chờ spec chi tiết.',
       dfPanel:'Thư Viện Lỗi', dfSub:'Danh mục lỗi dùng khi ghi hàng lỗi ở chuyền may',
-      dfCode:'Mã lỗi', dfName:'Tên lỗi', dfCat:'Nhóm lỗi', dfSev:'Mức độ', dfLoc:'Vị trí lỗi', dfCause:'Nguyên nhân gốc',
+      dfCode:'Mã lỗi', dfName:'Tên lỗi', dfCat:'Nhóm lỗi', dfSev:'Mức độ', dfLoc:'Vị trí lỗi',
       dfAdd:'Thêm lỗi', dfEmpty:'Chưa có lỗi nào — bấm Thêm lỗi hoặc nhập từ Excel.',
       dfSearch:'Tìm mã lỗi, tên lỗi, nhóm, vị trí…', dfNoHit:'Không có dòng nào khớp từ khóa',
-      dfImportTip:'Nhập .xlsx/.xls/.csv — cột: Mã lỗi · Tên lỗi · Nhóm lỗi · Mức độ · Vị trí lỗi · Nguyên nhân gốc',
+      dfImportTip:'Nhập .xlsx/.xls/.csv — cột: Mã lỗi · Tên lỗi · Nhóm lỗi · Mức độ · Vị trí lỗi',
       dfCount:'lỗi trong thư viện',
       lsCol1:'CHUYỀN', lsCol2:'STYLE', lsCol3:'CÔNG NHÂN', lsCol4:'GIỜ LÀM', lsCol5:'NGÀY (DD/MM/YYYY)', lsCol6:'SMV', lsCol7:'LOẠI', lsCol8:'%TARGET', lsCol9:'FILE M-LEVEL ĐÃ NHẬP', lsCol10:'HÀNH ĐỘNG',
       lsEdit:'Sửa', lsDone:'Xong', lsImport:'Nhập file', lsImportTip:'Chọn file M-level (.xlsx/.csv) — lưu trong IndexedDB', lsFileDel:'Xóa file', lsFileErr:'Không lưu được file vào IndexedDB', lsPctTip:'Số nguyên 0–100, không âm, không thập phân', lsDec1Tip:'Không âm, tối đa 1 chữ số thập phân', lsTypeTip:'Tự động theo SMV — không sửa tay: SMV > 100 → loại 1, 60 < SMV ≤ 100 → loại 2, SMV ≤ 60 → loại 3',
+      dsoln1:'Hiệu Suất Chuyền', dsoln2:'Endline QC',
+      dsotab5:'Sewing Production',
+      spPanel:'Sản Xuất May Theo Chuyền', spSub:'Sản lượng, bậc M-level và chất lượng của từng chuyền',
+      spMlv:'M level', spOut:'Sản lượng hiện tại / Sản lượng M', spTop3:'Top 3 lỗi',
+      dsoLnPerfSoon:'Màn hình Hiệu Suất Chuyền — sẽ thiết kế sau.',
       dsotab1:'Cài Đặt', dsotab2:'Sản Xuất', dsotab3:'Cảnh Báo', dsotab4:'M-level', dsosub1:'Cấu Hình Chuyền', dsosub2:'Cấu Hình Loại M-level', dsosub3:'Thư Viện Lỗi',
       dsoLinePanel:'Cấu Hình Chuyền', dsoLineSub:'Danh sách chuyền may — nhóm chuyền, định mức, ca làm việc',
       mtPanel:'Loại M-level', mtSub:'Danh mục loại — bấm 1 dòng để xem chi tiết',
@@ -752,7 +758,7 @@ class Component extends DCLogic {
       fiGEmpty:'Chưa có dòng nào — cần có Kế hoạch sản xuất hoặc phiếu bàn giao từ May.',
       fiMdEmpty:'Dòng này chưa có phiếu bàn giao nào — sang MAY · Sản lượng may hàng ngày để phát hành phiếu.',
       fiShortTip:'Còn thiếu so với SL đơn hàng', fiOverTip:'Nhận vượt SL đơn hàng',
-      fiTab1:'Hàng may', fiTab2:'Phụ liệu hoàn thiện',
+      fiTab1:'Hàng may vào', fiTab2:'Vật tư đóng gói vào',
       ftPanel:'Phụ Liệu Hoàn Thiện Nhận Vào', ftSub:'Một dòng cho mỗi mã hàng · PO — SL đơn hàng là tổng SL cần của phụ liệu loại TRIMS trong danh mục, SL thực nhận gõ trong chính danh mục đó khi phụ liệu về kho',
       ftK1:'SL ĐƠN HÀNG', ftK1s:'pcs phụ liệu theo đơn', ftK2:'THỰC NHẬN', ftK2s:'pcs phụ liệu đã nhận',
       ftK3:'CÒN THIẾU', ftK3s:'pcs chưa nhận đủ', ftK4:'ĐỦ HÀNG', ftK4s:'dòng đã nhận đủ SL đơn',
@@ -791,6 +797,17 @@ class Component extends DCLogic {
       fsCPackY:'HÔM QUA', fsCPackT:'HÔM NAY', fsCPackC:'TỔNG LŨY KẾ',
       fsCOrderC:'SL THÙNG ĐƠN HÀNG', fsCPackedC:'THÙNG ĐÃ ĐÓNG', fsCUnpackC:'THÙNG CHƯA ĐÓNG',
       fsCShip:'ĐÃ XUẤT', fsCStock:'TỒN KHO', fsCRemark:'GHI CHÚ',
+      fivBc:'Tồn kho hoàn thiện', fivTitle:'Tồn Kho Hoàn Thiện',
+      fivPanel:'Tồn Kho Hoàn Thiện Theo Tháng',
+      fivSub:'Chốt đến hết tháng được chọn — TỒN CUỐI THÁNG TRƯỚC chốt ở cuối tháng liền trước, ĐÃ NHẬN TRONG THÁNG chỉ tính handover nhận trong chính tháng đó, ĐÃ ĐÓNG GÓI là số LŨY KẾ tính từ đầu. Bảng chỉ đọc.',
+      fivCLast:'TỒN CUỐI THÁNG TRƯỚC', fivCInhand:'ĐÃ NHẬN TRONG THÁNG', fivCBal:'SL CÂN ĐỐI',
+      fivCLastTip:'Tồn kho chốt ở ngày cuối của tháng liền trước tháng đang xem',
+      fivCInhandTip:'Tổng SL nhận handover từ MAY trong chính tháng đang xem — không lũy kế',
+      fivCBalTip:'Tự tính = SL ĐƠN trừ ĐÃ NHẬN TRONG THÁNG của cả PO, không gõ tay được',
+      fivMonthL:'Tháng',
+      fivMonthTip:'Chốt số đến hết tháng này — chỉ chọn theo tháng, không chọn từ ngày tới ngày',
+      fivAsOf:'Chốt đến',
+      fivEmpty:'Chưa có hàng nào nhận vào tính đến hết tháng này — chọn tháng khác.',
       fsPoTip:'Lấy ở dòng Kế hoạch xuất hàng khớp cả mã hàng · PO · màu — mấy màu dùng chung một dòng thì chỉ hiện ở dòng đầu',
       fsNoFgTip:'Chưa có dòng Kế hoạch xuất hàng nào khớp mã hàng · PO · màu này — sang Kế hoạch xuất hàng thêm dòng, hoặc bấm Nạp lại từ KHSX',
       fsPackAuto:'Tự sinh từ số thùng đã đóng —', fsPcsCtn:'cái/thùng (tỷ lệ tạm)',
@@ -825,7 +842,9 @@ class Component extends DCLogic {
       fgK3:'ĐÃ XUẤT', fgK3s:'pcs đã lên container', fgK4:'TRỄ ETD', fgK4s:'lô đã quá ngày xuất dự kiến',
       fgNo:'STT', fgBrand:'THƯƠNG HIỆU', fgSeason:'MÙA', fgFactory:'NHÀ MÁY', fgStyle:'MÃ HÀNG',
       fgPo:'PO#', fgColor:'MÀU', fgQty:'SL ĐƠN HÀNG', fgShipped:'SL ĐÃ XUẤT', fgBal:'SL CÂN ĐỐI',
-      fgLoad:'NGÀY ĐÓNG HÀNG', fgEtd:'ETD', fgMode:'PHƯƠNG THỨC', fgDest:'ĐIỂM ĐẾN', fgCbm:'CBM', fgNote:'GHI CHÚ',
+      fgLoad:'HOD', fgEtd:'ETD', fgMode:'PHƯƠNG THỨC', fgDest:'ĐIỂM ĐẾN',
+      fgCusNo:'SỐ TỜ KHAI', fgTruck:'SỐ XE', fgDriver:'TÊN TÀI XẾ', fgTel:'SĐT TÀI XẾ',
+      fgCbm:'CBM', fgNote:'GHI CHÚ',
       fgAdd:'Thêm lô xuất', fgCount:'lô xuất', fgReseed:'Nạp lại từ KHSX',
       fgReseedAsk:'Nạp lại toàn bộ lô xuất từ Kế hoạch sản xuất? Mọi chỉnh sửa tay ở bảng này sẽ mất.',
       fgPkImp:'Packing list', fgPkTip:'Nhập packing list (.xlsx/.xls/.csv) của lô này — lấy tổng số thùng, đổ sang cột SL THÙNG ĐƠN HÀNG ở Tình trạng hoàn thiện',
@@ -843,9 +862,11 @@ class Component extends DCLogic {
       fgPkFile:'FILE PACKING LIST', fgBcFile:'FILE BARCODE', fgNoFile:'chưa nhập',
       fgPkLn:'dòng packing list', fgPkPcs:'TỔNG PCS', fgPkGw:'TỔNG GW (KG)',
       fgPkNw:'TỔNG NW (KG)', fgPkCbm:'TỔNG CBM', fgPkCtnN:'TỔNG THÙNG',
-      fgDCtn:'SỐ THÙNG', fgDSize:'SIZE / TRỌNG LƯỢNG', fgDQc:"SL PCS/THÙNG",
-      fgDGw:'GW/THÙNG (KG)', fgDNw:'NW/THÙNG (KG)', fgDBox:'KÍCH THƯỚC THÙNG (CM)',
-      fgDCbm:'CBM/THÙNG', fgDBc:'BARCODE',
+      fgDCtn:'SỐ THÙNG', fgDSize:'SIZE', fgDQc:"SL PCS/THÙNG",
+      fgDGw:'GW/THÙNG (KG)', fgDAgw:'GW THỰC TẾ (KG)',
+      fgDAgwTip:'Mặc định lấy theo GW/THÙNG của packing list — gõ số để ghi đè, xoá trống thì trả lại mặc định',
+      fgDExpTip:'Xuất cả lô ra .xlsx để in — cột GW THỰC TẾ bỏ trống để cân xong ghi tay vào',
+      fgDBc:'BARCODE',
       fgDEmpty:'Chưa có packing list — bấm nút Packing list ở trên để nhập file.',
       fgDNone:'Không đọc được chi tiết đóng thùng trong file. Cần hàng tiêu đề có SỐ THÙNG (FIRST BOX ~ LAST BOX / BOX QUANTITY) và cột SL PCS/THÙNG.',
       fgPgPrev:'‹ Trước', fgPgNext:'Sau ›', fgPgOf:'trên', fgPgSize:'thùng/trang',
@@ -912,7 +933,8 @@ class Component extends DCLogic {
       dsoTapAdd:'Tap to record inspection (PASS / FAIL)', dsoTapSub:'Subtract 1 (mis-tap)', dsoNoCut:'No cutting plan for this line yet',
       dsoTapTitle:'Record Inspection', dsoTapTip:'Tap PASS to add 1 finished piece, or FAIL to pick a reason',
       dsoPass:'PASS', dsoPassSub:'+1 piece done', dsoFail:'FAIL', dsoFailSub:'Pick a defect reason',
-      dsoPick:'Select Defect Reason', dsoPickSub:'Tap a row to log the failed piece for this size', dsoPickBack:'← Back',
+      dsoPick:'Select Defect Reason', dsoPickSub:'Select one or more defects, then press Done', dsoPickBack:'← Back',
+      dsoPickSel:'selected', dsoPickClear:'Clear', dsoPickNone:'Select at least one defect before pressing Done',
       dsoDefEmpty:'Defect library is empty — add rows in Settings · Defect Library.',
       dsoDefLogged:'defects logged', dsoClose:'Close',
       dsoKOut:'Output', dsoKQc:'QC Balance', dsoKPassT:'Pass', dsoKRej:'Reject',
@@ -931,13 +953,18 @@ class Component extends DCLogic {
       dsoMeasSoon:'The measurement sheet is to be designed next — spec pending.',
       dsoChkSoon:'The check list is to be designed next — spec pending.',
       dfPanel:'Defect Library', dfSub:'Defect master used when logging failed pieces on the sewing line',
-      dfCode:'Defect Code', dfName:'Defect Name', dfCat:'Category', dfSev:'Severity', dfLoc:'Defect Location', dfCause:'Root Cause',
+      dfCode:'Defect Code', dfName:'Defect Name', dfCat:'Category', dfSev:'Severity', dfLoc:'Defect Location',
       dfAdd:'Add defect', dfEmpty:'No defect yet — add one or import from Excel.',
       dfSearch:'Search code, name, category, location…', dfNoHit:'No row matches the search',
-      dfImportTip:'Import .xlsx/.xls/.csv — columns: Defect Code · Defect Name · Category · Severity · Defect Location · Root Cause',
+      dfImportTip:'Import .xlsx/.xls/.csv — columns: Defect Code · Defect Name · Category · Severity · Defect Location',
       dfCount:'defects in library',
       lsCol1:'LINE', lsCol2:'STYLE', lsCol3:'WORKERS', lsCol4:'WORK HOURS', lsCol5:'DATE (DD/MM/YYYY)', lsCol6:'SMV', lsCol7:'TYPE', lsCol8:'%TARGET', lsCol9:'M-LEVEL FILE IMPORTED', lsCol10:'ACTIONS',
       lsEdit:'Edit', lsDone:'Done', lsImport:'Import file', lsImportTip:'Pick an M-level file (.xlsx/.csv) — stored in IndexedDB', lsFileDel:'Remove file', lsFileErr:'Could not store the file in IndexedDB', lsPctTip:'Whole number 0–100, no negatives, no decimals', lsDec1Tip:'No negatives, at most 1 decimal place', lsTypeTip:'Derived from SMV — not editable: SMV > 100 → type 1, 60 < SMV ≤ 100 → type 2, SMV ≤ 60 → type 3',
+      dsoln1:'Line Performance', dsoln2:'Endline QC',
+      dsotab5:'Sewing Production',
+      spPanel:'Sewing Production by Line', spSub:'Output, M-level tier and quality for every line',
+      spMlv:'M level', spOut:'Current output / M output', spTop3:'Top 3 defects',
+      dsoLnPerfSoon:'Line Performance screen — to be designed.',
       dsotab1:'Settings', dsotab2:'Production', dsotab3:'Alerts', dsotab4:'M-level', dsosub1:'Line Setting', dsosub2:'M-level Type Setting', dsosub3:'Defect Library',
       dsoLinePanel:'Line Setting', dsoLineSub:'Sewing line master — line group, target, shift',
       mtPanel:'M-level Type', mtSub:'Type master — click a row to see its detail',
@@ -1039,7 +1066,7 @@ class Component extends DCLogic {
       fiGEmpty:'No row yet — needs a Production Plan or a handover slip from sewing.',
       fiMdEmpty:'No handover slip on this row yet — go to SEWING · Daily Sewing Output to issue one.',
       fiShortTip:'Short against the ordered quantity', fiOverTip:'Received over the ordered quantity',
-      fiTab1:'Garment', fiTab2:'Finishing trims',
+      fiTab1:'Garment In', fiTab2:'Packing Material In',
       ftPanel:'Finishing Trims Received', ftSub:'One row per style · PO — order quantity is the total need of every TRIMS item on the materials list; actual quantity is keyed into that same list as the trims arrive',
       ftK1:'ORDER QTY', ftK1s:'pcs of trims on order', ftK2:'ACTUAL QTY', ftK2s:'pcs of trims received',
       ftK3:'SHORT', ftK3s:'pcs still outstanding', ftK4:'COMPLETE', ftK4s:'rows received in full',
@@ -1078,6 +1105,17 @@ class Component extends DCLogic {
       fsCPackY:'Yesterday', fsCPackT:'Today', fsCPackC:'Cumulative',
       fsCOrderC:'Ordered Carton Qty', fsCPackedC:'Packed Carton Qty', fsCUnpackC:'Un-Packed Carton Qty',
       fsCShip:'Shipped Qty', fsCStock:'Stock Qty', fsCRemark:'Remark',
+      fivBc:'Finishing Inventory', fivTitle:'Finishing Inventory',
+      fivPanel:'Finishing Inventory By Month',
+      fivSub:'Position as at the end of the month selected — LAST MONTH STOCK closes at the end of the previous month, INHAND QTY counts only the handovers received inside that month, PACKED QTY is the cumulative figure. Read-only.',
+      fivCLast:'Last Month Stock', fivCInhand:"Inhand Q'ty", fivCBal:"Balance Q'ty",
+      fivCLastTip:'Stock closed off on the last day of the month before the one selected',
+      fivCInhandTip:'Total quantity handed over from Sewing inside the month selected — not cumulative',
+      fivCBalTip:"Auto — Order Qty less this month's Inhand Qty across the whole PO; not keyed in",
+      fivMonthL:'Month',
+      fivMonthTip:'Cuts every figure off at the end of this month — month granularity only, no from-date / to-date',
+      fivAsOf:'As at',
+      fivEmpty:'Nothing had been received into finishing by the end of this month — pick another month.',
       fsPoTip:'From the F.G Shipment row matching style · PO · colour — when several colours share one row the figure shows on the first of them',
       fsNoFgTip:'No F.G Shipment row matches this style · PO · colour — add one there, or hit Reseed from plan',
       fsPackAuto:'Auto from packed cartons —', fsPcsCtn:'pcs per carton (placeholder ratio)',
@@ -1112,7 +1150,9 @@ class Component extends DCLogic {
       fgK3:'SHIPPED', fgK3s:'pcs already loaded', fgK4:'LATE', fgK4s:'shipments past their ETD',
       fgNo:'NO#', fgBrand:'BRAND', fgSeason:'SEASON', fgFactory:'FACTORY', fgStyle:'STYLE NO#',
       fgPo:'PO#', fgColor:'COLOR', fgQty:'ORDER QUANTITY', fgShipped:'SHIPPED QUANTITY', fgBal:'BALANCE QUANTITY',
-      fgLoad:'LOADING DATE', fgEtd:'ETD', fgMode:'SHIP MODE', fgDest:'DESTINATION', fgCbm:'CBM', fgNote:'RE-MARK',
+      fgLoad:'HOD', fgEtd:'ETD', fgMode:'SHIP MODE', fgDest:'DESTINATION',
+      fgCusNo:'CUSTOM NO', fgTruck:'TRUCK NO', fgDriver:'DRIVER NAME', fgTel:'DRIVER TEL NO',
+      fgCbm:'CBM', fgNote:'RE-MARK',
       fgAdd:'Add shipment', fgCount:'shipments', fgReseed:'Reseed from plan',
       fgReseedAsk:'Reseed every shipment from the Production Plan? Manual edits in this table will be lost.',
       fgPkImp:'Packing list', fgPkTip:'Import this shipment’s packing list (.xlsx/.xls/.csv) — takes the total carton qty and feeds Ordered Carton Qty on Finishing Status',
@@ -1130,9 +1170,11 @@ class Component extends DCLogic {
       fgPkFile:'PACKING LIST FILE', fgBcFile:'BARCODE FILE', fgNoFile:'not imported',
       fgPkLn:'packing list lines', fgPkPcs:'TOTAL PCS', fgPkGw:'GROSS WEIGHT (KG)',
       fgPkNw:'NET WEIGHT (KG)', fgPkCbm:'TOTAL CBM', fgPkCtnN:'TOTAL CARTONS',
-      fgDCtn:'CARTON NO', fgDSize:'SIZE / WEIGHT', fgDQc:"Q'TY OF PCS/CTN",
-      fgDGw:'GROSS WT/CTN (KG)', fgDNw:'NET WT/CTN (KG)', fgDBox:'BOX SIZE (CM)',
-      fgDCbm:'CBM/CTN', fgDBc:'BARCODE',
+      fgDCtn:'CARTON NO', fgDSize:'SIZE', fgDQc:"Q'TY OF PCS/CTN",
+      fgDGw:'GROSS WT/CTN (KG)', fgDAgw:'ACTUAL GROSS WT (KG)',
+      fgDAgwTip:'Defaults to the packing list GROSS WT/CTN — key a figure to override it, clear the cell to fall back',
+      fgDExpTip:'Export the whole shipment to .xlsx for printing — the ACTUAL GROSS WT column is left blank to fill in by hand',
+      fgDBc:'BARCODE',
       fgDEmpty:'No packing list yet — hit the Packing list button above to import one.',
       fgDNone:'The carton detail could not be read. The file needs a header row with CARTON NO (FIRST BOX ~ LAST BOX / BOX QUANTITY) and a pcs-per-carton column.',
       fgPgPrev:'‹ Prev', fgPgNext:'Next ›', fgPgOf:'of', fgPgSize:'ctn/page',
@@ -1156,7 +1198,7 @@ class Component extends DCLogic {
     'Cutting':'Cắt','Sewing Output':'Sản lượng may',
     'Production Plan':'Kế hoạch sản xuất','Sewing Schedule':'Kế hoạch may','Daily Sewing Output':'Sản lượng may hàng ngày',
     'FINISHING':'HOÀN THIỆN','Finishing In':'Nhận hàng hoàn thiện','Finishing Status':'Tình trạng hoàn thiện',
-    'F.G Shipment Plan':'Kế hoạch xuất hàng',};
+    'F.G Shipment Plan':'Kế hoạch xuất hàng','Finishing Inventory':'Tồn kho hoàn thiện',};
   t(k){ const d=this.L[this.state.lang]||this.L.vi; return d[k]!==undefined?d[k]:(this.L.en[k]||k); }
   tn(s){ return (this.state.lang==='vi'&&this.NAVVI[s])?this.NAVVI[s]:s; }
   dayLabel(d,i){ return this.state.lang==='vi'?['T2','T3','T4','T5','T6','T7'][i]:d.toUpperCase(); }
@@ -2134,7 +2176,7 @@ class Component extends DCLogic {
       this.capDays(r).forEach((x,i)=>{ T.days[i]+=Number(x)||0; }); });
     return T; }
 
-  DSO_TABS=[['cfg','dsotab1'],['prod','dsotab2'],['alert','dsotab3'],['mlv','dsotab4']];
+  DSO_TABS=[['sprod','dsotab5'],['cfg','dsotab1'],['prod','dsotab2'],['alert','dsotab3'],['mlv','dsotab4']];
   // Bang lich su chi cao toi da DSO_HIST_ROWS dong roi cuon TRONG bang, khong keo
   // dai trang. Tieu de dinh o tren nen cuon van doc duoc ten cot.
   // Chieu cao 1 dong KHAC nhau giua 2 bang (do thuc te tren Chrome): bang hoan thanh
@@ -2143,6 +2185,9 @@ class Component extends DCLogic {
   DSO_ROW_H={done:45,def:37};
   dsoHistH(kind){ return this.DSO_HIST_ROWS*(this.DSO_ROW_H[kind]||38)+35; }
   DSO_SUBS=[['line','dsosub1'],['mtype','dsosub2'],['defect','dsosub3']];
+  // Tab con TRONG mot chuyen. Endline QC la man hinh dem ĐẠT / LỖI dang co;
+  // Hieu Suat Chuyen chua co spec. Mac dinh vao la 'perf'.
+  DSO_LINE_TABS=[['perf','dsoln1'],['qc','dsoln2']];
   // Nhan KEY dich (khong nhan nhan da resolve) de nhan tu doi khi bam VI/EN.
   // sub=true -> preset nhe hon, giong segmented control trong renderPeriodBar.
   tabBar(items,cur,pick,sub){
@@ -2387,27 +2432,27 @@ class Component extends DCLogic {
   // tu do -- moi nha may co bo ma / nhom / muc do rieng, nen khong validate gi
   // ngoai viec don khoang trang khi bam Xong.
   DEFECT_DEF=[
-    {code:'SW-001',name:'Bỏ mũi chỉ',              cat:'May',        sev:'Major',    loc:'Đường sườn',    cause:'Kim mòn · chỉ căng'},
-    {code:'SW-002',name:'Đường may nhăn',          cat:'May',        sev:'Major',    loc:'Nẹp áo',        cause:'Áp lực chân vịt sai'},
-    {code:'SW-003',name:'Đường may lệch',          cat:'May',        sev:'Critical', loc:'Cổ áo',         cause:'Canh sai dấu bấm'},
-    {code:'SW-004',name:'Tuột chỉ · nhảy chỉ',     cat:'May',        sev:'Major',    loc:'Gấu áo',        cause:'Máy chưa hiệu chỉnh'},
-    {code:'SW-005',name:'Chỉ thừa chưa cắt',       cat:'Vệ sinh',    sev:'Minor',    loc:'Toàn sản phẩm', cause:'Bỏ sót khâu cắt chỉ'},
-    {code:'FB-001',name:'Vải lỗi sợi · sợi thô',   cat:'Vải',        sev:'Major',    loc:'Thân trước',    cause:'Nguyên liệu đầu vào'},
-    {code:'FB-002',name:'Vải khác màu',            cat:'Vải',        sev:'Critical', loc:'Tay áo',        cause:'Trộn lô nhuộm'},
-    {code:'FB-003',name:'Vải bị lỗ · xước',        cat:'Vải',        sev:'Critical', loc:'Thân sau',      cause:'Nguyên liệu đầu vào'},
-    {code:'CT-001',name:'Cắt sai thông số',        cat:'Cắt',        sev:'Critical', loc:'Chi tiết thân', cause:'Sơ đồ cắt sai'},
-    {code:'CT-002',name:'Chi tiết không đối xứng', cat:'Cắt',        sev:'Major',    loc:'Tay áo',        cause:'Xô lệch khi cắt'},
-    {code:'AC-001',name:'Khóa kéo không êm',       cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp khóa',      cause:'Phụ liệu lỗi'},
-    {code:'AC-002',name:'Cúc lệch · thiếu cúc',    cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp áo',        cause:'Đóng cúc sai vị trí'},
-    {code:'AC-003',name:'Nhãn sai · thiếu nhãn',   cat:'Phụ liệu',   sev:'Critical', loc:'Cổ trong',      cause:'Cấp sai nhãn'},
-    {code:'PR-001',name:'In · thêu lệch vị trí',   cat:'In thêu',    sev:'Major',    loc:'Ngực trái',     cause:'Định vị khuôn sai'},
-    {code:'PR-002',name:'Thêu thiếu mũi',          cat:'In thêu',    sev:'Minor',    loc:'Ngực trái',     cause:'Chương trình thêu'},
-    {code:'IR-001',name:'Vết bẩn dầu máy',         cat:'Vệ sinh',    sev:'Major',    loc:'Toàn sản phẩm', cause:'Máy rỉ dầu'},
-    {code:'IR-002',name:'Là ép bị bóng',           cat:'Hoàn thiện', sev:'Major',    loc:'Thân trước',    cause:'Nhiệt là quá cao'},
-    {code:'SZ-001',name:'Sai thông số kích cỡ',    cat:'Đo lường',   sev:'Critical', loc:'Vòng ngực',     cause:'Rập · cắt sai'},
+    {code:'SW-001',name:'Bỏ mũi chỉ',              cat:'May',        sev:'Major',    loc:'Đường sườn'},
+    {code:'SW-002',name:'Đường may nhăn',          cat:'May',        sev:'Major',    loc:'Nẹp áo'},
+    {code:'SW-003',name:'Đường may lệch',          cat:'May',        sev:'Critical', loc:'Cổ áo'},
+    {code:'SW-004',name:'Tuột chỉ · nhảy chỉ',     cat:'May',        sev:'Major',    loc:'Gấu áo'},
+    {code:'SW-005',name:'Chỉ thừa chưa cắt',       cat:'Vệ sinh',    sev:'Minor',    loc:'Toàn sản phẩm'},
+    {code:'FB-001',name:'Vải lỗi sợi · sợi thô',   cat:'Vải',        sev:'Major',    loc:'Thân trước'},
+    {code:'FB-002',name:'Vải khác màu',            cat:'Vải',        sev:'Critical', loc:'Tay áo'},
+    {code:'FB-003',name:'Vải bị lỗ · xước',        cat:'Vải',        sev:'Critical', loc:'Thân sau'},
+    {code:'CT-001',name:'Cắt sai thông số',        cat:'Cắt',        sev:'Critical', loc:'Chi tiết thân'},
+    {code:'CT-002',name:'Chi tiết không đối xứng', cat:'Cắt',        sev:'Major',    loc:'Tay áo'},
+    {code:'AC-001',name:'Khóa kéo không êm',       cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp khóa'},
+    {code:'AC-002',name:'Cúc lệch · thiếu cúc',    cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp áo'},
+    {code:'AC-003',name:'Nhãn sai · thiếu nhãn',   cat:'Phụ liệu',   sev:'Critical', loc:'Cổ trong'},
+    {code:'PR-001',name:'In · thêu lệch vị trí',   cat:'In thêu',    sev:'Major',    loc:'Ngực trái'},
+    {code:'PR-002',name:'Thêu thiếu mũi',          cat:'In thêu',    sev:'Minor',    loc:'Ngực trái'},
+    {code:'IR-001',name:'Vết bẩn dầu máy',         cat:'Vệ sinh',    sev:'Major',    loc:'Toàn sản phẩm'},
+    {code:'IR-002',name:'Là ép bị bóng',           cat:'Hoàn thiện', sev:'Major',    loc:'Thân trước'},
+    {code:'SZ-001',name:'Sai thông số kích cỡ',    cat:'Đo lường',   sev:'Critical', loc:'Vòng ngực'},
   ];
   // [ten truong, khoa dich] -- dung chung cho bang Cai Dat va bang chon ly do loi
-  DEFECT_COLS=[['code','dfCode'],['name','dfName'],['cat','dfCat'],['sev','dfSev'],['loc','dfLoc'],['cause','dfCause']];
+  DEFECT_COLS=[['code','dfCode'],['name','dfName'],['cat','dfCat'],['sev','dfSev'],['loc','dfLoc']];
   initDefects(){ return this.DEFECT_DEF.map((r,i)=>({id:'f'+(i+1),...r})); }
   // Array.isArray (khong phai l&&l.length) -- xoa het dong phai GIU bang rong,
   // khong duoc hoi sinh danh muc mac dinh.
@@ -2415,7 +2460,7 @@ class Component extends DCLogic {
   setDefects(fn){ this.setState(s=>({dsoDefects:fn(Array.isArray(s.dsoDefects)?s.dsoDefects:this.initDefects())})); }
   dfSet(id,patch){ this.setDefects(l=>l.map(r=>r.id===id?{...r,...patch}:r)); }
   dfAddRow(){ this.setDefects(l=>{ const id=this.mtNextId(l,'f'); this._dfNew=id;
-      return [...l,{id,code:'',name:'',cat:'',sev:'',loc:'',cause:''}]; });
+      return [...l,{id,code:'',name:'',cat:'',sev:'',loc:''}]; });
     // xoa tu khoa tim: dong rong khong khop tu khoa nao nen se bi an mat
     setTimeout(()=>{ if(this._mounted&&this._dfNew) this.set({dfEdit:this._dfNew,dfQ:''}); },0); }
   dfDelRow(id){ this.setDefects(l=>l.filter(r=>r.id!==id));
@@ -2446,7 +2491,7 @@ class Component extends DCLogic {
     const n=s=>this.dfFold(s).replace(/\s+/g,' ');
     const PAT=[['code',/(ma loi|defect code|\bcode\b|\bma\b)/],['name',/(ten loi|defect name|\bname\b|\bten\b)/],
       ['cat',/(nhom|phan loai|category|\btype\b)/],['sev',/(muc do|nghiem trong|severity|\blevel\b)/],
-      ['loc',/(vi tri|defect location|location|position)/],['cause',/(nguyen nhan|root cause|\bcause\b|reason)/]];
+      ['loc',/(vi tri|defect location|location|position)/]];
     let hi=-1, map={};
     for(let i=0;i<Math.min((aoa||[]).length,10);i++){ const r=aoa[i]||[], m={};
       r.forEach((c,j)=>{ const v=n(c); if(!v) return;
@@ -2456,7 +2501,7 @@ class Component extends DCLogic {
     const txt=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
     for(let i=start;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
       const g=(f,pos)=>txt(hi>=0?(map[f]!=null?r[map[f]]:''):r[pos]);
-      const row={code:g('code',0),name:g('name',1),cat:g('cat',2),sev:g('sev',3),loc:g('loc',4),cause:g('cause',5)};
+      const row={code:g('code',0),name:g('name',1),cat:g('cat',2),sev:g('sev',3),loc:g('loc',4)};
       if(!row.code&&!row.name) continue;      // dong trong / dong ke chan
       out.push(row); }
     return out; }
@@ -2528,7 +2573,6 @@ class Component extends DCLogic {
                 borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},String(r.sev).trim())
              :h('span',{style:{color:C.faint}},'\u2014'))),
         h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},cell('loc')),
-        h('td',{style:{...S.td,background:bg,color:C.sub,wordBreak:'break-word'}},cell('cause')),
         h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
           h('div',{style:{display:'flex',gap:6}},
             ed?this.mtBtn(this.t('lsDone'),()=>this.dfDone(r.id),{border:'1px solid '+C.primary,background:C.tint})
@@ -2536,15 +2580,15 @@ class Component extends DCLogic {
             this.mtBtn(this.t('mtDel'),()=>this.dfDelRow(r.id),{color:'#c0392b',borderColor:'#eccfca'}))));
     });
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'1140px',borderCollapse:'collapse'}},
-        h('colgroup',null,h('col',{style:{width:'52px'}}),h('col',{style:{width:'11%'}}),
-          h('col',{style:{width:'19%'}}),h('col',{style:{width:'12%'}}),h('col',{style:{width:'10%'}}),
-          h('col',{style:{width:'15%'}}),h('col',{style:{width:'19%'}}),h('col',{style:{width:'130px'}})),
+      h('table',{style:{width:'100%',minWidth:'960px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'52px'}}),h('col',{style:{width:'14%'}}),
+          h('col',{style:{width:'24%'}}),h('col',{style:{width:'15%'}}),h('col',{style:{width:'13%'}}),
+          h('col',{style:{width:'19%'}}),h('col',{style:{width:'130px'}})),
         h('thead',null,h('tr',null,
           h('th',{style:{...S.th,textAlign:'center',paddingLeft:8}},this.t('mtNo')),
           ...this.DEFECT_COLS.map(([f,k])=>h('th',{key:f,style:S.th},this.t(k))),
           h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
-        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:8,
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:7,
           style:{...S.td,textAlign:'center',color:C.faint,padding:'38px 16px',borderRight:'none'}},
           this.t(all.length?'dfNoHit':'dfEmpty'))))));
     const bodyEl=h('div',null, tbl,
@@ -2556,25 +2600,39 @@ class Component extends DCLogic {
   // ==== Bam LOI o trang chuyen -> bang chon ly do =========================
   // Nut DAT / LOI da nam san tren trang chuyen, nen hop nay chi con mot buoc:
   // chon ly do loi. dsoTap luon o stage 'fail'.
-  dsoTapClose(){ this.set({dsoTap:null,dsoTapQ:''}); }
+  dsoTapClose(){ this.set({dsoTap:null,dsoTapQ:'',dsoTapSel:{}}); }
+  // Chon NHIEU loi: dsoTapSel la map {id dong loi -> true}. Bam dong chi bat/tat,
+  // phai bam Xong moi ghi -- mot san pham hong thuong dinh vai loi cung luc.
+  // Giu theo id (khong phai chi so dong) nen doi tu khoa tim khong mat lua chon.
+  dsoTapSelIds(){ const m=this.state.dsoTapSel||{}; return Object.keys(m).filter(k=>m[k]); }
+  dsoTapToggle(id){ this.setState(st=>{ const m={...(st.dsoTapSel||{})};
+    if(m[id]) delete m[id]; else m[id]=true; return {dsoTapSel:m}; }); }
+  dsoTapClear(){ this.set({dsoTapSel:{}}); }
   // Hang loi ghi theo (ngay, chuyen, style, PO, mau, size) + ma loi -> dem duoc
   // ca so luong loi va loi nao hay gap. KHONG cong vao san luong hoan thanh.
   // Doc new Date() MOT lan roi dung chung cho ca khoa ngay lan moc gio: doc 2
   // lan, bam dung luc doi ngay -> so luong vao ngay nay ma moc gio vao ngay kia.
   // Moc HH:MM ghi song song sang dsoDefTime theo khoa (o size + ma loi) --
   // dsoDefLog GIU NGUYEN hinh dang so dem nen may dang co du lieu cu van doc duoc.
-  dsoDefTake(c,d){ const now=new Date(), k=this.dsoDoneKey(c,this.psFmtD(now)), at=this.dsoHM(now);
-    const code=String(d.code||'').trim()||String(d.name||'').trim()||'?';
+  // Nhan MOT dong loi hoac CA MANG dong loi (nut Xong). Ca cum ghi trong mot
+  // lan setState va dung CHUNG mot moc gio -> dung nhu cong nhan thay: mot lan
+  // bam Xong la mot san pham hong, du no dinh may loi.
+  dsoDefTake(c,ds){ const list=(Array.isArray(ds)?ds:[ds]).filter(Boolean);
+    if(!list.length){ this.dsoTapClose(); return; }
+    const now=new Date(), k=this.dsoDoneKey(c,this.psFmtD(now)), at=this.dsoHM(now);
     const who=this.dsoOpOf(c.line).replace(/\s+/g,' ').trim();
     this.setState(st=>{ const m={...(st.dsoDefLog||{})}, cur={...(m[k]||{})};
-      cur[code]=(Number(cur[code])||0)+1; m[k]=cur;
-      const tm={...(st.dsoDefTime||{})}, tk=k+'|'+code;
-      tm[tk]=(tm[tk]||[]).concat(at);
-      // Ten cong nhan ghi song song, CUNG khoa va CUNG chieu dai voi dsoDefTime
-      // (ke ca khi bo trong) -- nho vay xep hang Top 3 cong nhan chi con la dem.
-      const wm={...(st.dsoDefWho||{})};
-      wm[tk]=(wm[tk]||[]).concat(who);
-      return {dsoDefLog:m,dsoDefTime:tm,dsoDefWho:wm,dsoTap:null,dsoTapQ:''}; }); }
+      const tm={...(st.dsoDefTime||{})}, wm={...(st.dsoDefWho||{})};
+      list.forEach(d=>{
+        const code=String(d.code||'').trim()||String(d.name||'').trim()||'?';
+        cur[code]=(Number(cur[code])||0)+1;
+        const tk=k+'|'+code;
+        tm[tk]=(tm[tk]||[]).concat(at);
+        // Ten cong nhan ghi song song, CUNG khoa va CUNG chieu dai voi dsoDefTime
+        // (ke ca khi bo trong) -- nho vay xep hang Top 3 cong nhan chi con la dem.
+        wm[tk]=(wm[tk]||[]).concat(who); });
+      m[k]=cur;
+      return {dsoDefLog:m,dsoDefTime:tm,dsoDefWho:wm,dsoTap:null,dsoTapQ:'',dsoTapSel:{}}; }); }
   // Tong luy ke moi ngay, giong dsoDoneOf
   dsoDefOf(c){ const m=this.state.dsoDefLog||{};
     const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
@@ -2636,10 +2694,20 @@ class Component extends DCLogic {
     const ctd={padding:'9px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,
       borderRight:'1px solid '+C.line,verticalAlign:'middle'};
     const txt=v=>String(v==null?'':v).trim()||'\u2014';
-    const tblRows=rows.map((r,i)=>{ const sv=this.dfSevChip(r.sev);
-      return h('tr',{key:r.id,onClick:()=>this.dsoDefTake(c,r),title:this.t('dsoPickSub'),
-          style:{cursor:'pointer',background:i%2?'#f7f9f3':C.white},'style-hover':{background:C.tint}},
-        h('td',{style:{...ctd,paddingLeft:20,fontFamily:mono,fontWeight:700,color:C.primary,
+    // Lua chon doc tu state chu khong tu `rows`: dong da chon ma bi tu khoa tim
+    // loc ra van con trong dsoTapSel, bam Xong van ghi du.
+    const sel=this.state.dsoTapSel||{}, selIds=this.dsoTapSelIds(), nSel=selIds.length;
+    const tick=on=>h('span',{style:{display:'inline-flex',alignItems:'center',justifyContent:'center',
+        width:21,height:21,borderRadius:6,flex:'none',
+        border:'1.6px solid '+(on?C.primary:C.border),background:on?C.primary:C.white}},
+      on?h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:'#fff',strokeWidth:3.4,
+        strokeLinecap:'round',strokeLinejoin:'round'},h('path',{d:'M20 6L9 17l-5-5'})):null);
+    const tblRows=rows.map((r,i)=>{ const sv=this.dfSevChip(r.sev), on=!!sel[r.id];
+      return h('tr',{key:r.id,onClick:()=>this.dsoTapToggle(r.id),title:this.t('dsoPickSub'),
+          style:{cursor:'pointer',background:on?C.tint:(i%2?'#f7f9f3':C.white)},
+          'style-hover':{background:C.tint}},
+        h('td',{style:{...ctd,paddingLeft:20,width:46,textAlign:'center'}},tick(on)),
+        h('td',{style:{...ctd,fontFamily:mono,fontWeight:700,color:C.primary,
           whiteSpace:'nowrap'}},txt(r.code)),
         h('td',{style:{...ctd,fontWeight:600,wordBreak:'break-word'}},txt(r.name)),
         h('td',{style:{...ctd,wordBreak:'break-word'}},txt(r.cat)),
@@ -2647,9 +2715,8 @@ class Component extends DCLogic {
           ? h('span',{style:{fontSize:11,fontWeight:700,color:sv.fg,background:sv.bg,border:'1px solid '+sv.bd,
               borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},String(r.sev).trim())
           : h('span',{style:{color:C.faint}},'\u2014')),
-        h('td',{style:{...ctd,wordBreak:'break-word'}},txt(r.loc)),
-        h('td',{style:{...ctd,borderRight:'none',paddingRight:20,color:C.sub,
-          wordBreak:'break-word'}},txt(r.cause))); });
+        h('td',{style:{...ctd,borderRight:'none',paddingRight:20,
+          wordBreak:'break-word'}},txt(r.loc))); });
     // O ten cong nhan: ghi kem vao hang loi sap chon -> Top 3 cong nhan o trang
     // chuyen xep hang tu day. Bo trong van ghi duoc, chi la khong quy duoc ai.
     const ops=this.dsoOpNames(), opId='dso-op-'+String(c.line||'').replace(/[^\w-]/g,'');
@@ -2671,23 +2738,36 @@ class Component extends DCLogic {
       h('span',{style:{flex:'none',fontSize:11.5,fontWeight:700,fontFamily:mono,color:C.faint,
         whiteSpace:'nowrap'}},this.fmt(rows.length)+' / '+this.fmt(all.length)));
     const table=h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:130}},
-      h('table',{style:{width:'100%',minWidth:'820px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'760px',borderCollapse:'collapse'}},
         h('thead',null,h('tr',null,
-          h('th',{style:{...sth,paddingLeft:20}},this.t('dfCode')),
+          h('th',{style:{...sth,paddingLeft:20,width:46}},''),
+          h('th',{style:sth},this.t('dfCode')),
           h('th',{style:sth},this.t('dfName')),
           h('th',{style:sth},this.t('dfCat')),
           h('th',{style:sth},this.t('dfSev')),
-          h('th',{style:sth},this.t('dfLoc')),
-          h('th',{style:{...sth,borderRight:'none',paddingRight:20}},this.t('dfCause')))),
+          h('th',{style:{...sth,borderRight:'none',paddingRight:20}},this.t('dfLoc')))),
         h('tbody',null, rows.length?tblRows:h('tr',null,h('td',{colSpan:6,
           style:{...ctd,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
           this.t(all.length?'dfNoHit':'dsoDefEmpty'))))));
     const pick=h('div',{style:{display:'flex',flexDirection:'column',minHeight:0,flex:1}},
       head('dsoPick','dsoPickSub',true), info, search, table,
       h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 20px',flex:'none',
-          borderTop:'1px solid '+C.line,background:'#f8faf3'}},
-        h('div',{style:{flex:1}}),
-        h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel'))));
+          borderTop:'1px solid '+C.line,background:'#f8faf3',flexWrap:'wrap'}},
+        nSel?h('span',{style:{flex:'none',fontSize:12.5,fontWeight:700,fontFamily:mono,color:C.primary,
+          background:C.tint,border:'1px solid '+C.border,borderRadius:999,padding:'5px 12px',
+          whiteSpace:'nowrap'}},this.fmt(nSel)+' '+this.t('dsoPickSel')):null,
+        nSel?h('button',{onClick:()=>this.dsoTapClear(),
+          style:{flex:'none',border:'none',background:'none',padding:'4px 2px',cursor:'pointer',
+            fontFamily:'inherit',fontSize:12.5,fontWeight:600,color:C.sub,
+            textDecoration:'underline'}},this.t('dsoPickClear')):null,
+        h('div',{style:{flex:1,minWidth:8}}),
+        h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel')),
+        // Chua chon gi thi nut mo di, khong bam duoc -- tranh ghi hang loi rong.
+        h('button',{disabled:!nSel,title:nSel?'':this.t('dsoPickNone'),
+          onClick:()=>{ if(!nSel) return;
+            this.dsoDefTake(c,selIds.map(id=>all.find(x=>x.id===id)).filter(Boolean)); },
+          style:{...this.btn(nSel?'primary':'ghost'),padding:'10px 24px',fontSize:14,
+            ...(nSel?{}:{opacity:.45,cursor:'not-allowed'})}},this.t('lsDone'))));
     return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
         backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:85,padding:24}},
       h('div',{onClick:ev=>ev.stopPropagation(),style:{width:'min(960px,96vw)',
@@ -3626,7 +3706,15 @@ class Component extends DCLogic {
         this.t('dsoDoneNeed')),
       h('div',{style:{fontSize:15,fontWeight:700,fontFamily:mono,color:C.ink,flex:'none'}},
         this.fmt(K.done)+' / '+this.fmt(K.need)));
-    if(!cards.length) return h('div',{style:{padding:'16px 18px 22px'}},bar,
+    const lnTab=this.state.dsoLineTab||'perf';
+    const tabs=this.tabBar(this.DSO_LINE_TABS,lnTab,id=>this.set({dsoLineTab:id}),true);
+    // Hieu Suat Chuyen chua co spec -> khung giu cho, chua ve gi ben trong.
+    // Dat TRUOC nhanh !cards.length: chuyen chua co tac nghiep cat van mo tab nay duoc.
+    if(lnTab!=='qc') return h('div',{style:{padding:'16px 18px 22px'}},bar,tabs,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:16,background:C.white,
+          boxShadow:C.shadow,padding:'104px 24px',textAlign:'center',color:C.faint,
+          fontSize:13.5}},this.t('dsoLnPerfSoon')));
+    if(!cards.length) return h('div',{style:{padding:'16px 18px 22px'}},bar,tabs,
       h('div',{style:{padding:'48px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},
         this.t('dsoNoCut')));
 
@@ -3837,9 +3925,9 @@ class Component extends DCLogic {
         bigBtn(this.t('dsoBtnPass'),c?(this.fmt(dq)+' / '+this.fmt(c.need)):this.t('dsoNoPick'),
           '#4038e0',()=>this.dsoBump(c,1)),
         bigBtn(this.t('dsoBtnDef'),c?('✕ '+this.fmt(dn)):this.t('dsoNoPick'),
-          '#ee4b47',()=>this.set({dsoTap:{c:c,stage:'fail'},dsoTapQ:''}))));
+          '#ee4b47',()=>this.set({dsoTap:{c:c,stage:'fail'},dsoTapQ:'',dsoTapSel:{}}))));
 
-    return h('div',{style:{padding:'16px 18px 22px'}},bar,
+    return h('div',{style:{padding:'16px 18px 22px'}},bar,tabs,
       h('div',{style:{border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',background:C.white,
           boxShadow:C.shadow,display:'grid',gridTemplateColumns:'minmax(0,1.04fr) minmax(0,1fr)',
           alignItems:'stretch'}},
@@ -4682,6 +4770,100 @@ class Component extends DCLogic {
             h('tfoot',null,foot)))));
   }
 
+  // ==== Sewing Production: MOT dong = MOT chuyen =========================
+  // Gop san luong + bac M-level + chat luong cua tung chuyen vao mot bang.
+  // Moi so deu doc tu ham co san (prodLines / mlvSlots / mlvQuality) nen bang
+  // nay khong bao gio lech voi trang chuyen hay bang M-level.
+  sewProdRows(){ return this.prodLines().map(x=>{
+      const S=this.mlvSlots(x.line), Q=this.mlvQuality(x.line), cur=S.cur;
+      return {line:x.line, w:x.cfg.w,
+        mlv:(cur&&cur.name&&cur.name!=='\u2014')?cur.name:'',
+        // Thieu SMV / cong nhan thi mlvTarget tra null -> de trong, KHONG quy ve 0
+        tgt:(cur&&cur.target!=null)?cur.target:null,
+        done:Q.done, rate:Q.rate, dhu:Q.dhu, top3:Q.top3}; }); }
+
+  renderDsoSewProd(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const rows=this.sewProdRows();
+    if(!rows.length) return h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,
+      fontSize:13.5}},this.t('demandEmpty'));
+    const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',
+      textTransform:'uppercase',color:C.sub,textAlign:'left',borderRight:'1px solid '+C.line,
+      background:'#f8faf3',whiteSpace:'nowrap'};
+    const thTop={...th,borderBottom:'1px solid '+C.line};
+    const thBot={...th,borderBottom:'2px solid '+C.border};
+    const td={padding:'10px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,
+      borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    // Thanh ngang: da lam so voi san luong cua bac M dang dat. Chua co target thi
+    // de RANH, khong ve thanh 0% -- 0% doc nham thanh 'chuyen chua lam duoc gi'.
+    const bar=(done,tgt)=>{ const ok=tgt!=null&&done>=tgt;
+      const pct=tgt?Math.max(0,Math.min(100,done/tgt*100)):0;
+      return h('div',{style:{minWidth:158}},
+        h('div',{style:{display:'flex',alignItems:'baseline',gap:7,marginBottom:5}},
+          h('span',{style:{fontSize:14.5,fontWeight:700,fontFamily:mono,
+            color:ok?'#2f7d32':C.ink}},this.fmt(done)),
+          h('span',{style:{fontSize:12,fontFamily:mono,color:C.faint,whiteSpace:'nowrap'}},
+            '/ '+(tgt==null?'\u2014':this.fmt(tgt))),
+          h('span',{style:{flex:1,minWidth:6}}),
+          tgt!=null?h('span',{style:{fontSize:11,fontFamily:mono,fontWeight:700,
+            color:ok?'#2f7d32':C.faint,whiteSpace:'nowrap'}},Math.round(pct)+'%'):null),
+        h('div',{style:{height:8,borderRadius:99,background:'#e9ece1',overflow:'hidden'}},
+          tgt!=null?h('div',{style:{width:pct+'%',height:'100%',borderRadius:99,
+            background:ok?'#5a9c3f':C.primary}}):null)); };
+    const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white;
+      return h('tr',{key:r.line,onClick:()=>this.set({dsoTab:'prod',dsoLine:r.line}),
+          title:this.t('dsoOpenLine'),style:{cursor:'pointer',background:bg},
+          'style-hover':{background:C.tint}},
+        h('td',{style:{...td,paddingLeft:16,fontWeight:700,fontFamily:mono,color:C.primary,
+          whiteSpace:'nowrap'}},r.line),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:600,
+          whiteSpace:'nowrap'}},this.fmt(r.w)),
+        h('td',{style:td}, r.mlv
+          ? h('span',{style:{fontSize:11.5,fontWeight:700,fontFamily:mono,color:C.dark,
+              background:C.tint,border:'1px solid '+C.border,borderRadius:999,
+              padding:'3px 10px',whiteSpace:'nowrap'}},r.mlv)
+          : h('span',{style:{color:C.faint}},'\u2014')),
+        h('td',{style:td},bar(r.done,r.tgt)),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
+          color:r.rate?'#946200':C.faint,whiteSpace:'nowrap'}},this.dsoPct1(r.rate)),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
+          color:r.dhu?'#a3271b':C.faint,whiteSpace:'nowrap'}},r.dhu.toFixed(1)),
+        h('td',{style:{...td,borderRight:'none'}}, r.top3.length
+          ? h('div',{style:{display:'flex',flexDirection:'column',gap:4}},
+              r.top3.map(x=>{ const nm=this.dsoDefName(x.code);
+                return h('div',{key:x.code,style:{display:'flex',alignItems:'center',gap:7,
+                    minWidth:0}},
+                  h('span',{style:{flex:'none',fontSize:10.5,fontWeight:700,fontFamily:mono,
+                    color:'#a3271b',background:'#fdecea',border:'1px solid #eccfca',
+                    borderRadius:999,padding:'2px 8px',whiteSpace:'nowrap'}},x.code),
+                  h('span',{style:{flex:1,minWidth:0,fontWeight:600,overflow:'hidden',
+                    textOverflow:'ellipsis',whiteSpace:'nowrap'}},nm||'\u2014'),
+                  h('span',{style:{flex:'none',fontSize:11.5,fontFamily:mono,color:C.faint,
+                    whiteSpace:'nowrap'}},'\u00d7'+this.fmt(x.n))); }))
+          : h('span',{style:{color:C.faint}},'\u2014')));
+    });
+    // Header 2 tang: 4 cot dau keo doc (rowSpan), rieng CHAT LUONG gom 3 cot con.
+    return h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1000px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'110px'}}),h('col',{style:{width:'100px'}}),
+          h('col',{style:{width:'108px'}}),h('col',{style:{width:'34%'}}),
+          h('col',{style:{width:'104px'}}),h('col',{style:{width:'88px'}}),
+          h('col',{style:{width:'26%'}})),
+        h('thead',null,
+          h('tr',null,
+            h('th',{rowSpan:2,style:{...thBot,paddingLeft:16}},this.t('lsCol1')),
+            h('th',{rowSpan:2,style:{...thBot,textAlign:'right'}},this.t('lsCol3')),
+            h('th',{rowSpan:2,style:thBot},this.t('spMlv')),
+            h('th',{rowSpan:2,style:thBot},this.t('spOut')),
+            h('th',{colSpan:3,style:{...thTop,borderRight:'none',textAlign:'center'}},
+              this.t('mlvQual'))),
+          h('tr',null,
+            h('th',{style:{...thBot,textAlign:'right'}},this.t('mlvRate')),
+            h('th',{style:{...thBot,textAlign:'right'}},'DHU'),
+            h('th',{style:{...thBot,borderRight:'none'}},this.t('spTop3')))),
+        h('tbody',null,body)));
+  }
+
   renderDsoProd(){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const list=this.prodLines();
@@ -4775,12 +4957,13 @@ class Component extends DCLogic {
   }
 
   renderDsoBody(){
-    const h=React.createElement; const tab=this.state.dsoTab||'cfg';
+    const h=React.createElement; const tab=this.state.dsoTab||'sprod';
     if(tab!=='mlv') this.mlvClockOff();
     return h('div',{ref:this.scrollRef,className:'yscroll',style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
       this.renderTitle('dsoTitle','S-05-SEWOUT-DAILY · UI Proto'),
       this.tabBar(this.DSO_TABS,tab,id=>this.set({dsoTab:id,edit:null}),false),
-      tab==='prod'?this.dsoCard('dsoProdPanel','dsoProdSub','DSO Production',this.renderDsoProd())
+      tab==='sprod'?this.dsoCard('spPanel','spSub','DSO Sewing Production',this.renderDsoSewProd())
+      :tab==='prod'?this.dsoCard('dsoProdPanel','dsoProdSub','DSO Production',this.renderDsoProd())
       :tab==='alert'?this.renderDsoAlerts()
       :tab==='mlv'?this.renderDsoMlv()
       :this.renderDsoSettings());
@@ -6386,13 +6569,38 @@ class Component extends DCLogic {
         g.in+=p.qty; g.at=Math.max(g.at,r.ts||0);
         Object.keys(p.sizes||{}).forEach(z=>{ g.sizes[z]=(g.sizes[z]||0)+(Number(p.sizes[z])||0); });
         const ln=String(p.line||'').trim(); if(ln&&g.lines.indexOf(ln)<0) g.lines.push(ln); }); });
+    // O LINE in 'LINE 1, LINE 2' -> thu tu trong cum cung phai tang dan.
+    out.forEach(g=>g.lines.sort((x,y)=>this.finLineCmp(x,y)));
     out.sort((a,b)=>String(a.style).localeCompare(String(b.style))
       ||String(a.po).localeCompare(String(b.po))||String(a.color).localeCompare(String(b.color)));
     this._finGC={rec,sl,out}; return out; }
   finGroupList(q){ const list=this.finGroups(); q=String(q||'').trim().toLowerCase();
-    if(!q) return list;
-    return list.filter(g=>[g.style,g.po,g.color,g.lines.join(' '),
-      this.fsBrand(g),this.fsRemark(g)].join(' ').toLowerCase().indexOf(q)>=0); }
+    const out=!q?list.slice():list.filter(g=>[g.style,g.po,g.color,g.lines.join(' '),
+      this.fsBrand(g),this.fsRemark(g)].join(' ').toLowerCase().indexOf(q)>=0);
+    return this.finByLine(out); }
+  // Line la chuoi ('LINE 11') -> phai so sanh bang SO, khong thi 'LINE 11'
+  // dung truoc 'LINE 2'. Khong doc ra so thi day xuong cuoi bang.
+  finLineNo(s){ const m=String(s||'').match(/\d+/); return m?Number(m[0]):Infinity; }
+  finLineCmp(x,y){ const a=this.finLineNo(x), b=this.finLineNo(y);
+    return a===b?String(x).localeCompare(String(y)):a-b; }
+  // Line nho nhat cua 1 dong; dong chua gan line nao coi nhu vo cuc -> xuong cuoi.
+  finGLine(g){ return (g.lines||[]).reduce((a,l)=>Math.min(a,this.finLineNo(l)),Infinity); }
+  // Sap bang theo LINE tang dan, NHUNG khong duoc pha cum: cac dong cung mot
+  // dong Ke hoach xuat (fsFgKey) phai lien nhau, khong thi fsFgHead in lai so
+  // cap PO o nhieu dong -> cot SL DON / DA XUAT / TON KHO cong doc ra gap doi.
+  // -> xep CUM theo line nho nhat cua cum; trong cum giu thu tu cu cua
+  //    finGroups() (ma hang -> PO -> mau).
+  finByLine(list){ const at={}, cl=[];
+    list.forEach(g=>{ const k=this.fsFgKey(g); let c=at[k];
+      if(!c){ c=at[k]={line:Infinity,rows:[]}; cl.push(c); }
+      c.line=Math.min(c.line,this.finGLine(g)); c.rows.push(g); });
+    // Trong cum cung xep theo line -> ca cum doc len la tang dan; hai mau cung
+    // line thi giu thu tu mau cu (Array.sort on dinh).
+    cl.forEach(c=>c.rows.sort((x,y)=>{ const a=this.finGLine(x), b=this.finGLine(y);
+      return a===b?0:a-b; }));
+    // Infinity-Infinity=NaN pha ham so sanh -> bang nhau thi tra 0 truoc.
+    cl.sort((a,b)=>a.line===b.line?0:a.line-b.line);
+    return cl.reduce((a,c)=>a.concat(c.rows),[]); }
   // So THO da go, chua kep tran
   finRawQ(key,st){ return Math.max(0,Number((this.state.finStage||{})[key+'|'+st])||0); }
   // So HIEN THI cua cong doan i: khong vuot duoc DA NHAN, cung khong vuot duoc
@@ -6590,8 +6798,8 @@ class Component extends DCLogic {
   // Ton kho = da dong goi cua cum - da xuat cua chinh dong do
   fsStockQ(g){ return Math.max(0,this.fsPackedFg(g)-this.fsShippedQ(g)); }
   // In so o dong dau cua cum thoi, khong thi may mau chung 1 dong Ke hoach xuat
-  // se cong doc theo cot ra gap doi. finGroups() da sap theo ma hang -> PO ->
-  // mau nen cac dong cung cum luon lien nhau.
+  // se cong doc theo cot ra gap doi. Bang truyen vao list tu finGroupList() ->
+  // finByLine() bao dam cac dong cung cum luon lien nhau.
   fsFgHead(rows,i){ const p=rows[i-1];
     return !p||this.fsFgKey(rows[i])!==this.fsFgKey(p); }
   fsRemark(g){ return (this.state.fsRemark||{})[g.key]||''; }
@@ -6843,6 +7051,186 @@ class Component extends DCLogic {
     return this.dsoCard('fsPanel','fsSub','Finishing Status',tbl,{full:true,action});
   }
 
+  // ==========================================================================
+  // Finishing Inventory — chot ton kho theo TUNG THANG
+  // --------------------------------------------------------------------------
+  // Bang y het Packing · Shipment Status, khac dung 2 cho:
+  //   1. PACKED QTY / PACKED CARTON QTY khong con la nhom 3 o (Hom qua / Hom
+  //      nay / Tong luy ke) nua -- moi cot chi 1 o, mang so LUY KE.
+  //   2. Luy ke tinh den HET thang duoc chon, khong phai den hom nay.
+  //
+  // Ton kho la mot VI TRI tai mot thoi diem, khong phai san luong trong ky:
+  // chon thang 6 nghia la "chot den 30/06", KHONG phai "chi nhung gi dong
+  // trong thang 6". Co the vay CHUA DONG GOI / TON KHO moi co nghia.
+  //
+  // Bang CHI DOC: bo cot HANH DONG (nut quet) va 2 o go tay cua man Tinh trang
+  // -- go so vao mot thang da qua thi ghi sai ngay.
+  // ==========================================================================
+  fivM(){ return this.state.fivMonth||this.dsoToday().slice(0,7); }
+  // Moc chot = ngay cuoi cua thang. new Date(y,mo,0) la ngay cuoi thang mo
+  // (mo dem tu 1). Ngay o dang ISO nen so sanh CHUOI la du.
+  fivEnd(){ const m=this.fivM(), y=Number(m.slice(0,4)), mo=Number(m.slice(5,7));
+    return this.psFmtD(new Date(y,mo,0)); }
+  fivMLabel(m){ const p=String(m||'').split('-');
+    return p.length>1?(p[1]+'/'+p[0]):String(m||''); }
+  // Thang co trong o chon: moi thang co ngay dong thung, ngay quet, hay ngay
+  // nhan hang. Luon them thang hien tai de o chon khong bao gio rong.
+  fivMonths(){ const s=new Set([this.dsoToday().slice(0,7)]);
+    const cd=this.state.fsCtnD||{};
+    Object.keys(cd).forEach(k=>{ const d=k.slice(k.lastIndexOf('|')+1);
+      if(/^\d{4}-\d{2}/.test(d)) s.add(d.slice(0,7)); });
+    const sc=this.state.fsScan||{};
+    Object.keys(sc).forEach(k=>{ const v=sc[k];
+      if(v&&v.ts) s.add(this.psFmtD(new Date(v.ts)).slice(0,7)); });
+    const rec=this.finRecvMap();
+    Object.keys(rec).forEach(k=>{ const r=rec[k];
+      if(r&&r.ts) s.add(this.psFmtD(new Date(r.ts)).slice(0,7)); });
+    return [...s].sort().reverse(); }
+
+  // ---- so luy ke den het thang -------------------------------------------
+  // So thung = go tay (fsCtnD theo ngay) + quet (fsScan theo dau thoi gian),
+  // chi lay nhung ngay <= moc chot. Dau '|' o cuoi tien to tranh dinh nham
+  // mau khac co ten bat dau giong nhau.
+  // Moc chot la THAM SO: cot TON CUOI THANG TRUOC dung lai dung may ham nay
+  // voi moc lui ve cuoi thang lien truoc.
+  fivCtnTo(g,end){ const pre=g.key+'|'; let n=0;
+    const m=this.state.fsCtnD||{};
+    Object.keys(m).forEach(k=>{ if(k.indexOf(pre)!==0) return;
+      if(k.slice(pre.length)<=end) n+=Math.max(0,Number(m[k])||0); });
+    const o=this.fsScanSums()[g.key];
+    if(o) Object.keys(o.day).forEach(d=>{ if(d<=end) n+=o.day[d]||0; });
+    return n; }
+  fivCtn(g){ return this.fivCtnTo(g,this.fivEnd()); }
+  fivPcsTo(g,end){ return this.fsPcs(this.fivCtnTo(g,end)); }
+  fivPcs(g){ return this.fivPcsTo(g,this.fivEnd()); }
+  // Ngay cuoi thang LIEN TRUOC. new Date(y,mo-1,0) = ngay cuoi thang (mo-1);
+  // thang 1 thi tu lui ve 31/12 nam truoc.
+  fivPrevEnd(){ const m=this.fivM(), y=Number(m.slice(0,4)), mo=Number(m.slice(5,7));
+    return this.psFmtD(new Date(y,mo-1,0)); }
+  // Hang nhan vao tinh den het thang: chi cong to phieu da nhan TRUOC moc.
+  // Nho lai theo dung 3 mieng state ma ham doc, y nhu finGroups().
+  fivInMap(){ const end=this.fivEnd(), rec=this.finRecvMap(), sl=this.state.dsoSlips;
+    const c=this._fivIn; if(c&&c.end===end&&c.rec===rec&&c.sl===sl) return c.out;
+    const out={};
+    this.finSlips().forEach(s=>{ const r=rec[s.id]; if(!r||!r.ts) return;
+      if(this.psFmtD(new Date(r.ts))>end) return;
+      this.finParts(s).forEach(p=>{ const k=[p.style,p.po,p.color].join('|');
+        out[k]=(out[k]||0)+p.qty; }); });
+    this._fivIn={end,rec,sl,out}; return out; }
+  fivIn(g){ return this.fivInMap()[g.key]||0; }
+  fivUnpack(g){ return Math.max(0,this.fivIn(g)-this.fivPcs(g)); }
+  fivOver(g){ return Math.max(0,this.fivPcs(g)-this.fivIn(g)); }
+  // Cap PO: cong so cua moi mau cung tro ve 1 dong Ke hoach xuat -- y het
+  // fsCtnPackedFg / fsPackedFg ben man Tinh trang.
+  fivPcsFgTo(g,end){ const k=this.fsFgKey(g); let n=0;
+    this.finGroups().forEach(x=>{ if(this.fsFgKey(x)===k) n+=this.fivPcsTo(x,end); });
+    return n; }
+  fivStockTo(g,end){ return Math.max(0,this.fivPcsFgTo(g,end)-this.fsShippedQ(g)); }
+  fivStock(g){ return this.fivStockTo(g,this.fivEnd()); }
+  // TON CUOI THANG TRUOC = dung phep tinh ton kho, moc lui ve cuoi thang truoc.
+  fivLast(g){ return this.fivStockTo(g,this.fivPrevEnd()); }
+  // ---- DA NHAN TRONG THANG (khong luy ke) ---------------------------------
+  // Handover tu MAY nhan TRONG chinh thang dang xem. Khac fivIn() -- cai kia
+  // luy ke tu dau den het thang, cai nay chi trong thang.
+  fivInMonMap(){ const m=this.fivM(), rec=this.finRecvMap(), sl=this.state.dsoSlips;
+    const c=this._fivIM; if(c&&c.m===m&&c.rec===rec&&c.sl===sl) return c.out;
+    const out={};
+    this.finSlips().forEach(s=>{ const r=rec[s.id]; if(!r||!r.ts) return;
+      if(this.psFmtD(new Date(r.ts)).slice(0,7)!==m) return;
+      this.finParts(s).forEach(p=>{ const k=[p.style,p.po,p.color].join('|');
+        out[k]=(out[k]||0)+p.qty; }); });
+    this._fivIM={m,rec,sl,out}; return out; }
+  fivInMon(g){ return this.fivInMonMap()[g.key]||0; }
+  fivInMonFg(g){ const k=this.fsFgKey(g); let n=0;
+    this.finGroups().forEach(x=>{ if(this.fsFgKey(x)===k) n+=this.fivInMon(x); });
+    return n; }
+  // SL CAN DOI = SL DON - DA NHAN TRONG THANG. SL don la so cap PO nen phai
+  // tru TONG da nhan cua ca cum, khong thi don 2 mau tru ra sai.
+  fivBalQ(g){ return this.fsOrderQ(g)-this.fivInMonFg(g); }
+  // Chi hien dong DA CO HANG truoc moc chot -- chot thang 6 thi khong hien don
+  // moi ve thang 8. Thu tu thua cua finGroupList(): line tang dan, cum nguyen.
+  fivRows(q){ return this.finGroupList(q).filter(g=>this.fivIn(g)>0); }
+  fivAll(){ return this.finGroups().filter(g=>this.fivIn(g)>0); }
+
+  renderFivBody(){
+    const h=React.createElement;
+    return h('div',{ref:this.scrollRef,className:'yscroll','data-screen-label':'Finishing Inventory',
+      style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
+      this.renderTitle('fivTitle','S-09-FINISH-INV · UI Proto'),
+      this.renderFivTable());
+  }
+  renderFivTable(){
+    const h=React.createElement, C=this.C, S=this.mtStyles();
+    const q=this.state.fivQ||'', all=this.fivAll(), rows=this.fivRows(q);
+    const ms=this.fivMonths(), cur=this.fivM();
+    const chip=(v)=>h('span',{key:v,style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,
+      color:C.dark,background:C.tint,border:'1px solid '+C.border,borderRadius:999,
+      padding:'4px 10px',whiteSpace:'nowrap'}},v);
+    // Filter chi den cap THANG: mot o chon, khong co tu ngay / den ngay.
+    const pick=h('div',{style:{display:'flex',alignItems:'center',gap:7}},
+      h('span',{style:{fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
+        color:C.sub,whiteSpace:'nowrap'}},this.t('fivMonthL')),
+      h('select',{value:cur,title:this.t('fivMonthTip'),
+        onChange:e=>this.set({fivMonth:e.target.value}),
+        style:{border:'1px solid '+C.border,borderRadius:8,padding:'5px 9px',fontSize:12,
+          fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.white,cursor:'pointer'}},
+        ms.map(m=>h('option',{key:m,value:m},this.fivMLabel(m)))));
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+      pick,
+      chip(this.t('fivAsOf')+' '+this.dsoDay(this.fivEnd())),
+      chip(this.fmt(all.length)+' '+this.t('fsCount')),
+      this.dfSearchBox(q,v=>this.set({fivQ:v}),false,'fsSearch'));
+    const num=(v,bg,col,tip)=>h('td',{title:tip?this.t(tip):undefined,
+      style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,
+        fontWeight:700,color:col||C.ink}},v);
+    const body=rows.map((g,i)=>{
+      const bg=i%2?'#f7f9f3':C.white, head=this.fsFgHead(rows,i), fg=this.fsFgRow(g);
+      const pcs=this.fivPcs(g);
+      const unp=this.fivUnpack(g), over=this.fivOver(g);
+      const last=this.fivLast(g), inh=this.fivInMon(g), balQ=this.fivBalQ(g);
+      const order=this.fsOrderQ(g), ship=this.fsShippedQ(g), stock=this.fivStock(g);
+      // O cap PO (Ke hoach xuat khong tach mau) -> chi in o dong dau cua cum.
+      const po=(v,col,tip)=>h('td',{
+        title:head?this.t(tip||(fg?'fsPoTip':'fsNoFgTip')):undefined,
+        style:{...S.td,background:bg,textAlign:'right',fontFamily:S.mono,fontWeight:700,
+          color:head?((fg&&v)?(col||C.ink):C.faint):'transparent'}},
+        head?(fg?this.fmt(v):'\u2014'):'\u00a0');
+      return h('tr',{key:g.key},
+        h('td',{style:{...S.td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},
+          g.lines.join(', ')||'\u2014'),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},this.fsBrand(g)||'\u2014'),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700}},g.style),
+        h('td',{style:{...S.td,background:bg,fontFamily:S.mono}},g.po),
+        h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},g.color),
+        po(order),
+        // TON CUOI THANG TRUOC va SL CAN DOI la so cap PO -> chi in o dong dau
+        // cua cum, y het SL DON / DA XUAT / TON KHO.
+        po(last,C.dark,'fivCLastTip'),
+        // DA NHAN TRONG THANG la so cua tung mau -> in moi dong.
+        num(this.fmt(inh),bg,inh?C.ink:C.faint,'fivCInhandTip'),
+        po(balQ,balQ<0?'#c0392b':C.ink,'fivCBalTip'),
+        // LUY KE: vuot so da nhan -> to do, y nhu cot TONG LUY KE ben Tinh trang
+        num(this.fmt(pcs),bg,over?'#c0392b':(pcs?C.dark:C.faint)),
+        num(this.fmt(unp),bg,unp?'#b0791b':C.faint),
+        po(ship,'#1c6b52'),
+        po(stock,C.dark),
+        h('td',{style:{...S.td,background:bg,borderRight:'none',minWidth:150,color:C.sub,
+          wordBreak:'break-word'}},this.fsRemark(g)||'\u2014'));
+    });
+    const cols=[['fsCLine',0],['fsCBrand',0],['fsCStyle',0],['fsCPo',0],['fsCColor',0],
+      ['fsCOrder',1],['fivCLast',1],['fivCInhand',1],['fivCBal',1],
+      ['fsCPacked',1],['fsCUnpack',1],['fsCShip',1],['fsCStock',1],['fsCRemark',0]];
+    const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1720px',borderCollapse:'collapse'}},
+        h('thead',null,h('tr',null,cols.map(([k,rt],ci)=>h('th',{key:k,
+          style:{...S.th,...(rt?{textAlign:'right'}:{}),
+            ...(ci===cols.length-1?{borderRight:'none'}:{})}},this.t(k))))),
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:cols.length,
+          style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
+          this.t(all.length?'fsNoHit':'fivEmpty'))))));
+    return this.dsoCard('fivPanel','fivSub','Finishing Inventory',tbl,{full:true,action});
+  }
+
   // ---- F.G Shipment Plan ---------------------------------------------------
   // Hạt giống lấy thẳng từ Kế hoạch sản xuất: mỗi (mã hàng · PO) = 1 lô xuất.
   // Cột COLOR gom mọi màu của lô: khóa (mã hàng | PO) dò ra tác nghiệp cắt rồi
@@ -6888,6 +7276,7 @@ class Component extends DCLogic {
   // ETD go vao duoc ca 2 dang: '2026-09-10' (trong state) va '10/09/2026' (tren bang)
   fgList(q){ const l=this.fgAll(); q=String(q||'').trim().toLowerCase(); if(!q) return l;
     return l.filter(r=>[r.brand,r.season,r.factory,r.style,r.po,r.color,r.mode,r.dest,
+      r.cusNo,r.truckNo,r.driver,r.driverTel,
       r.load,this.dsoDay(r.load),r.etd,this.dsoDay(r.etd),r.note]
       .join(' ').toLowerCase().indexOf(q)>=0); }
   fgSet(id,patch){ this.setState(s=>({fgRows:(s.fgRows||[]).map(r=>r.id===id?{...r,...patch}:r)})); }
@@ -6897,7 +7286,8 @@ class Component extends DCLogic {
       l.forEach(r=>{ const m=String(r.id).match(/(\d+)$/); if(m) n=Math.max(n,Number(m[1])); });
       const id='fg'+(n+1); this._fgNew=id;
       return {fgRows:[...l,{id,brand:'',season:'',factory:this.FG_FACTORY,style:'',po:'',color:'',
-        qty:0,ship:0,load:this.dsoToday(),etd:this.dsoToday(),mode:'SEA',dest:'',cbm:'',note:''}],fgSeeded:1}; });
+        qty:0,ship:0,load:this.dsoToday(),etd:this.dsoToday(),mode:'SEA',dest:'',
+        cusNo:'',truckNo:'',driver:'',driverTel:'',cbm:'',note:''}],fgSeeded:1}; });
     setTimeout(()=>{ if(this._mounted&&this._fgNew) this.set({fgEdit:this._fgNew,fgQ:''}); },0); }
   fgNum(v){ return Math.max(0,parseInt(String(v).replace(/[^0-9]/g,''),10)||0); }
   // CBM giữ nguyên chuỗi khi đang gõ (cho phép '1.', '0.05') — chỉ chặn ký tự lạ.
@@ -6913,16 +7303,44 @@ class Component extends DCLogic {
     &&(Number(r.ship)||0)<(Number(r.qty)||0)); }
   fgExport(){ const X=window.XLSX; if(!X||!X.utils){ this.fgSay(this.t('mtNoXlsx')); return; }
     const rows=this.fgList(this.state.fgQ||'');
-    const head=['fgBrand','fgSeason','fgFactory','fgStyle','fgPo','fgColor','fgQty','fgShipped','fgBal',
-      'fgLoad','fgEtd','fgMode','fgDest','fgCbm','fgNote'];
+    const head=['fgBrand','fgStyle','fgPo','fgColor','fgQty',
+      'fgLoad','fgEtd','fgMode','fgDest','fgCusNo','fgTruck','fgDriver','fgTel',
+      'fgCbm','fgNote'];
     const aoa=[[this.t('fgTitle')],['YIC HÀ NAM · '+this.todayStamp()],[],head.map(k=>this.t(k))];
-    rows.forEach(r=>aoa.push([r.brand||'',r.season||'',r.factory||'',r.style||'',r.po||'',r.color||'',
-      Number(r.qty)||0,Number(r.ship)||0,this.fgBal(r),r.load||'',r.etd||'',r.mode||'',r.dest||'',
+    rows.forEach(r=>aoa.push([r.brand||'',r.style||'',r.po||'',r.color||'',
+      Number(r.qty)||0,r.load||'',r.etd||'',r.mode||'',r.dest||'',
+      r.cusNo||'',r.truckNo||'',r.driver||'',r.driverTel||'',
       Number(r.cbm)||0,r.note||'']));
     const ws=X.utils.aoa_to_sheet(aoa);
-    ws['!cols']=[14,10,14,18,12,14,15,16,16,13,13,11,16,8,26].map(w=>({wch:w}));
+    ws['!cols']=[14,18,12,14,15,13,13,11,16,14,10,16,14,8,26].map(w=>({wch:w}));
     const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'FG Shipment');
     X.writeFile(wb,'YIC-HaNam_FG-Shipment-Plan.xlsx'); }
+  // ---- To in bang chi tiet thung ------------------------------------------
+  // Xuat DUNG bang trong modal, chi khac mot cho: cot GW THUC TE de TRONG de in
+  // ra, can tung thung roi ghi tay vao. Xuat CA LO chu khong theo trang dang
+  // xem -- to in phai du thung.
+  fgDExport(){ const X=window.XLSX; if(!X||!X.utils){ this.fgSay(this.t('mtNoXlsx')); return; }
+    const r=this.fgSelRow(); if(!r) return;
+    const tot=this.fgPkCtnN(r); if(!tot){ this.fgSay(this.t('fgDEmpty')); return; }
+    const head=['mtNo','fgDCtn','fgStyle','fgColor','fgPo','fgDSize','fgDQc','fgDGw','fgDAgw'];
+    const pair=(k,v)=>this.t(k)+': '+(v==null||v===''?'\u2014':v);
+    const aoa=[[this.t('fgMdPanel')],
+      ['YIC H\u00c0 NAM \u00b7 '+this.todayStamp()],
+      [pair('fgStyle',r.style)+'   '+pair('fgPo',r.po)+'   '+pair('fgColor',r.color)],
+      [pair('fgEtd',r.etd?this.dsoDay(r.etd):'')+'   '+pair('fgDest',r.dest)
+        +'   '+pair('fgPkCtnN',this.fmt(tot))],
+      [], head.map(k=>this.t(k))];
+    // '' o cuoi moi dong = o GW THUC TE bo trong
+    this.fgPkSlice(r,0,tot).forEach(({i,no,l})=>aoa.push([i+1,no,
+      l.style||r.style||'',l.color||'',l.po||r.po||'',this.fgSzTxt(l),
+      Number(l.qc)||0,Number(l.gw)||0,'']));
+    const ws=X.utils.aoa_to_sheet(aoa);
+    // 4 dong dau la tieu de to in -> gop het be ngang cho de doc khi in.
+    ws['!merges']=[0,1,2,3].map(y=>({s:{r:y,c:0},e:{r:y,c:head.length-1}}));
+    ws['!cols']=head.map((k,ci)=>({wch:ci?18:6}));
+    const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,'Carton Detail');
+    X.writeFile(wb,('YIC-HaNam_Carton-Detail_'+(r.style||'')+'_'+(r.po||''))
+      .replace(/[^0-9A-Za-z]+/g,'-').replace(/-+$/,'')+'.xlsx'); }
   fgSay(m){ this.set({fgMsg:m}); clearTimeout(this._fgT);
     this._fgT=setTimeout(()=>{ if(this._mounted) this.set({fgMsg:''}); },4000); }
 
@@ -7168,14 +7586,30 @@ class Component extends DCLogic {
     return out; }
   fgKg(n){ n=Number(n)||0; return n?n.toFixed(2):'—'; }
   fgM3(n){ n=Number(n)||0; return n?n.toFixed(4):'—'; }
-  fgBoxTxt(l){ const d=[l.L,l.W,l.H].map(x=>Number(x)||0);
-    return d.every(x=>x>0)?d.map(x=>this.fmtn(x)).join(' × '):'—'; }
+  // ---- GW THUC TE cua tung thung ------------------------------------------
+  // Packing list cho GW ly thuyet; can bai thuc te lech thi go lai o day. Luu
+  // rieng trong state.fgAgw, KHONG sua vao fgPk -- nhap lai file thi so cua
+  // file ve dung nguyen, con so da go van con.
+  // Khoa = (dong Ke hoach xuat | chi so thung trong ca lo). fgPkSlice dem i tu
+  // 0 cho ca lo nen khoa khong doi khi sang trang khac.
+  fgAgwKey(r,i){ return r.id+'|'+i; }
+  fgAgwRaw(r,i){ const v=(this.state.fgAgw||{})[this.fgAgwKey(r,i)];
+    return v==null?'':String(v); }
+  // Chua go thi tra ve dung GW cua packing list -> mac dinh bang GW/THUNG.
+  fgAgwOf(r,i,l){ const v=this.fgAgwRaw(r,i);
+    return v===''?(Number(l.gw)||0):(Number(v)||0); }
+  // So do trong o nhap: da go thi giu nguyen chuoi da go (dang go '12.' cung
+  // khong bi nhay), chua go thi in GW mac dinh.
+  fgAgwVal(r,i,l){ const v=this.fgAgwRaw(r,i); if(v!=='') return v;
+    const g=Number(l.gw)||0; return g?g.toFixed(2):''; }
+  // Xoa trong = bo ghi de, o quay ve mac dinh.
+  fgAgwSet(r,i,v){ const k=this.fgAgwKey(r,i), s=this.fgDec(v);
+    this.setState(st=>{ const m={...(st.fgAgw||{})};
+      if(s==='') delete m[k]; else m[k]=s; return {fgAgw:m}; }); }
   // Thung 1 size -> 'M'; thung ghep -> '2XL ×8 + 4XL ×20'
   fgSzTxt(l){ const s=(l&&l.sz)||[]; if(!s.length) return '—';
     const mix=s.length>1;
     return s.map(x=>x.name+(mix?' ×'+this.fmt(x.qty):'')).join(' + '); }
-  fgSzWt(l){ const s=((l&&l.sz)||[]).filter(x=>Number(x.unit)>0);
-    return s.length?s.map(x=>Number(x.unit).toFixed(2)).join(' / ')+' kg/pcs':''; }
   fgPgN(tot,pp){ return Math.max(1,Math.ceil(tot/pp)); }
 
   renderFgModal(){
@@ -7255,38 +7689,49 @@ class Component extends DCLogic {
           h('span',null,this.t('fgBcFile')+': ',h('b',{style:{color:bc?C.sub:C.faint}},
             bc?(bc.name+' · '+this.dsoSlipWhen(bc.at)):this.t('fgNoFile'))))));
     // Bang chi tiet: 1 dong = 1 thung
-    const cols=[['mtNo',0,46],['fgDCtn',0,96],['fgStyle',0,180],['fgColor',0,110],['fgPo',0,96],
-      ['fgDSize',0,'auto'],['fgDQc',1,104],['fgDGw',1,116],['fgDNw',1,116],['fgDBox',0,150],
-      ['fgDCbm',1,104]].concat(bl.length?[['fgDBc',0,168]]:[]);
-    const body=page.map(({i,no,l})=>{ const bg=i%2?'#f7f9f3':C.white, wt=this.fgSzWt(l);
-      const cell=(v,ex)=>h('td',{style:{...S.td,background:bg,...(ex||{})}},v);
+    const cols=[['mtNo',0],['fgDCtn',0],['fgStyle',0],['fgColor',0],['fgPo',0],
+      ['fgDSize',0],['fgDQc',1],['fgDGw',1],['fgDAgw',1]];
+    const body=page.map(({i,no,l})=>{ const bg=i%2?'#f7f9f3':C.white;
+      // tableLayout fixed -> ma hang dai kieu 'VW5159 -/M2/FW26' phai cat duoc
+      // trong o, khong thi no day tran ra ngoai cot.
+      const cell=(v,ex)=>h('td',{style:{...S.td,background:bg,wordBreak:'break-word',
+        ...(ex||{})}},v);
+      const ovr=this.fgAgwRaw(r,i)!=='';
       return h('tr',{key:i},
         cell(this.fmt(i+1),{textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}),
         cell(this.fmt(no),{textAlign:'center',fontFamily:S.mono,fontWeight:700,color:C.primary}),
         cell(l.style||r.style||'—',{fontFamily:S.mono,fontSize:11.5}),
         cell(l.color||'—',{fontWeight:600}),
         cell(l.po||r.po||'—',{fontFamily:S.mono,fontSize:11.5,color:C.sub}),
-        cell(h('div',null,
-          h('span',{style:{fontFamily:S.mono,fontWeight:700,color:C.ink}},this.fgSzTxt(l)),
-          wt?h('span',{style:{fontFamily:S.mono,fontSize:10.5,color:C.faint,marginLeft:7}},wt):null)),
+        cell(this.fgSzTxt(l),{fontFamily:S.mono,fontWeight:700,color:C.ink}),
         cell(this.fmt(l.qc),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
         cell(this.fgKg(l.gw),{textAlign:'right',fontFamily:S.mono}),
-        cell(this.fgKg(l.nw),{textAlign:'right',fontFamily:S.mono}),
-        cell(this.fgBoxTxt(l),{fontFamily:S.mono,fontSize:11.5,whiteSpace:'nowrap'}),
-        cell(this.fgM3(l.cbm),{textAlign:'right',fontFamily:S.mono,fontSize:11.5}),
-        bl.length?cell(bl[i]||'—',{fontFamily:S.mono,fontSize:11,
-          color:bl[i]?C.dark:C.faint,wordBreak:'break-all'}):null);
+        // O nhap luon mo, khong co che do sua rieng. Con la mac dinh thi gach
+        // chan net roi + chu nhat; go ghi de roi thi dam len -- nhin ca cot la
+        // biet thung nao da can bai lai.
+        cell(h('input',{value:this.fgAgwVal(r,i,l),inputMode:'decimal',placeholder:'0.00',
+          title:this.t('fgDAgwTip'),onChange:e=>this.fgAgwSet(r,i,e.target.value),
+          style:{width:'100%',border:'none',background:'none',padding:'2px 0',outline:'none',
+            borderBottom:'1px dashed '+(ovr?'transparent':'#c8ccc2'),textAlign:'right',
+            fontFamily:S.mono,fontSize:12.5,fontWeight:ovr?700:500,
+            color:ovr?C.ink:C.sub}}),{textAlign:'right'}));
     });
     const empty=h('tr',null,h('td',{colSpan:cols.length,
       style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none',
         maxWidth:0,whiteSpace:'normal',lineHeight:1.5}},
       this.t(noneKey)));
+    // Chia deu: moi cot mot phan bang nhau. Phai co tableLayout:'fixed' thi
+    // be rong cua colgroup moi duoc ton trong -- de auto, trinh duyet tu can
+    // theo noi dung va cot lai lech nhau.
+    const cw=(100/cols.length).toFixed(4)+'%';
     const tbl=h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:150}},
-      h('table',{style:{width:'100%',minWidth:'1180px',borderCollapse:'collapse'}},
-        h('colgroup',null,cols.map(([k,,w])=>h('col',{key:k,
-          style:{width:w==='auto'?'auto':w+'px'}}))),
+      h('table',{style:{width:'100%',minWidth:'1020px',borderCollapse:'collapse',
+          tableLayout:'fixed'}},
+        h('colgroup',null,cols.map(([k])=>h('col',{key:k,style:{width:cw}}))),
+        // Tieu de phai xuong dong duoc: 'ACTUAL GROSS WT (KG)' de mot dong thi
+        // no keo cot rong ra, chia deu bao nhieu cung vo nghia.
         h('thead',null,h('tr',null,cols.map(([k,rt],ci)=>h('th',{key:k,
-          style:{...S.th,position:'sticky',top:0,zIndex:1,
+          style:{...S.th,position:'sticky',top:0,zIndex:1,whiteSpace:'normal',
             ...(rt?{textAlign:'right'}:{}),
             ...(ci<2?{textAlign:'center',paddingLeft:8}:{}),
             ...(ci===cols.length-1?{borderRight:'none'}:{})}},this.t(k))))),
@@ -7315,6 +7760,9 @@ class Component extends DCLogic {
         style:{border:'1px solid '+C.border,borderRadius:8,padding:'5px 7px',fontSize:11.5,
           fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.white,cursor:'pointer'}},
         this.FG_PP.map(v=>h('option',{key:v,value:v},v+' '+this.t('fgPgSize')))):null,
+      tot?h('span',{title:this.t('fgDExpTip')},
+        this.mtBtn(this.t('exportXls'),()=>this.fgDExport(),
+          {color:C.primary,borderColor:C.border,padding:'5px 11px',fontSize:11.5})):null,
       h('button',{onClick:close,style:this.btn('ghost')},this.t('dsoClose')));
     return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
         backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',
@@ -7384,19 +7832,18 @@ class Component extends DCLogic {
           style:{cursor:ed?'default':'pointer'}},
         cell(i+1,{textAlign:'center',fontFamily:S.mono,color:C.faint,fontWeight:600}),
         cell(txt('brand'),{fontWeight:600}),
-        cell(txt('season',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
-        cell(txt('factory')),
         cell(txt('style',true),{fontFamily:S.mono,fontWeight:700,color:C.primary}),
         cell(txt('po',true),{fontFamily:S.mono}),
         cell(txt('color')),
         cell(num('qty'),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
-        cell(num('ship'),{textAlign:'right',fontFamily:S.mono,fontWeight:700}),
-        cell(this.fmt(this.fgBal(r)),{textAlign:'right',fontFamily:S.mono,fontWeight:600,
-          color:this.fgBal(r)<0?'#c0392b':(this.fgBal(r)>0?C.primary:C.faint)}),
         cell(day('load'),{fontFamily:S.mono,whiteSpace:'nowrap'}),
         cell(day('etd'),{fontFamily:S.mono,whiteSpace:'nowrap'}),
         cell(mode(),{fontFamily:S.mono,fontWeight:600,whiteSpace:'nowrap'}),
         cell(txt('dest')),
+        cell(txt('cusNo',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
+        cell(txt('truckNo',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
+        cell(txt('driver'),{whiteSpace:'nowrap'}),
+        cell(txt('driverTel',true),{fontFamily:S.mono,whiteSpace:'nowrap'}),
         cell(cbm(),{textAlign:'right',fontFamily:S.mono}),
         cell(txt('note'),{color:C.sub,wordBreak:'break-word'}),
         h('td',{onClick:ev=>ev.stopPropagation(),
@@ -7407,11 +7854,12 @@ class Component extends DCLogic {
             this.mtBtn(this.t('mtDel'),()=>this.fgDel(r.id),{color:'#c0392b',borderColor:'#eccfca'}),
             this.fgImpCell(r))));
     });
-    const cols=[['fgNo',0],['fgBrand',0],['fgSeason',0],['fgFactory',0],['fgStyle',0],['fgPo',0],
-      ['fgColor',0],['fgQty',1],['fgShipped',1],['fgBal',1],['fgLoad',0],['fgEtd',0],['fgMode',0],
-      ['fgDest',0],['fgCbm',1],['fgNote',0],['mtAct',0]];
+    const cols=[['fgNo',0],['fgBrand',0],['fgStyle',0],['fgPo',0],
+      ['fgColor',0],['fgQty',1],['fgLoad',0],['fgEtd',0],['fgMode',0],
+      ['fgDest',0],['fgCusNo',0],['fgTruck',0],['fgDriver',0],['fgTel',0],
+      ['fgCbm',1],['fgNote',0],['mtAct',0]];
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'2560px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'2680px',borderCollapse:'collapse'}},
         h('thead',null,h('tr',null,
           cols.map(([k,rt],ci)=>h('th',{key:k,style:{...S.th,
             ...(rt?{textAlign:'right'}:{}),

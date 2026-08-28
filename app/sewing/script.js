@@ -167,10 +167,10 @@
       resetAsk:'Xóa toàn bộ thay đổi đã lưu và tải lại trang?',
       exportXls:'Xuất Excel',
       tipPlanCol:'Lấy từ đơn hàng trong seed của module — sửa ở seed.js cùng thư mục',
-      factory:'NHÀ MÁY',
       left:'còn ',
       fiBc:'Nhận hàng hoàn thiện',
       fsBc:'Tình trạng hoàn thiện',
+      fivBc:'Tồn kho hoàn thiện',
       fgBc:'Kế hoạch xuất hàng',
       snapTitle:'DỮ LIỆU LOCAL',
       snapExport:'Xuất ảnh chụp',
@@ -236,10 +236,10 @@
       resetAsk:'Clear all saved changes and reload the page?',
       exportXls:'Export Excel',
       tipPlanCol:'From the orders in the module seed — edit seed.js in the same folder',
-      factory:'FACTORY',
       left:'left ',
       fiBc:'Finishing In',
       fsBc:'Finishing Status',
+      fivBc:'Finishing Inventory',
       fgBc:'F.G Shipment Plan',
       snapTitle:'LOCAL DATA',
       snapExport:'Export snapshot',
@@ -1003,8 +1003,11 @@ class Sewing extends MESCore {
       dsoPass:'ĐẠT',
       dsoFail:'LỖI',
       dsoPick:'Chọn Lý Do Lỗi',
-      dsoPickSub:'Bấm 1 dòng để ghi hàng lỗi cho size này',
+      dsoPickSub:'Chọn 1 hoặc nhiều lỗi rồi bấm Xong',
       dsoPickBack:'← Quay lại',
+      dsoPickSel:'đã chọn',
+      dsoPickClear:'Bỏ chọn',
+      dsoPickNone:'Chọn ít nhất 1 lỗi trước khi bấm Xong',
       dsoDefEmpty:'Thư viện lỗi đang trống — vào Cài Đặt · Thư Viện Lỗi để thêm.',
       dsoKOut:'Sản lượng',
       dsoKQc:'Cân đối QC',
@@ -1046,11 +1049,10 @@ class Sewing extends MESCore {
       dfCat:'Nhóm lỗi',
       dfSev:'Mức độ',
       dfLoc:'Vị trí lỗi',
-      dfCause:'Nguyên nhân gốc',
       dfAdd:'Thêm lỗi',
       dfEmpty:'Chưa có lỗi nào — bấm Thêm lỗi hoặc nhập từ Excel.',
       dfNoHit:'Không có dòng nào khớp từ khóa',
-      dfImportTip:'Nhập .xlsx/.xls/.csv — cột: Mã lỗi · Tên lỗi · Nhóm lỗi · Mức độ · Vị trí lỗi · Nguyên nhân gốc',
+      dfImportTip:'Nhập .xlsx/.xls/.csv — cột: Mã lỗi · Tên lỗi · Nhóm lỗi · Mức độ · Vị trí lỗi',
       dfCount:'lỗi trong thư viện',
       lsCol1:'CHUYỀN',
       lsCol2:'STYLE',
@@ -1069,6 +1071,15 @@ class Sewing extends MESCore {
       lsPctTip:'Số nguyên 0–100, không âm, không thập phân',
       lsDec1Tip:'Không âm, tối đa 1 chữ số thập phân',
       lsTypeTip:'Tự động theo SMV — không sửa tay: SMV > 100 → loại 1, 60 < SMV ≤ 100 → loại 2, SMV ≤ 60 → loại 3',
+      dsoln1:'Hiệu Suất Chuyền',
+      dsoln2:'Endline QC',
+      dsotab5:'Sewing Production',
+      spPanel:'Sản Xuất May Theo Chuyền',
+      spSub:'Sản lượng, bậc M-level và chất lượng của từng chuyền',
+      spMlv:'M level',
+      spOut:'Sản lượng hiện tại / Sản lượng M',
+      spTop3:'Top 3 lỗi',
+      dsoLnPerfSoon:'Màn hình Hiệu Suất Chuyền — sẽ thiết kế sau.',
       dsotab1:'Cài Đặt',
       dsotab2:'Sản Xuất',
       dsotab3:'Cảnh Báo',
@@ -1161,6 +1172,7 @@ class Sewing extends MESCore {
       lineDupErr:'Không gộp được: chuyền này đang có dòng riêng trong bảng — xóa hoặc đổi tên dòng đó trước.',
       demandTitle:'Nhu Cầu Sản Lượng Cắt Hàng Tuần',
       demandSub:'Weekly Cutting Bundle Demand',
+      factory:'NHÀ MÁY',
       grpWip:'TÌNH TRẠNG WIP',
       grpNext:'NHU CẦU TUẦN TIẾP THEO',
       dA:'TỔNG CẮT CỦA ĐƠN',
@@ -1309,8 +1321,11 @@ class Sewing extends MESCore {
       dsoPass:'PASS',
       dsoFail:'FAIL',
       dsoPick:'Select Defect Reason',
-      dsoPickSub:'Tap a row to log the failed piece for this size',
+      dsoPickSub:'Select one or more defects, then press Done',
       dsoPickBack:'← Back',
+      dsoPickSel:'selected',
+      dsoPickClear:'Clear',
+      dsoPickNone:'Select at least one defect before pressing Done',
       dsoDefEmpty:'Defect library is empty — add rows in Settings · Defect Library.',
       dsoKOut:'Output',
       dsoKQc:'QC Balance',
@@ -1352,11 +1367,10 @@ class Sewing extends MESCore {
       dfCat:'Category',
       dfSev:'Severity',
       dfLoc:'Defect Location',
-      dfCause:'Root Cause',
       dfAdd:'Add defect',
       dfEmpty:'No defect yet — add one or import from Excel.',
       dfNoHit:'No row matches the search',
-      dfImportTip:'Import .xlsx/.xls/.csv — columns: Defect Code · Defect Name · Category · Severity · Defect Location · Root Cause',
+      dfImportTip:'Import .xlsx/.xls/.csv — columns: Defect Code · Defect Name · Category · Severity · Defect Location',
       dfCount:'defects in library',
       lsCol1:'LINE',
       lsCol2:'STYLE',
@@ -1375,6 +1389,15 @@ class Sewing extends MESCore {
       lsPctTip:'Whole number 0–100, no negatives, no decimals',
       lsDec1Tip:'No negatives, at most 1 decimal place',
       lsTypeTip:'Derived from SMV — not editable: SMV > 100 → type 1, 60 < SMV ≤ 100 → type 2, SMV ≤ 60 → type 3',
+      dsoln1:'Line Performance',
+      dsoln2:'Endline QC',
+      dsotab5:'Sewing Production',
+      spPanel:'Sewing Production by Line',
+      spSub:'Output, M-level tier and quality for every line',
+      spMlv:'M level',
+      spOut:'Current output / M output',
+      spTop3:'Top 3 defects',
+      dsoLnPerfSoon:'Line Performance screen — to be designed.',
       dsotab1:'Settings',
       dsotab2:'Production',
       dsotab3:'Alerts',
@@ -1467,6 +1490,7 @@ class Sewing extends MESCore {
       confirmDel:'This line has data — delete all of its rows?',
       demandTitle:'Weekly Cutting Bundle Demand',
       demandSub:'Nhu Cầu Sản Lượng Cắt Hàng Tuần',
+      factory:'FACTORY',
       grpWip:'WIP STATUS',
       grpNext:'NEXT WEEK DEMAND',
       dA:'TOTAL ORDER CUT',
@@ -1619,7 +1643,7 @@ class Sewing extends MESCore {
     this.scrollRef = React.createRef(); this.panelRef = React.createRef(); this.dailyRef = React.createRef();
     const weeks = this.seed();
     this.state = { ...this.coreState(),
-      page: 'sewing', cutTab: 'capacity', dsoTab: 'cfg', dsoSub: 'line', lset: {}, lsEdit: null,
+      page: 'sewing', cutTab: 'capacity', dsoTab: 'sprod', dsoSub: 'line', dsoLineTab: 'perf', lset: {}, lsEdit: null,
       dsoLine: null, mlvLine: null, mlvFs: false, dsoDone: {}, dsoDoneV: 2, dsoHand: {}, dsoHandQ: {},
       dsoSlips: [], dsoSlipSeq: {}, dsoHandWho: {}, dsoHandAsk: null,
       cap: {}, capTurns: {}, capOrder: null, dragRow: null, multPlain: 3, multEmb: 6,
@@ -1631,7 +1655,7 @@ class Sewing extends MESCore {
       dsoAlerts: this.initAlerts(), dsoAlEdit: false, dsoAlHit: null,
       dsoMtypeRows: null, dsoMtypeDet: {}, mtSel: null, mtEdit: null, mtMsg: '',
       dsoDefects: this.initDefects(), dsoDefLog: {}, dsoDefTime: {}, dfEdit: null, dfQ: '', dfMsg: '',
-      dsoTap: null, dsoTapQ: '',
+      dsoTap: null, dsoTapQ: '', dsoTapSel: {},
       dsoPassLog: {},
       dsoHistQ: '', dsoDefQ: '', dsoHandBulk: null,
       // Ban tablet cua trang chi tiet chuyen: o dang chon, ngay cua bang Top 3,
@@ -2899,7 +2923,7 @@ class Sewing extends MESCore {
       this.capDays(r).forEach((x,i)=>{ T.days[i]+=Number(x)||0; }); });
     return T; }
 
-  DSO_TABS=[['cfg','dsotab1'],['prod','dsotab2'],['alert','dsotab3'],['mlv','dsotab4']];
+  DSO_TABS=[['sprod','dsotab5'],['cfg','dsotab1'],['prod','dsotab2'],['alert','dsotab3'],['mlv','dsotab4']];
   // Bang lich su chi cao toi da DSO_HIST_ROWS dong roi cuon TRONG bang, khong keo
   // dai trang. Tieu de dinh o tren nen cuon van doc duoc ten cot.
   // Chieu cao 1 dong KHAC nhau giua 2 bang (do thuc te tren Chrome): bang hoan thanh
@@ -2908,6 +2932,9 @@ class Sewing extends MESCore {
   DSO_ROW_H={done:45,def:37};
   dsoHistH(kind){ return this.DSO_HIST_ROWS*(this.DSO_ROW_H[kind]||38)+35; }
   DSO_SUBS=[['line','dsosub1'],['mtype','dsosub2'],['defect','dsosub3']];
+  // Tab con TRONG mot chuyen. Endline QC la man hinh dem ĐẠT / LỖI dang co;
+  // Hieu Suat Chuyen chua co spec. Mac dinh vao la 'perf'.
+  DSO_LINE_TABS=[['perf','dsoln1'],['qc','dsoln2']];
   // Nhan KEY dich (khong nhan nhan da resolve) de nhan tu doi khi bam VI/EN.
   // sub=true -> preset nhe hon, giong segmented control trong renderPeriodBar.
   DSO_ALERTS=['Máy hỏng','Mất điện nước','Lỗi kĩ thuật','Lỗi chất lượng','Cần cơ động','Đào tạo',
@@ -3093,27 +3120,27 @@ class Sewing extends MESCore {
   // tu do -- moi nha may co bo ma / nhom / muc do rieng, nen khong validate gi
   // ngoai viec don khoang trang khi bam Xong.
   DEFECT_DEF=[
-    {code:'SW-001',name:'Bỏ mũi chỉ',              cat:'May',        sev:'Major',    loc:'Đường sườn',    cause:'Kim mòn · chỉ căng'},
-    {code:'SW-002',name:'Đường may nhăn',          cat:'May',        sev:'Major',    loc:'Nẹp áo',        cause:'Áp lực chân vịt sai'},
-    {code:'SW-003',name:'Đường may lệch',          cat:'May',        sev:'Critical', loc:'Cổ áo',         cause:'Canh sai dấu bấm'},
-    {code:'SW-004',name:'Tuột chỉ · nhảy chỉ',     cat:'May',        sev:'Major',    loc:'Gấu áo',        cause:'Máy chưa hiệu chỉnh'},
-    {code:'SW-005',name:'Chỉ thừa chưa cắt',       cat:'Vệ sinh',    sev:'Minor',    loc:'Toàn sản phẩm', cause:'Bỏ sót khâu cắt chỉ'},
-    {code:'FB-001',name:'Vải lỗi sợi · sợi thô',   cat:'Vải',        sev:'Major',    loc:'Thân trước',    cause:'Nguyên liệu đầu vào'},
-    {code:'FB-002',name:'Vải khác màu',            cat:'Vải',        sev:'Critical', loc:'Tay áo',        cause:'Trộn lô nhuộm'},
-    {code:'FB-003',name:'Vải bị lỗ · xước',        cat:'Vải',        sev:'Critical', loc:'Thân sau',      cause:'Nguyên liệu đầu vào'},
-    {code:'CT-001',name:'Cắt sai thông số',        cat:'Cắt',        sev:'Critical', loc:'Chi tiết thân', cause:'Sơ đồ cắt sai'},
-    {code:'CT-002',name:'Chi tiết không đối xứng', cat:'Cắt',        sev:'Major',    loc:'Tay áo',        cause:'Xô lệch khi cắt'},
-    {code:'AC-001',name:'Khóa kéo không êm',       cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp khóa',      cause:'Phụ liệu lỗi'},
-    {code:'AC-002',name:'Cúc lệch · thiếu cúc',    cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp áo',        cause:'Đóng cúc sai vị trí'},
-    {code:'AC-003',name:'Nhãn sai · thiếu nhãn',   cat:'Phụ liệu',   sev:'Critical', loc:'Cổ trong',      cause:'Cấp sai nhãn'},
-    {code:'PR-001',name:'In · thêu lệch vị trí',   cat:'In thêu',    sev:'Major',    loc:'Ngực trái',     cause:'Định vị khuôn sai'},
-    {code:'PR-002',name:'Thêu thiếu mũi',          cat:'In thêu',    sev:'Minor',    loc:'Ngực trái',     cause:'Chương trình thêu'},
-    {code:'IR-001',name:'Vết bẩn dầu máy',         cat:'Vệ sinh',    sev:'Major',    loc:'Toàn sản phẩm', cause:'Máy rỉ dầu'},
-    {code:'IR-002',name:'Là ép bị bóng',           cat:'Hoàn thiện', sev:'Major',    loc:'Thân trước',    cause:'Nhiệt là quá cao'},
-    {code:'SZ-001',name:'Sai thông số kích cỡ',    cat:'Đo lường',   sev:'Critical', loc:'Vòng ngực',     cause:'Rập · cắt sai'},
+    {code:'SW-001',name:'Bỏ mũi chỉ',              cat:'May',        sev:'Major',    loc:'Đường sườn'},
+    {code:'SW-002',name:'Đường may nhăn',          cat:'May',        sev:'Major',    loc:'Nẹp áo'},
+    {code:'SW-003',name:'Đường may lệch',          cat:'May',        sev:'Critical', loc:'Cổ áo'},
+    {code:'SW-004',name:'Tuột chỉ · nhảy chỉ',     cat:'May',        sev:'Major',    loc:'Gấu áo'},
+    {code:'SW-005',name:'Chỉ thừa chưa cắt',       cat:'Vệ sinh',    sev:'Minor',    loc:'Toàn sản phẩm'},
+    {code:'FB-001',name:'Vải lỗi sợi · sợi thô',   cat:'Vải',        sev:'Major',    loc:'Thân trước'},
+    {code:'FB-002',name:'Vải khác màu',            cat:'Vải',        sev:'Critical', loc:'Tay áo'},
+    {code:'FB-003',name:'Vải bị lỗ · xước',        cat:'Vải',        sev:'Critical', loc:'Thân sau'},
+    {code:'CT-001',name:'Cắt sai thông số',        cat:'Cắt',        sev:'Critical', loc:'Chi tiết thân'},
+    {code:'CT-002',name:'Chi tiết không đối xứng', cat:'Cắt',        sev:'Major',    loc:'Tay áo'},
+    {code:'AC-001',name:'Khóa kéo không êm',       cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp khóa'},
+    {code:'AC-002',name:'Cúc lệch · thiếu cúc',    cat:'Phụ liệu',   sev:'Major',    loc:'Nẹp áo'},
+    {code:'AC-003',name:'Nhãn sai · thiếu nhãn',   cat:'Phụ liệu',   sev:'Critical', loc:'Cổ trong'},
+    {code:'PR-001',name:'In · thêu lệch vị trí',   cat:'In thêu',    sev:'Major',    loc:'Ngực trái'},
+    {code:'PR-002',name:'Thêu thiếu mũi',          cat:'In thêu',    sev:'Minor',    loc:'Ngực trái'},
+    {code:'IR-001',name:'Vết bẩn dầu máy',         cat:'Vệ sinh',    sev:'Major',    loc:'Toàn sản phẩm'},
+    {code:'IR-002',name:'Là ép bị bóng',           cat:'Hoàn thiện', sev:'Major',    loc:'Thân trước'},
+    {code:'SZ-001',name:'Sai thông số kích cỡ',    cat:'Đo lường',   sev:'Critical', loc:'Vòng ngực'},
   ];
   // [ten truong, khoa dich] -- dung chung cho bang Cai Dat va bang chon ly do loi
-  DEFECT_COLS=[['code','dfCode'],['name','dfName'],['cat','dfCat'],['sev','dfSev'],['loc','dfLoc'],['cause','dfCause']];
+  DEFECT_COLS=[['code','dfCode'],['name','dfName'],['cat','dfCat'],['sev','dfSev'],['loc','dfLoc']];
   initDefects(){ return this.DEFECT_DEF.map((r,i)=>({id:'f'+(i+1),...r})); }
   // Array.isArray (khong phai l&&l.length) -- xoa het dong phai GIU bang rong,
   // khong duoc hoi sinh danh muc mac dinh.
@@ -3121,7 +3148,7 @@ class Sewing extends MESCore {
   setDefects(fn){ this.setState(s=>({dsoDefects:fn(Array.isArray(s.dsoDefects)?s.dsoDefects:this.initDefects())})); }
   dfSet(id,patch){ this.setDefects(l=>l.map(r=>r.id===id?{...r,...patch}:r)); }
   dfAddRow(){ this.setDefects(l=>{ const id=this.mtNextId(l,'f'); this._dfNew=id;
-      return [...l,{id,code:'',name:'',cat:'',sev:'',loc:'',cause:''}]; });
+      return [...l,{id,code:'',name:'',cat:'',sev:'',loc:''}]; });
     // xoa tu khoa tim: dong rong khong khop tu khoa nao nen se bi an mat
     setTimeout(()=>{ if(this._mounted&&this._dfNew) this.set({dfEdit:this._dfNew,dfQ:''}); },0); }
   dfDelRow(id){ this.setDefects(l=>l.filter(r=>r.id!==id));
@@ -3150,7 +3177,7 @@ class Sewing extends MESCore {
     const n=s=>this.dfFold(s).replace(/\s+/g,' ');
     const PAT=[['code',/(ma loi|defect code|\bcode\b|\bma\b)/],['name',/(ten loi|defect name|\bname\b|\bten\b)/],
       ['cat',/(nhom|phan loai|category|\btype\b)/],['sev',/(muc do|nghiem trong|severity|\blevel\b)/],
-      ['loc',/(vi tri|defect location|location|position)/],['cause',/(nguyen nhan|root cause|\bcause\b|reason)/]];
+      ['loc',/(vi tri|defect location|location|position)/]];
     let hi=-1, map={};
     for(let i=0;i<Math.min((aoa||[]).length,10);i++){ const r=aoa[i]||[], m={};
       r.forEach((c,j)=>{ const v=n(c); if(!v) return;
@@ -3160,7 +3187,7 @@ class Sewing extends MESCore {
     const txt=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
     for(let i=start;i<(aoa||[]).length;i++){ const r=aoa[i]||[];
       const g=(f,pos)=>txt(hi>=0?(map[f]!=null?r[map[f]]:''):r[pos]);
-      const row={code:g('code',0),name:g('name',1),cat:g('cat',2),sev:g('sev',3),loc:g('loc',4),cause:g('cause',5)};
+      const row={code:g('code',0),name:g('name',1),cat:g('cat',2),sev:g('sev',3),loc:g('loc',4)};
       if(!row.code&&!row.name) continue;      // dong trong / dong ke chan
       out.push(row); }
     return out; }
@@ -3216,7 +3243,6 @@ class Sewing extends MESCore {
                 borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},String(r.sev).trim())
              :h('span',{style:{color:C.faint}},'\u2014'))),
         h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},cell('loc')),
-        h('td',{style:{...S.td,background:bg,color:C.sub,wordBreak:'break-word'}},cell('cause')),
         h('td',{style:{...S.td,background:bg,borderRight:'none',whiteSpace:'nowrap'}},
           h('div',{style:{display:'flex',gap:6}},
             ed?this.mtBtn(this.t('lsDone'),()=>this.dfDone(r.id),{border:'1px solid '+C.primary,background:C.tint})
@@ -3224,15 +3250,15 @@ class Sewing extends MESCore {
             this.mtBtn(this.t('mtDel'),()=>this.dfDelRow(r.id),{color:'#c0392b',borderColor:'#eccfca'}))));
     });
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'1140px',borderCollapse:'collapse'}},
-        h('colgroup',null,h('col',{style:{width:'52px'}}),h('col',{style:{width:'11%'}}),
-          h('col',{style:{width:'19%'}}),h('col',{style:{width:'12%'}}),h('col',{style:{width:'10%'}}),
-          h('col',{style:{width:'15%'}}),h('col',{style:{width:'19%'}}),h('col',{style:{width:'130px'}})),
+      h('table',{style:{width:'100%',minWidth:'960px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'52px'}}),h('col',{style:{width:'14%'}}),
+          h('col',{style:{width:'24%'}}),h('col',{style:{width:'15%'}}),h('col',{style:{width:'13%'}}),
+          h('col',{style:{width:'19%'}}),h('col',{style:{width:'130px'}})),
         h('thead',null,h('tr',null,
           h('th',{style:{...S.th,textAlign:'center',paddingLeft:8}},this.t('mtNo')),
           ...this.DEFECT_COLS.map(([f,k])=>h('th',{key:f,style:S.th},this.t(k))),
           h('th',{style:{...S.th,borderRight:'none'}},this.t('mtAct')))),
-        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:8,
+        h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:7,
           style:{...S.td,textAlign:'center',color:C.faint,padding:'38px 16px',borderRight:'none'}},
           this.t(all.length?'dfNoHit':'dfEmpty'))))));
     const bodyEl=h('div',null, tbl,
@@ -3244,25 +3270,39 @@ class Sewing extends MESCore {
   // ==== Bam LOI o trang chuyen -> bang chon ly do =========================
   // Nut DAT / LOI da nam san tren trang chuyen, nen hop nay chi con mot buoc:
   // chon ly do loi. dsoTap luon o stage 'fail'.
-  dsoTapClose(){ this.set({dsoTap:null,dsoTapQ:''}); }
+  dsoTapClose(){ this.set({dsoTap:null,dsoTapQ:'',dsoTapSel:{}}); }
+  // Chon NHIEU loi: dsoTapSel la map {id dong loi -> true}. Bam dong chi bat/tat,
+  // phai bam Xong moi ghi -- mot san pham hong thuong dinh vai loi cung luc.
+  // Giu theo id (khong phai chi so dong) nen doi tu khoa tim khong mat lua chon.
+  dsoTapSelIds(){ const m=this.state.dsoTapSel||{}; return Object.keys(m).filter(k=>m[k]); }
+  dsoTapToggle(id){ this.setState(st=>{ const m={...(st.dsoTapSel||{})};
+    if(m[id]) delete m[id]; else m[id]=true; return {dsoTapSel:m}; }); }
+  dsoTapClear(){ this.set({dsoTapSel:{}}); }
   // Hang loi ghi theo (ngay, chuyen, style, PO, mau, size) + ma loi -> dem duoc
   // ca so luong loi va loi nao hay gap. KHONG cong vao san luong hoan thanh.
   // Doc new Date() MOT lan roi dung chung cho ca khoa ngay lan moc gio: doc 2
   // lan, bam dung luc doi ngay -> so luong vao ngay nay ma moc gio vao ngay kia.
   // Moc HH:MM ghi song song sang dsoDefTime theo khoa (o size + ma loi) --
   // dsoDefLog GIU NGUYEN hinh dang so dem nen may dang co du lieu cu van doc duoc.
-  dsoDefTake(c,d){ const now=new Date(), k=this.dsoDoneKey(c,this.psFmtD(now)), at=this.dsoHM(now);
-    const code=String(d.code||'').trim()||String(d.name||'').trim()||'?';
+  // Nhan MOT dong loi hoac CA MANG dong loi (nut Xong). Ca cum ghi trong mot
+  // lan setState va dung CHUNG mot moc gio -> dung nhu cong nhan thay: mot lan
+  // bam Xong la mot san pham hong, du no dinh may loi.
+  dsoDefTake(c,ds){ const list=(Array.isArray(ds)?ds:[ds]).filter(Boolean);
+    if(!list.length){ this.dsoTapClose(); return; }
+    const now=new Date(), k=this.dsoDoneKey(c,this.psFmtD(now)), at=this.dsoHM(now);
     const who=this.dsoOpOf(c.line).replace(/\s+/g,' ').trim();
     this.setState(st=>{ const m={...(st.dsoDefLog||{})}, cur={...(m[k]||{})};
-      cur[code]=(Number(cur[code])||0)+1; m[k]=cur;
-      const tm={...(st.dsoDefTime||{})}, tk=k+'|'+code;
-      tm[tk]=(tm[tk]||[]).concat(at);
-      // Ten cong nhan ghi song song, CUNG khoa va CUNG chieu dai voi dsoDefTime
-      // (ke ca khi bo trong) -- nho vay xep hang Top 3 cong nhan chi con la dem.
-      const wm={...(st.dsoDefWho||{})};
-      wm[tk]=(wm[tk]||[]).concat(who);
-      return {dsoDefLog:m,dsoDefTime:tm,dsoDefWho:wm,dsoTap:null,dsoTapQ:''}; }); }
+      const tm={...(st.dsoDefTime||{})}, wm={...(st.dsoDefWho||{})};
+      list.forEach(d=>{
+        const code=String(d.code||'').trim()||String(d.name||'').trim()||'?';
+        cur[code]=(Number(cur[code])||0)+1;
+        const tk=k+'|'+code;
+        tm[tk]=(tm[tk]||[]).concat(at);
+        // Ten cong nhan ghi song song, CUNG khoa va CUNG chieu dai voi dsoDefTime
+        // (ke ca khi bo trong) -- nho vay xep hang Top 3 cong nhan chi con la dem.
+        wm[tk]=(wm[tk]||[]).concat(who); });
+      m[k]=cur;
+      return {dsoDefLog:m,dsoDefTime:tm,dsoDefWho:wm,dsoTap:null,dsoTapQ:'',dsoTapSel:{}}; }); }
   // Tong luy ke moi ngay, giong dsoDoneOf
   dsoDefOf(c){ const m=this.state.dsoDefLog||{};
     const tail='|'+c.line+'|'+c.style+'|'+c.po+'|'+c.color+'|'+c.size;
@@ -3324,10 +3364,20 @@ class Sewing extends MESCore {
     const ctd={padding:'9px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,
       borderRight:'1px solid '+C.line,verticalAlign:'middle'};
     const txt=v=>String(v==null?'':v).trim()||'\u2014';
-    const tblRows=rows.map((r,i)=>{ const sv=this.dfSevChip(r.sev);
-      return h('tr',{key:r.id,onClick:()=>this.dsoDefTake(c,r),title:this.t('dsoPickSub'),
-          style:{cursor:'pointer',background:i%2?'#f7f9f3':C.white},'style-hover':{background:C.tint}},
-        h('td',{style:{...ctd,paddingLeft:20,fontFamily:mono,fontWeight:700,color:C.primary,
+    // Lua chon doc tu state chu khong tu `rows`: dong da chon ma bi tu khoa tim
+    // loc ra van con trong dsoTapSel, bam Xong van ghi du.
+    const sel=this.state.dsoTapSel||{}, selIds=this.dsoTapSelIds(), nSel=selIds.length;
+    const tick=on=>h('span',{style:{display:'inline-flex',alignItems:'center',justifyContent:'center',
+        width:21,height:21,borderRadius:6,flex:'none',
+        border:'1.6px solid '+(on?C.primary:C.border),background:on?C.primary:C.white}},
+      on?h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:'#fff',strokeWidth:3.4,
+        strokeLinecap:'round',strokeLinejoin:'round'},h('path',{d:'M20 6L9 17l-5-5'})):null);
+    const tblRows=rows.map((r,i)=>{ const sv=this.dfSevChip(r.sev), on=!!sel[r.id];
+      return h('tr',{key:r.id,onClick:()=>this.dsoTapToggle(r.id),title:this.t('dsoPickSub'),
+          style:{cursor:'pointer',background:on?C.tint:(i%2?'#f7f9f3':C.white)},
+          'style-hover':{background:C.tint}},
+        h('td',{style:{...ctd,paddingLeft:20,width:46,textAlign:'center'}},tick(on)),
+        h('td',{style:{...ctd,fontFamily:mono,fontWeight:700,color:C.primary,
           whiteSpace:'nowrap'}},txt(r.code)),
         h('td',{style:{...ctd,fontWeight:600,wordBreak:'break-word'}},txt(r.name)),
         h('td',{style:{...ctd,wordBreak:'break-word'}},txt(r.cat)),
@@ -3335,9 +3385,8 @@ class Sewing extends MESCore {
           ? h('span',{style:{fontSize:11,fontWeight:700,color:sv.fg,background:sv.bg,border:'1px solid '+sv.bd,
               borderRadius:999,padding:'3px 9px',whiteSpace:'nowrap'}},String(r.sev).trim())
           : h('span',{style:{color:C.faint}},'\u2014')),
-        h('td',{style:{...ctd,wordBreak:'break-word'}},txt(r.loc)),
-        h('td',{style:{...ctd,borderRight:'none',paddingRight:20,color:C.sub,
-          wordBreak:'break-word'}},txt(r.cause))); });
+        h('td',{style:{...ctd,borderRight:'none',paddingRight:20,
+          wordBreak:'break-word'}},txt(r.loc))); });
     // O ten cong nhan: ghi kem vao hang loi sap chon -> Top 3 cong nhan o trang
     // chuyen xep hang tu day. Bo trong van ghi duoc, chi la khong quy duoc ai.
     const ops=this.dsoOpNames(), opId='dso-op-'+String(c.line||'').replace(/[^\w-]/g,'');
@@ -3359,23 +3408,36 @@ class Sewing extends MESCore {
       h('span',{style:{flex:'none',fontSize:11.5,fontWeight:700,fontFamily:mono,color:C.faint,
         whiteSpace:'nowrap'}},this.fmt(rows.length)+' / '+this.fmt(all.length)));
     const table=h('div',{className:'yscroll',style:{overflow:'auto',flex:1,minHeight:130}},
-      h('table',{style:{width:'100%',minWidth:'820px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'760px',borderCollapse:'collapse'}},
         h('thead',null,h('tr',null,
-          h('th',{style:{...sth,paddingLeft:20}},this.t('dfCode')),
+          h('th',{style:{...sth,paddingLeft:20,width:46}},''),
+          h('th',{style:sth},this.t('dfCode')),
           h('th',{style:sth},this.t('dfName')),
           h('th',{style:sth},this.t('dfCat')),
           h('th',{style:sth},this.t('dfSev')),
-          h('th',{style:sth},this.t('dfLoc')),
-          h('th',{style:{...sth,borderRight:'none',paddingRight:20}},this.t('dfCause')))),
+          h('th',{style:{...sth,borderRight:'none',paddingRight:20}},this.t('dfLoc')))),
         h('tbody',null, rows.length?tblRows:h('tr',null,h('td',{colSpan:6,
           style:{...ctd,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},
           this.t(all.length?'dfNoHit':'dsoDefEmpty'))))));
     const pick=h('div',{style:{display:'flex',flexDirection:'column',minHeight:0,flex:1}},
       head('dsoPick','dsoPickSub',true), info, search, table,
       h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 20px',flex:'none',
-          borderTop:'1px solid '+C.line,background:'#f8faf3'}},
-        h('div',{style:{flex:1}}),
-        h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel'))));
+          borderTop:'1px solid '+C.line,background:'#f8faf3',flexWrap:'wrap'}},
+        nSel?h('span',{style:{flex:'none',fontSize:12.5,fontWeight:700,fontFamily:mono,color:C.primary,
+          background:C.tint,border:'1px solid '+C.border,borderRadius:999,padding:'5px 12px',
+          whiteSpace:'nowrap'}},this.fmt(nSel)+' '+this.t('dsoPickSel')):null,
+        nSel?h('button',{onClick:()=>this.dsoTapClear(),
+          style:{flex:'none',border:'none',background:'none',padding:'4px 2px',cursor:'pointer',
+            fontFamily:'inherit',fontSize:12.5,fontWeight:600,color:C.sub,
+            textDecoration:'underline'}},this.t('dsoPickClear')):null,
+        h('div',{style:{flex:1,minWidth:8}}),
+        h('button',{onClick:close,style:this.btn('ghost')},this.t('psCancel')),
+        // Chua chon gi thi nut mo di, khong bam duoc -- tranh ghi hang loi rong.
+        h('button',{disabled:!nSel,title:nSel?'':this.t('dsoPickNone'),
+          onClick:()=>{ if(!nSel) return;
+            this.dsoDefTake(c,selIds.map(id=>all.find(x=>x.id===id)).filter(Boolean)); },
+          style:{...this.btn(nSel?'primary':'ghost'),padding:'10px 24px',fontSize:14,
+            ...(nSel?{}:{opacity:.45,cursor:'not-allowed'})}},this.t('lsDone'))));
     return h('div',{onClick:close,style:{position:'fixed',inset:0,background:'rgba(24,28,22,.5)',
         backdropFilter:'blur(2px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:85,padding:24}},
       h('div',{onClick:ev=>ev.stopPropagation(),style:{width:'min(960px,96vw)',
@@ -4259,7 +4321,15 @@ class Sewing extends MESCore {
         this.t('dsoDoneNeed')),
       h('div',{style:{fontSize:15,fontWeight:700,fontFamily:mono,color:C.ink,flex:'none'}},
         this.fmt(K.done)+' / '+this.fmt(K.need)));
-    if(!cards.length) return h('div',{style:{padding:'16px 18px 22px'}},bar,
+    const lnTab=this.state.dsoLineTab||'perf';
+    const tabs=this.tabBar(this.DSO_LINE_TABS,lnTab,id=>this.set({dsoLineTab:id}),true);
+    // Hieu Suat Chuyen chua co spec -> khung giu cho, chua ve gi ben trong.
+    // Dat TRUOC nhanh !cards.length: chuyen chua co tac nghiep cat van mo tab nay duoc.
+    if(lnTab!=='qc') return h('div',{style:{padding:'16px 18px 22px'}},bar,tabs,
+      h('div',{style:{border:'1px solid '+C.border,borderRadius:16,background:C.white,
+          boxShadow:C.shadow,padding:'104px 24px',textAlign:'center',color:C.faint,
+          fontSize:13.5}},this.t('dsoLnPerfSoon')));
+    if(!cards.length) return h('div',{style:{padding:'16px 18px 22px'}},bar,tabs,
       h('div',{style:{padding:'48px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},
         this.t('dsoNoCut')));
 
@@ -4470,9 +4540,9 @@ class Sewing extends MESCore {
         bigBtn(this.t('dsoBtnPass'),c?(this.fmt(dq)+' / '+this.fmt(c.need)):this.t('dsoNoPick'),
           '#4038e0',()=>this.dsoBump(c,1)),
         bigBtn(this.t('dsoBtnDef'),c?('✕ '+this.fmt(dn)):this.t('dsoNoPick'),
-          '#ee4b47',()=>this.set({dsoTap:{c:c,stage:'fail'},dsoTapQ:''}))));
+          '#ee4b47',()=>this.set({dsoTap:{c:c,stage:'fail'},dsoTapQ:'',dsoTapSel:{}}))));
 
-    return h('div',{style:{padding:'16px 18px 22px'}},bar,
+    return h('div',{style:{padding:'16px 18px 22px'}},bar,tabs,
       h('div',{style:{border:'1px solid '+C.border,borderRadius:16,overflow:'hidden',background:C.white,
           boxShadow:C.shadow,display:'grid',gridTemplateColumns:'minmax(0,1.04fr) minmax(0,1fr)',
           alignItems:'stretch'}},
@@ -5214,6 +5284,100 @@ class Sewing extends MESCore {
             h('tfoot',null,foot)))));
   }
 
+  // ==== Sewing Production: MOT dong = MOT chuyen =========================
+  // Gop san luong + bac M-level + chat luong cua tung chuyen vao mot bang.
+  // Moi so deu doc tu ham co san (prodLines / mlvSlots / mlvQuality) nen bang
+  // nay khong bao gio lech voi trang chuyen hay bang M-level.
+  sewProdRows(){ return this.prodLines().map(x=>{
+      const S=this.mlvSlots(x.line), Q=this.mlvQuality(x.line), cur=S.cur;
+      return {line:x.line, w:x.cfg.w,
+        mlv:(cur&&cur.name&&cur.name!=='\u2014')?cur.name:'',
+        // Thieu SMV / cong nhan thi mlvTarget tra null -> de trong, KHONG quy ve 0
+        tgt:(cur&&cur.target!=null)?cur.target:null,
+        done:Q.done, rate:Q.rate, dhu:Q.dhu, top3:Q.top3}; }); }
+
+  renderDsoSewProd(){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const rows=this.sewProdRows();
+    if(!rows.length) return h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,
+      fontSize:13.5}},this.t('demandEmpty'));
+    const th={padding:'9px 10px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',
+      textTransform:'uppercase',color:C.sub,textAlign:'left',borderRight:'1px solid '+C.line,
+      background:'#f8faf3',whiteSpace:'nowrap'};
+    const thTop={...th,borderBottom:'1px solid '+C.line};
+    const thBot={...th,borderBottom:'2px solid '+C.border};
+    const td={padding:'10px 10px',fontSize:12.5,borderTop:'1px solid '+C.line,
+      borderRight:'1px solid '+C.line,verticalAlign:'middle'};
+    // Thanh ngang: da lam so voi san luong cua bac M dang dat. Chua co target thi
+    // de RANH, khong ve thanh 0% -- 0% doc nham thanh 'chuyen chua lam duoc gi'.
+    const bar=(done,tgt)=>{ const ok=tgt!=null&&done>=tgt;
+      const pct=tgt?Math.max(0,Math.min(100,done/tgt*100)):0;
+      return h('div',{style:{minWidth:158}},
+        h('div',{style:{display:'flex',alignItems:'baseline',gap:7,marginBottom:5}},
+          h('span',{style:{fontSize:14.5,fontWeight:700,fontFamily:mono,
+            color:ok?'#2f7d32':C.ink}},this.fmt(done)),
+          h('span',{style:{fontSize:12,fontFamily:mono,color:C.faint,whiteSpace:'nowrap'}},
+            '/ '+(tgt==null?'\u2014':this.fmt(tgt))),
+          h('span',{style:{flex:1,minWidth:6}}),
+          tgt!=null?h('span',{style:{fontSize:11,fontFamily:mono,fontWeight:700,
+            color:ok?'#2f7d32':C.faint,whiteSpace:'nowrap'}},Math.round(pct)+'%'):null),
+        h('div',{style:{height:8,borderRadius:99,background:'#e9ece1',overflow:'hidden'}},
+          tgt!=null?h('div',{style:{width:pct+'%',height:'100%',borderRadius:99,
+            background:ok?'#5a9c3f':C.primary}}):null)); };
+    const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white;
+      return h('tr',{key:r.line,onClick:()=>this.set({dsoTab:'prod',dsoLine:r.line}),
+          title:this.t('dsoOpenLine'),style:{cursor:'pointer',background:bg},
+          'style-hover':{background:C.tint}},
+        h('td',{style:{...td,paddingLeft:16,fontWeight:700,fontFamily:mono,color:C.primary,
+          whiteSpace:'nowrap'}},r.line),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:600,
+          whiteSpace:'nowrap'}},this.fmt(r.w)),
+        h('td',{style:td}, r.mlv
+          ? h('span',{style:{fontSize:11.5,fontWeight:700,fontFamily:mono,color:C.dark,
+              background:C.tint,border:'1px solid '+C.border,borderRadius:999,
+              padding:'3px 10px',whiteSpace:'nowrap'}},r.mlv)
+          : h('span',{style:{color:C.faint}},'\u2014')),
+        h('td',{style:td},bar(r.done,r.tgt)),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
+          color:r.rate?'#946200':C.faint,whiteSpace:'nowrap'}},this.dsoPct1(r.rate)),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
+          color:r.dhu?'#a3271b':C.faint,whiteSpace:'nowrap'}},r.dhu.toFixed(1)),
+        h('td',{style:{...td,borderRight:'none'}}, r.top3.length
+          ? h('div',{style:{display:'flex',flexDirection:'column',gap:4}},
+              r.top3.map(x=>{ const nm=this.dsoDefName(x.code);
+                return h('div',{key:x.code,style:{display:'flex',alignItems:'center',gap:7,
+                    minWidth:0}},
+                  h('span',{style:{flex:'none',fontSize:10.5,fontWeight:700,fontFamily:mono,
+                    color:'#a3271b',background:'#fdecea',border:'1px solid #eccfca',
+                    borderRadius:999,padding:'2px 8px',whiteSpace:'nowrap'}},x.code),
+                  h('span',{style:{flex:1,minWidth:0,fontWeight:600,overflow:'hidden',
+                    textOverflow:'ellipsis',whiteSpace:'nowrap'}},nm||'\u2014'),
+                  h('span',{style:{flex:'none',fontSize:11.5,fontFamily:mono,color:C.faint,
+                    whiteSpace:'nowrap'}},'\u00d7'+this.fmt(x.n))); }))
+          : h('span',{style:{color:C.faint}},'\u2014')));
+    });
+    // Header 2 tang: 4 cot dau keo doc (rowSpan), rieng CHAT LUONG gom 3 cot con.
+    return h('div',{className:'yscroll',style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',minWidth:'1000px',borderCollapse:'collapse'}},
+        h('colgroup',null,h('col',{style:{width:'110px'}}),h('col',{style:{width:'100px'}}),
+          h('col',{style:{width:'108px'}}),h('col',{style:{width:'34%'}}),
+          h('col',{style:{width:'104px'}}),h('col',{style:{width:'88px'}}),
+          h('col',{style:{width:'26%'}})),
+        h('thead',null,
+          h('tr',null,
+            h('th',{rowSpan:2,style:{...thBot,paddingLeft:16}},this.t('lsCol1')),
+            h('th',{rowSpan:2,style:{...thBot,textAlign:'right'}},this.t('lsCol3')),
+            h('th',{rowSpan:2,style:thBot},this.t('spMlv')),
+            h('th',{rowSpan:2,style:thBot},this.t('spOut')),
+            h('th',{colSpan:3,style:{...thTop,borderRight:'none',textAlign:'center'}},
+              this.t('mlvQual'))),
+          h('tr',null,
+            h('th',{style:{...thBot,textAlign:'right'}},this.t('mlvRate')),
+            h('th',{style:{...thBot,textAlign:'right'}},'DHU'),
+            h('th',{style:{...thBot,borderRight:'none'}},this.t('spTop3')))),
+        h('tbody',null,body)));
+  }
+
   renderDsoProd(){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const list=this.prodLines();
@@ -5307,12 +5471,13 @@ class Sewing extends MESCore {
   }
 
   renderDsoBody(){
-    const h=React.createElement; const tab=this.state.dsoTab||'cfg';
+    const h=React.createElement; const tab=this.state.dsoTab||'sprod';
     if(tab!=='mlv') this.mlvClockOff();
     return h('div',{ref:this.scrollRef,className:'yscroll',style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
       this.renderTitle('dsoTitle','S-05-SEWOUT-DAILY · UI Proto'),
       this.tabBar(this.DSO_TABS,tab,id=>this.set({dsoTab:id,edit:null}),false),
-      tab==='prod'?this.dsoCard('dsoProdPanel','dsoProdSub','DSO Production',this.renderDsoProd())
+      tab==='sprod'?this.dsoCard('spPanel','spSub','DSO Sewing Production',this.renderDsoSewProd())
+      :tab==='prod'?this.dsoCard('dsoProdPanel','dsoProdSub','DSO Production',this.renderDsoProd())
       :tab==='alert'?this.renderDsoAlerts()
       :tab==='mlv'?this.renderDsoMlv()
       :this.renderDsoSettings());
