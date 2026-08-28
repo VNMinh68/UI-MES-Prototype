@@ -1,24 +1,31 @@
-/* YIC MES — nen dung chung cho moi module.
- * ---------------------------------------------------------------------------
- * File nay KHONG biet gi ve nghiep vu. No chi lo phan ma ca hai module deu can:
+/* Nen dung chung cua ca hai module.
  *
- *   MESRuntime   style-hover, icon(), shell(), DCLogic, mount()
- *   MESCore      lop co so: mau sac, dich VI/EN, sidebar, luu localStorage,
- *                anh chup du lieu, cac ham dinh dang ngay/size, phieu ban giao
+ * Doan giua cac moc ---8<--- la BAN COPY giong nhau tung byte trong ca
+ * app/sewing/script.js va app/finishing/script.js. Muon sua thi sua
+ * build/parts/core-*.js roi chay:
  *
- * Module (app/sewing, app/finishing) thua ke MESCore va tu khai:
+ *     node build/emit.js
+ *
+ * Sua tay o day thi hai module lech nhau — build/check.js se bao loi.
+ *
+ * Trong doan nay khong co gi thuoc nghiep vu, chi nhung thu ca hai module deu can:
+ *
+ *   style-hover, icon(), shell(), DCLogic   khung trang
+ *   MESCore                                 lop co so: mau sac, dich VI/EN,
+ *                                           sidebar, luu localStorage, anh chup
+ *                                           du lieu, phieu ban giao
+ *
+ * Module (class o duoi) thua ke MESCore va tu khai:
  *   MOD          {id, key, title, nav, pages}  — ten module, khoa localStorage,
  *                nhom menu, ham ve than tung trang
  *   LMOD         bang dich rieng cua module
  *   PERSIST_MOD  danh sach field cua module can luu lai
- *
- * Nap truoc script.js cua module (xem <module>/index.html).
  */
 (function () {
   'use strict';
 
   var R = window.React, RD = window.ReactDOM;
-  if (!R || !RD) { throw new Error('React / ReactDOM must load before core.js'); }
+  if (!R || !RD) { throw new Error('vendor/react.js + vendor/react-dom.js must load before script.js'); }
 
   /* ---- style-hover ------------------------------------------------------------
      Prop `style-hover` duoc bien thanh mot class :hover that. Gia tri phu thuoc
@@ -44,7 +51,7 @@
     return cls;
   }
 
-  /* `const h = React.createElement` trong cac module lay ban boc nay. */
+  /* `const h = React.createElement` trong class lay ban boc nay. */
   var React = Object.create(R);
   React.createElement = function (type, props) {
     var kids = Array.prototype.slice.call(arguments, 2);

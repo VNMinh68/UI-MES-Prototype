@@ -1,11 +1,11 @@
 }
 
   /* ---- anh chup du lieu ------------------------------------------------------
-     <module>/seed.js dat window.<SEEDVAR> = {..., snapshot:{ls, idb, ...}}. Module
-     nhat phan `snapshot` ra window.MES_SEED. May nao mo module ma localStorage con
-     trong thi nap thang phan `ls` vao truoc khi React dung component — restore()
-     sau do doc nhu du lieu nguoi dung binh thuong. Phan blob trong IndexedDB nap
-     bat dong bo o componentDidMount. */
+     seed.js dat window.<SEEDVAR> = {..., snapshot:{ls, idb, ...}}. Module nhat phan
+     `snapshot` ra window.MES_SEED. May nao mo module ma localStorage con trong thi
+     nap thang phan `ls` vao truoc khi React dung component — restore() sau do doc
+     nhu du lieu nguoi dung binh thuong. Phan blob trong IndexedDB nap bat dong bo
+     o componentDidMount. */
   function seedStorage(key) {
     var S = window.MES_SEED;
     if (!S || !S.ls) return false;
@@ -32,7 +32,3 @@
       mount(Cls, props, key);
     }
   }
-
-  window.MESRuntime = { React: React, RD: RD, icon: icon, shell: shell, DCLogic: DCLogic, boot: boot };
-  window.MESCore = MESCore;
-})();

@@ -34,6 +34,9 @@
   coreState() {
     return { page: this.navPages()[0] || '', lang: 'vi',
       sidebarOpen: false, navOpen: this.navOpenAll(), snapMsg: '',
+      // tuan dang xem: cac ham ngay/tuan cua core (weekDates, psWeekRange) doc
+      // khoa nay, nen core phai dat mac dinh du module co dung hay khong
+      week: this.CURWK,
       dsoHandAsk: null, dsoHandWho: {}, dsoSlips: [], dsoSlipSeq: {} };
   }
   navOpenAll() { const o = {}; (this.MOD.nav || []).forEach(([title]) => { o[title] = true; }); return o; }
@@ -138,12 +141,6 @@
             h('svg', { width: 12, height: 12, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
               strokeWidth: 2.5 }, h('path', { d: 'M15 6l-6 6 6 6' })))),
         this.renderSideNav(),
-        // Duong ve trang chon module — 2 module la 2 trang roi, 2 kho du lieu roi.
-        h('a', { href: '../index.html', style: { display: 'flex', alignItems: 'center', gap: 8,
-            margin: '12px 10px 0', padding: '7px 10px', borderRadius: 9, fontSize: 12, fontWeight: 600,
-            color: C.sub, textDecoration: 'none' }, 'style-hover': { background: '#f4f6f0' } },
-          h('svg', { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-            strokeWidth: 2 }, h('path', { d: 'M15 18l-6-6 6-6' })), this.t('modBack')),
         this.renderSnapBar(),
         h('div', { style: { padding: '14px 18px 0', marginTop: 10, borderTop: '1px solid #eff0ec',
           color: C.faint, fontSize: 11, fontWeight: 600, letterSpacing: '.3px' } }, 'YIC Hanam MES')));
@@ -180,9 +177,9 @@
   dsoSlipCommit() {}
 
   // ---- anh chup du lieu ---------------------------------------------------
-  // Xuat ra dung file <module>/seed.js: giu nguyen phan du lieu nghiep vu cua
+  // Xuat ra dung file seed.js cua module: giu nguyen phan du lieu nghiep vu cua
   // seed dang chay, thay phan `snapshot` bang anh chup vua thu. Chep de len
-  // file cu la may khac mo len thay dung du lieu nay.
+  // file cu trong cung thu muc la may khac mo len thay dung du lieu nay.
   async snapExport() {
     this.snapSay(this.t('snapWork'));
     try {
@@ -193,8 +190,8 @@
         + ' * ' + Object.keys(s.ls).length + ' khoa localStorage · '
         + this.snapCount(s) + ' file trong IndexedDB\n'
         + ' *\n'
-        + ' * Chep de file nay len app/' + this.MOD.id + '/seed.js. May nao mo module\n'
-        + ' * lan dau (localStorage con trong) se duoc nap dung du lieu trong day.\n'
+        + ' * Chep de file nay len seed.js trong thu muc ' + this.MOD.id + '/. May nao\n'
+        + ' * mo module lan dau (localStorage con trong) se duoc nap du lieu trong day.\n'
         + ' */\n'
         + 'window.' + this.MOD.seedVar + ' = ' + JSON.stringify(data) + ';\n';
       this.snapDownload('seed.js', js, 'text/javascript;charset=utf-8');

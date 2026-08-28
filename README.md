@@ -1,57 +1,61 @@
 # YIC MES — UI Prototype
 
-Bản prototype chạy hoàn toàn **offline, không cần cài gì**. Mọi thư viện (React,
-XLSX…) đã nằm sẵn trong `app/vendor/`.
+Bản prototype chạy hoàn toàn **offline, không cần cài gì**.
 
-App được tách thành **2 module độc lập**, mỗi module là một trang riêng, một kho
-dữ liệu riêng và một file seed riêng:
+App gồm **2 module, mỗi module là một thư mục chạy độc lập**. Gửi *một* thư mục
+cho ai đó là họ mở được ngay — không cần file nào bên ngoài, không cần server,
+không cần internet:
 
-| Module | Màn hình | Mở ở |
+| Module | Màn hình | Thư mục |
 |---|---|---|
-| **MAY** | Kế hoạch may · Sản lượng may hàng ngày | `app/sewing/index.html` |
-| **HOÀN THIỆN** | Nhận hàng hoàn thiện · Tình trạng hoàn thiện · Kế hoạch xuất hàng | `app/finishing/index.html` |
+| **MAY** | Kế hoạch may · Sản lượng may hàng ngày | `app/sewing/` |
+| **HOÀN THIỆN** | Nhận hàng hoàn thiện · Tình trạng hoàn thiện · Kế hoạch xuất hàng | `app/finishing/` |
 
-## Chạy thử trên máy
+## Chạy thử
 
-Mở `app/index.html` (trang chọn module) bằng Chrome / Edge — double-click là được.
-Không cần server, không cần internet.
+Double-click `index.html` trong thư mục module muốn mở:
 
-> Nếu trình duyệt chặn `file://`, chạy tạm một server tĩnh trong thư mục `app/`:
-> `npx serve` hoặc `python -m http.server 8000` rồi mở `http://localhost:8000`.
+```
+app/sewing/index.html
+app/finishing/index.html
+```
+
+> Nếu trình duyệt chặn `file://`, chạy tạm một server tĩnh **trong chính thư mục
+> module**: `npx serve` hoặc `python -m http.server 8000`.
 > Lưu ý: `file://` và `http://localhost` là **hai kho dữ liệu khác nhau** — dữ liệu
 > lưu ở bên này không thấy ở bên kia.
 
-## Cấu trúc thư mục
+## Trong một thư mục module có gì
 
 ```
-app/
-  index.html              trang chọn module
-  style.css               CSS DÙNG CHUNG cho cả app (font + style tĩnh)
-  shared/core.js          nền dùng chung: shell, sidebar, dịch VI/EN, lưu
-                          localStorage, ảnh chụp dữ liệu, phiếu bàn giao
-  sewing/
-    index.html            nạp vendor → seed.js → shared/core.js → script.js
-    script.js             logic riêng của MAY
-    seed.js               dữ liệu của MAY
-  finishing/
-    index.html
-    script.js             logic riêng của HOÀN THIỆN
-    seed.js               dữ liệu của HOÀN THIỆN
-  vendor/                 react, react-dom, anime, xlsx, xlsx-style
+app/sewing/
+  index.html      mở file này
+  script.js       nền dùng chung + logic của MAY (1 file, tự chứa)
+  seed.js         dữ liệu của MAY
+  style.css       font + style tĩnh
+  vendor/         react, react-dom, anime, xlsx, xlsx-style
 
-build/                    bộ sinh — không cần khi chạy app
-  data/                   3 bảng sinh từ file Excel gốc (nguồn của seed)
-  seeds.js                sinh 2 file seed.js
-  emit.js, members.js     bộ tách bản 1 file cũ thành module (chạy 1 lần)
-  parts/                  phần viết tay được chèn vào lúc tách
-  legacy/script.js        bản 1 file trước khi tách, giữ lại để đối chiếu
-  check.js                kiểm tra sau khi tách
+app/finishing/
+  index.html
+  script.js       nền dùng chung + logic của HOÀN THIỆN
+  seed.js         dữ liệu của HOÀN THIỆN
+  style.css
+  vendor/         react, react-dom, xlsx
 ```
+
+Không có thư mục `shared/`, không có trang chọn module. Mỗi `script.js` tự chứa cả
+phần nền (shell, sidebar, dịch VI/EN, lưu localStorage, ảnh chụp dữ liệu, phiếu
+bàn giao) lẫn logic riêng của module — đổi lấy việc thư mục gửi đi là chạy được.
+
+Phần nền nằm giữa các mốc `---8<---` trong `script.js` là **bản copy giống nhau
+từng byte** ở cả hai module. Nó do `build/emit.js` sinh ra từ
+`build/parts/core-*.js`; sửa tay trong `app/` thì hai bản lệch nhau và
+`build/check.js` báo lỗi ngay.
 
 ## Module không đọc dữ liệu của nhau
 
 Trước đây mọi màn hình dùng chung một `state`, nên Hoàn thiện đọc thẳng phiếu bàn
-giao mà Sản lượng may vừa phát hành. Sau khi tách, **liên kết đó bị cắt**:
+giao mà Sản lượng may vừa phát hành. Giờ **liên kết đó bị cắt**:
 
 | | MAY | HOÀN THIỆN |
 |---|---|---|
@@ -117,9 +121,9 @@ Trong sidebar (bấm ☰) có mục **DỮ LIỆU LOCAL** với 4 nút:
 
 - **Xuất ảnh chụp** — tải về `seed.js` của chính module đang mở: giữ nguyên phần
   dữ liệu nghiệp vụ, thay phần `snapshot` bằng toàn bộ localStorage + mọi file
-  trong IndexedDB (blob mã hoá base64). Chép đè file đó vào
-  `app/<module>/seed.js` rồi gửi nguyên thư mục đi. Máy nào mở module lần đầu
-  (localStorage còn trống) sẽ được nạp đúng dữ liệu đó.
+  trong IndexedDB (blob mã hoá base64). Chép đè lên `seed.js` **cùng thư mục** rồi
+  gửi cả thư mục đi. Máy nào mở lần đầu (localStorage còn trống) sẽ được nạp đúng
+  dữ liệu đó.
 - **Nhập ảnh chụp** — chọn một file `seed.js` / `.json` để ghi đè dữ liệu đang có.
 - **Về ảnh chụp gốc** — nạp lại đúng phần `snapshot` trong `seed.js` (chỉ hiện khi
   seed có snapshot).
@@ -128,17 +132,31 @@ Trong sidebar (bấm ☰) có mục **DỮ LIỆU LOCAL** với 4 nút:
 
 Hai module xuất / nhập độc lập — ảnh chụp của MAY không ảnh hưởng HOÀN THIỆN.
 
-## Sinh lại seed
-
-Sửa bảng Excel gốc → sinh lại 3 file trong `build/data/` → chạy:
+## Bộ sinh (`build/`) — không cần khi chạy app
 
 ```
-node build/seeds.js      # -> app/sewing/seed.js + app/finishing/seed.js
+build/
+  assets/           NGUỒN của style.css + vendor; emit.js copy vào từng module
+  data/             3 bảng sinh từ file Excel gốc — nguồn của seed
+  parts/core-*.js   phần nền dùng chung, chèn vào cả hai script.js
+  parts/sew-*.js    phần viết tay của MAY (MOD, constructor, hàm đọc seed…)
+  parts/fin-*.js    phần viết tay của HOÀN THIỆN
+  emit.js           dựng 2 thư mục module (script.js + style.css + vendor)
+  seeds.js          sinh 2 file seed.js
+  members.js        bản đồ thành viên của bản 1 file cũ
+  legacy/script.js  bản 1 file trước khi tách, giữ lại để đối chiếu
+  check.js          kiểm tra sau khi sinh
 ```
 
-`build/seeds.js` chứa bản copy nguyên văn các hàm suy diễn của app (tách mã hàng,
-đoán thương hiệu, sinh tác nghiệp cắt…), nên số liệu đóng băng trong seed trùng
-khớp với số liệu app tính tại chỗ trước khi tách.
+Sửa app:
+
+| Muốn sửa | Sửa ở | Rồi chạy |
+|---|---|---|
+| logic riêng 1 module | `app/<module>/script.js` (ngoài mốc `---8<---`) | — |
+| phần nền dùng chung | `build/parts/core-*.js` | `node build/emit.js` |
+| `style.css` / `vendor/` | `build/assets/` | `node build/emit.js` |
+| dữ liệu | bảng Excel → `build/data/` | `node build/seeds.js` |
+| `index.html` | `app/<module>/index.html` (file viết tay) | — |
 
 ## Kiểm tra sau khi sửa
 
@@ -146,12 +164,13 @@ khớp với số liệu app tính tại chỗ trước khi tách.
 node build/check.js
 ```
 
-Bắt 4 lớp lỗi mà mắt thường dễ bỏ qua khi chia file:
+Bắt 6 lớp lỗi mà mắt thường dễ bỏ qua:
 
-- `this.X` gọi một hàm không có ở module lẫn `shared/core.js`
+- thư mục module thiếu file → gửi đi là người khác mở không lên
+- `index.html` trỏ ra ngoài thư mục (`src="../…"`) → hết độc lập
+- `this.X` gọi một hàm không có trong file
 - `state.X` đọc một khóa mà constructor chưa khởi tạo
 - `t('x')` gọi một khóa dịch không có trong `LMOD` lẫn `L`
-- lỗi cú pháp của cả 3 file
+- phần nền dùng chung / `style.css` / `vendor/` của hai module lệch nhau
 
-`build/emit.js` là bộ tách bản 1 file cũ thành module — chỉ cần khi muốn tách lại
-từ `build/legacy/script.js`. Sửa app hằng ngày thì sửa thẳng trong `app/`.
+cộng lỗi cú pháp của cả hai `script.js`.
