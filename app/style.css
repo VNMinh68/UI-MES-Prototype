@@ -347,14 +347,8 @@ a:hover{color:#4A7A0B}
 .yscroll::-webkit-scrollbar-track{background:transparent}
 input:focus,button:focus,select:focus{outline:none}
 @keyframes bfIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
-.ps-bar{transition:top .3s cubic-bezier(.34,.69,.1,1),height .3s cubic-bezier(.34,.69,.1,1),box-shadow .2s cubic-bezier(.34,.69,.1,1)}
-.ps-bar:hover{box-shadow:0 2px 6px rgba(24,36,14,.16),0 6px 16px -4px rgba(24,36,14,.2)!important;z-index:7}
-.ps-fab{transition:transform .18s cubic-bezier(.34,.69,.1,1),background .18s}
-.ps-fab:hover{background:#4A7A0B!important;transform:scale(1.14)}
-.ps-fab:active{transform:scale(.94)}
-.ps-ghost:hover{border-color:#7CB518!important;color:#4A7A0B!important;background:#f7fcea!important}
 
-/* ===== screen-specific rules + print ===== */
+/* ===== rule rieng cua tung man + ban in ===== */
 [data-printonly]{display:none}
 .lncell .lnadd{opacity:0;transition:opacity .12s}
 .lncell:hover .lnadd,.lncell .lnadd:hover,.lncell .lnadd:focus{opacity:1}
@@ -362,14 +356,27 @@ input:focus,button:focus,select:focus{outline:none}
 @media print{
   [data-noprint]{display:none !important}
   [data-printonly]{display:block !important}
-  body.kc-qr-open [data-kc-root]>*:not([data-qr-overlay]){display:none !important}
-  body.kc-qr-open [data-kc-root]{display:block !important;min-height:0 !important}
-  body.kc-qr-open [data-qr-overlay]{position:static !important;padding:0 !important;background:#fff !important;overflow:visible !important;display:block !important}
-  body.kc-qr-open [data-qr-panel]{width:100% !important;max-width:none !important;border-radius:0 !important;background:#fff !important;box-shadow:none !important}
-  body.kc-qr-open [data-qr-grid]{max-height:none !important;overflow:visible !important;grid-template-columns:repeat(2,1fr) !important;padding:0 !important}
-  body.kc-qr-open [data-qr-card]{break-inside:avoid}
   /* To phieu ban giao duoc portal ra <body> -- in ra chi con to phieu */
   body.bg-slip-open:has([data-bg-overlay])>*:not([data-bg-overlay]){display:none !important}
   body.bg-slip-open [data-bg-overlay]{position:static !important;display:block !important;padding:0 !important;background:#fff !important;backdrop-filter:none !important;overflow:visible !important}
   body.bg-slip-open [data-bg-panel]{width:100% !important;max-width:none !important;max-height:none !important;overflow:visible !important;border-radius:0 !important;box-shadow:none !important;break-inside:avoid}
 }
+
+/* ===== app/index.html — trang chon module ===== */
+body.launch{background:#f3f6ec;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 20px}
+.lwrap{width:100%;max-width:860px}
+.lhead{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.llogo{width:44px;height:44px;flex:none;border-radius:13px;background:linear-gradient(135deg,#A7D129,#4A7A0B);color:#fff;font-weight:700;font-size:19px;letter-spacing:.5px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(47,82,20,.28)}
+.lhead h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.3px;color:#20262f}
+.lhead h1 span{color:#7CB518}
+.lhead p{margin:3px 0 0;font-size:12.5px;color:#9aa2ad}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.lcard{display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid #e4e7de;border-radius:16px;padding:20px 22px;color:inherit;box-shadow:0 1px 2px rgba(40,60,10,.04),0 10px 28px -14px rgba(40,60,10,.14);transition:border-color .14s,box-shadow .14s,transform .14s}
+.lcard:hover{border-color:#A7D129;box-shadow:0 2px 6px rgba(40,60,10,.08),0 16px 36px -16px rgba(40,60,10,.24);transform:translateY(-2px);color:inherit}
+.lcard-top{display:flex;align-items:center;gap:11px;color:#4A7A0B}
+.lcard-top h2{margin:0;font-size:18px;font-weight:700;letter-spacing:-.2px;color:#20262f}
+.lcard ul{margin:0;padding:0 0 0 17px;display:flex;flex-direction:column;gap:6px}
+.lcard li{font-size:13px;line-height:1.5;color:#69707a}
+.lcard footer{margin-top:auto;padding-top:11px;border-top:1px solid #edefe9;font-size:11px;color:#9aa2ad}
+.lnote{margin:24px 2px 0;font-size:12px;line-height:1.7;color:#9aa2ad}
+.lcard code,.lnote code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.92em;color:#69707a;background:#f0f8de;border-radius:4px;padding:1px 5px}

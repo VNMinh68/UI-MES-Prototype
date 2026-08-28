@@ -3,39 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>YIC MES — Hệ thống điều hành sản xuất</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>YIC MES — Chọn module</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<div id="root"></div>
+<body class="launch">
+<main class="lwrap">
+  <header class="lhead">
+    <div class="llogo">Y</div>
+    <div>
+      <h1><span>YIC</span> MES</h1>
+      <p>Hệ thống điều hành sản xuất · UI Prototype</p>
+    </div>
+  </header>
 
-<!-- Third-party, verbatim from the bundle -->
-<script src="vendor/react.js"></script>
-<script src="vendor/react-dom.js"></script>
-<script src="vendor/anime.js"></script>
-<script src="vendor/xlsx.js"></script>
-<!-- xlsx-js-style: ban fork cua SheetJS (cung nhan 0.18.5) GHI duoc dinh dang o
-     - font, vien, mau nen, can le - thu ma ban CE khong lam duoc. No cung tu gan
-     vao window.XLSX, nen phai cat ban goc di roi tra lai: moi cho dang doc/ghi
-     file van chay tren SheetJS cu, chi rieng ban in mau bao cao QC dung ban co
-     dinh dang qua window.XLSXStyle. cptable do vendor/xlsx.js o tren khai bao. -->
-<script>window.__XLSX_PLAIN__ = window.XLSX;</script>
-<script src="vendor/xlsx-style.js"></script>
-<script>window.XLSXStyle = window.XLSX; window.XLSX = window.__XLSX_PLAIN__;</script>
-<script src="vendor/qr.js"></script>
+  <div class="lgrid">
+    <a class="lcard" href="sewing/index.html">
+      <div class="lcard-top">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M3 7h18v13H3z"/><path d="M8 7V4h8v3"/><path d="M3 12h18"/>
+        </svg>
+        <h2>May</h2>
+      </div>
+      <ul>
+        <li>Kế hoạch may — kế hoạch tuần, nhu cầu BTP, phiếu giao nhận BTP</li>
+        <li>Sản lượng may hàng ngày — chuyền, M-level, hàng lỗi, phiếu bàn giao</li>
+      </ul>
+      <footer>app/sewing · kho dữ liệu <code>yic.mes.sewing</code></footer>
+    </a>
 
-<!-- Data. Loaded before the app, so window.KHC / window.PSCHED are always ready
-     by the time script.js constructs the component. -->
-<script src="data/khc.js"></script>
-<script src="data/psched.js"></script>
-<script src="data/mlist.js"></script>
+    <a class="lcard" href="finishing/index.html">
+      <div class="lcard-top">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/>
+        </svg>
+        <h2>Hoàn thiện</h2>
+      </div>
+      <ul>
+        <li>Nhận hàng hoàn thiện — nhận phiếu bàn giao, phụ liệu hoàn thiện</li>
+        <li>Tình trạng hoàn thiện — ủi, kiểm cuối, đóng gói, nhập kho TP</li>
+        <li>Kế hoạch xuất hàng thành phẩm</li>
+      </ul>
+      <footer>app/finishing · kho dữ liệu <code>yic.mes.finishing</code></footer>
+    </a>
+  </div>
 
-<!-- Ảnh chụp dữ liệu người dùng (localStorage + IndexedDB). Sinh ra từ nút
-     "Xuất ảnh chụp" trong sidebar; máy nào mở app lần đầu sẽ được nạp từ đây. -->
-<script src="data/state-seed.js"></script>
-
-<script src="script.js"></script>
+  <p class="lnote">
+    Hai module chạy độc lập: mỗi module có <code>seed.js</code> riêng và kho
+    localStorage riêng, không đọc dữ liệu của nhau. Dữ liệu dùng chung duy nhất là
+    <code>style.css</code>, <code>shared/core.js</code> và <code>vendor/</code>.
+  </p>
+</main>
 </body>
 </html>
