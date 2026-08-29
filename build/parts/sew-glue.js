@@ -9,7 +9,7 @@
   };
   PERSIST_MOD = ['weeks', 'week', 'openMonth', 'tab', 'cutTab', 'dsoTab', 'dsoSub', 'dsoLine',
     'mlvLine', 'mlvFs', 'dsoDone', 'dsoPassLog', 'dsoDoneV', 'dsoHand', 'dsoHandQ', 'dsoSlips',
-    'dsoSlipSeq', 'dsoHandWho', 'bqNo', 'bqSeq', 'cap', 'capTurns', 'capOrder', 'multPlain',
+    'dsoSlipSeq', 'dsoHandWho', 'bqNo', 'bqSeq', 'bqLock', 'cap', 'capTurns', 'capOrder', 'multPlain',
     'multEmb', 'bundle', 'bundleV', 'recvLog', 'wip', 'daily', 'files', 'freq', 'wsc', 'dsoAlerts',
     'lset', 'dsoMtypeRows', 'dsoMtypeDet', 'mtSel', 'dsoDefects', 'dsoDefLog', 'dsoDefTime',
     'dsoDefWho', 'dsoSel', 'dsoPhoto', 'dsoPhotoI', 'dsoGen', 'dsoOp', 'dsoHistOpen'];
@@ -85,7 +85,7 @@
       cap: {}, capTurns: {}, capOrder: null, dragRow: null, multPlain: 3, multEmb: 6,
       tab: 'weekly', openMonth: this.CURWK.split(' · ')[0], week: this.CURWK,
       weeks,
-      edit: null, bedit: null, bform: null, bslip: null, bqNo: {}, bqSeq: {},
+      edit: null, bedit: null, bform: null, bslip: null, bqNo: {}, bqSeq: {}, bqLock: {},
       dragOver: false, dayOpen: null, daily: {}, freq: {}, wsc: {}, recvLog: [],
       bundle: this.initBundle((weeks[this.CURWK] || { rows: [] }).rows), bundleV: 3, wip: {},
       dsoAlerts: this.initAlerts(), dsoAlEdit: false, dsoAlHit: null,
