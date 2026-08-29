@@ -91,7 +91,7 @@
       dsoAlerts: this.initAlerts(), dsoAlEdit: false, dsoAlHit: null,
       dsoMtypeRows: null, dsoMtypeDet: {}, mtSel: null, mtEdit: null, mtMsg: '',
       dsoDefects: this.initDefects(), dsoDefLog: {}, dsoDefTime: {}, dfEdit: null, dfQ: '', dfMsg: '',
-      dsoTap: null, dsoTapQ: '', dsoTapSel: {},
+      dsoTap: null, dsoTapQ: '', dsoTapSel: {}, lnRecv: null,
       dsoPassLog: {},
       dsoHistQ: '', dsoDefQ: '', dsoHandBulk: null,
       // Ban tablet cua trang chi tiet chuyen: o dang chon, ngay cua bang Top 3,

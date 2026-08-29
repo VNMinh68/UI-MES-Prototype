@@ -1539,14 +1539,16 @@ class Finishing extends MESCore {
       fgSel: null, fgPg: 1, fgPp: 100,
       // '' = thang hien tai; fivM() tu suy ra nen khong phai stamp ngay o day
       fivMonth: '', fivQ: '',
+      // be rong khung nhin, chi de chon bo so do -- khong luu vao localStorage
+      fivW: 0,
     };
     this.restore();
   }
 
   // ---- vong doi -----------------------------------------------------------
   // Gieo 1 lan; sau do hai bang la du lieu nguoi dung sua duoc.
-  onMount() { this.fgEnsure(); this.ftEnsure(); }
-  onUnmount() { clearTimeout(this._fgT); }
+  onMount() { this.fgEnsure(); this.ftEnsure(); this.fivWatch(true); }
+  onUnmount() { clearTimeout(this._fgT); this.fivWatch(false); }
   onEsc() {
     if (this.state.fsScanAt) this.fsScanClose();
     if (this.state.ftPick) this.ftPickClose();
@@ -2655,6 +2657,31 @@ class Finishing extends MESCore {
   // Bang CHI DOC: bo cot HANH DONG (nut quet) va 2 o go tay cua man Tinh trang
   // -- go so vao mot thang da qua thi ghi sai ngay.
   // ==========================================================================
+  // ---- responsive ---------------------------------------------------------
+  // Ca app ve bang style INLINE nen @media khong voi tay vao duoc. Thay vi do
+  // doc be rong khung nhin that roi chon bo so do. Chi man Ton kho dung may
+  // ham nay, khong dinh gi den hai man con lai.
+  // 0 = man rong, 1 = tablet ngang, 2 = tablet doc, 3 = dien thoai
+  fivStep(w){ w=w||this.state.fivW||(typeof window!=='undefined'?window.innerWidth:0)||1440;
+    return w<=560?3:(w<=820?2:(w<=1200?1:0)); }
+  // pad = padding trang, min = be rong toi thieu cua bang (con lai truot ngang),
+  // th/td = co chu, cx/cy = padding trong o.
+  FIV_SZ=[{pad:'24px 30px 40px',min:1720,th:10.5,td:12.5,cx:10,cy:8},
+          {pad:'20px 18px 32px',min:1480,th:10,  td:12,  cx:7, cy:8},
+          {pad:'16px 12px 28px',min:1180,th:9.5, td:11.5,cx:6, cy:6},
+          {pad:'12px 8px 24px', min:1010,th:9.5, td:11.5,cx:5, cy:6}];
+  fivSz(){ return this.FIV_SZ[this.fivStep()]; }
+  // Chi ghi state khi VUOT moc, khong phai moi pixel -> keo cua so khong lam
+  // ve lai lien tuc.
+  fivWatch(on){
+    if(!on){ if(this._fivR) window.removeEventListener('resize',this._fivR);
+      this._fivR=null; return; }
+    if(this._fivR) return;
+    this._fivR=()=>{ const w=window.innerWidth||0;
+      if(this._mounted&&this.fivStep(w)!==this.fivStep(this.state.fivW)) this.set({fivW:w}); };
+    window.addEventListener('resize',this._fivR);
+    this.set({fivW:window.innerWidth||0}); }
+
   fivM(){ return this.state.fivMonth||this.dsoToday().slice(0,7); }
   // Moc chot = ngay cuoi cua thang. new Date(y,mo,0) la ngay cuoi thang mo
   // (mo dem tu 1). Ngay o dang ISO nen so sanh CHUOI la du.
@@ -2743,13 +2770,21 @@ class Finishing extends MESCore {
 
   renderFivBody(){
     const h=React.createElement;
-    return h('div',{ref:this.scrollRef,className:'yscroll','data-screen-label':'Finishing Inventory',
-      style:{flex:1,overflow:'auto',padding:'24px 30px 40px'}},
+    // class .fivpage chi de style.css voi tay vao hai hang tieu de cua
+    // renderTitle() / dsoCard() -- hai ham dung chung, khong sua duoc.
+    return h('div',{ref:this.scrollRef,className:'yscroll fivpage',
+      'data-screen-label':'Finishing Inventory',
+      style:{flex:1,overflow:'auto',padding:this.fivSz().pad}},
       this.renderTitle('fivTitle','S-09-FINISH-INV · UI Proto'),
       this.renderFivTable());
   }
   renderFivTable(){
     const h=React.createElement, C=this.C, S=this.mtStyles();
+    // Thu nho o ngay tai day: ca than bang doc ...S.td / ...S.th nen khong
+    // phai sua tung o mot.
+    const Z=this.fivSz(), cpad=Z.cy+'px '+Z.cx+'px';
+    S.td={...S.td,fontSize:Z.td,padding:cpad};
+    S.th={...S.th,fontSize:Z.th,padding:cpad};
     const q=this.state.fivQ||'', all=this.fivAll(), rows=this.fivRows(q);
     const ms=this.fivMonths(), cur=this.fivM();
     const chip=(v)=>h('span',{key:v,style:{fontSize:11.5,fontWeight:700,fontFamily:S.mono,
@@ -2764,7 +2799,12 @@ class Finishing extends MESCore {
         style:{border:'1px solid '+C.border,borderRadius:8,padding:'5px 9px',fontSize:12,
           fontWeight:700,fontFamily:S.mono,color:C.dark,background:C.white,cursor:'pointer'}},
         ms.map(m=>h('option',{key:m,value:m},this.fivMLabel(m)))));
-    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap'}},
+    // marginLeft:auto -> hop nay ep sat le phai (ke ca khi hang tieu de cua the
+    // xuong dong o man hep). justifyContent:flex-end -> khi 4 phan tu xuong
+    // dong thi tung dong cung canh phai; de trong thi chung canh TRAI trong mot
+    // hop da bi keo gian, nhin nhu nam giua man.
+    const action=h('div',{style:{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap',
+      justifyContent:'flex-end',marginLeft:'auto'}},
       pick,
       chip(this.t('fivAsOf')+' '+this.dsoDay(this.fivEnd())),
       chip(this.fmt(all.length)+' '+this.t('fsCount')),
@@ -2785,7 +2825,9 @@ class Finishing extends MESCore {
           color:head?((fg&&v)?(col||C.ink):C.faint):'transparent'}},
         head?(fg?this.fmt(v):'\u2014'):'\u00a0');
       return h('tr',{key:g.key},
-        h('td',{style:{...S.td,background:bg,fontWeight:700,color:C.primary,whiteSpace:'nowrap'}},
+        h('td',{style:{...S.td,background:bg,fontWeight:700,color:C.primary,
+          whiteSpace:'nowrap',position:'sticky',left:0,zIndex:1,
+          boxShadow:'1px 0 0 '+C.line}},
           g.lines.join(', ')||'\u2014'),
         h('td',{style:{...S.td,background:bg,wordBreak:'break-word'}},this.fsBrand(g)||'\u2014'),
         h('td',{style:{...S.td,background:bg,fontFamily:S.mono,fontWeight:700}},g.style),
@@ -2810,9 +2852,14 @@ class Finishing extends MESCore {
       ['fsCOrder',1],['fivCLast',1],['fivCInhand',1],['fivCBal',1],
       ['fsCPacked',1],['fsCUnpack',1],['fsCShip',1],['fsCStock',1],['fsCRemark',0]];
     const tbl=h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'1720px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:Z.min+'px',borderCollapse:'collapse'}},
         h('thead',null,h('tr',null,cols.map(([k,rt],ci)=>h('th',{key:k,
           style:{...S.th,...(rt?{textAlign:'right'}:{}),
+            // Cot LINE ghim lai de truot ngang khong mat danh tinh dong.
+            // Dung box-shadow thay border: o sticky bi mat border khi bang
+            // dat borderCollapse:'collapse'.
+            ...(ci===0?{position:'sticky',left:0,zIndex:2,
+              boxShadow:'1px 0 0 '+C.border}:{}),
             ...(ci===cols.length-1?{borderRight:'none'}:{})}},this.t(k))))),
         h('tbody',null, rows.length?body:h('tr',null,h('td',{colSpan:cols.length,
           style:{...S.td,textAlign:'center',color:C.faint,padding:'44px 16px',borderRight:'none'}},

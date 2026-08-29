@@ -353,6 +353,23 @@ input:focus,button:focus,select:focus{outline:none}
 .lncell .lnadd{opacity:0;transition:opacity .12s}
 .lncell:hover .lnadd,.lncell .lnadd:hover,.lncell .lnadd:focus{opacity:1}
 .lncell .lnadd::before{content:"";position:absolute;inset:-9px}
+/* ---- Finishing Inventory tren man hep ---------------------------------
+   Ban thu nho cua bang nam trong script.js (ham fivSz). Con lai o day la hai
+   hang tieu de do renderTitle() va dsoCard() ve -- hai ham DUNG CHUNG, khong
+   sua duoc, nen phai noi long tu ngoai vao.
+   Ca 3 selector deu doi .fivpage, class chi man HOAN THIEN > Ton kho phat ra,
+   nen module MAY khong he bi anh huong du dung chung file nay.
+   !important vi hai ham do dat co chu bang style inline. */
+@media (max-width:820px){
+  .fivpage>div:has(>h1),
+  .fivpage>[data-screen-label]>div:first-child{flex-wrap:wrap}
+  .fivpage h1{font-size:19px !important}
+}
+@media (max-width:560px){
+  .fivpage h1{font-size:17px !important}
+  /* chip 'PLN-YHN · ngay' o goc phai: bo di cho do chat */
+  .fivpage>div:has(>h1)>span:last-child{display:none}
+}
 @media print{
   [data-noprint]{display:none !important}
   [data-printonly]{display:block !important}

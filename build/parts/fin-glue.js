@@ -78,14 +78,16 @@
       fgSel: null, fgPg: 1, fgPp: 100,
       // '' = thang hien tai; fivM() tu suy ra nen khong phai stamp ngay o day
       fivMonth: '', fivQ: '',
+      // be rong khung nhin, chi de chon bo so do -- khong luu vao localStorage
+      fivW: 0,
     };
     this.restore();
   }
 
   // ---- vong doi -----------------------------------------------------------
   // Gieo 1 lan; sau do hai bang la du lieu nguoi dung sua duoc.
-  onMount() { this.fgEnsure(); this.ftEnsure(); }
-  onUnmount() { clearTimeout(this._fgT); }
+  onMount() { this.fgEnsure(); this.ftEnsure(); this.fivWatch(true); }
+  onUnmount() { clearTimeout(this._fgT); this.fivWatch(false); }
   onEsc() {
     if (this.state.fsScanAt) this.fsScanClose();
     if (this.state.ftPick) this.ftPickClose();
