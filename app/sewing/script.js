@@ -5799,10 +5799,10 @@ class Sewing extends MESCore {
         h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:10}},
           corner(this.t('lsCol4'),show(x.cfg.hrs),false),
           corner(this.t('lsCol6'),show(x.cfg.smv),true)))));
+    // Chi con luoi card chon chuyen -- hai bang tong hop (san luong theo ngay
+    // va hang loi theo chuyen) da bo khoi man nay.
     return h('div',{style:{padding:'16px 18px 20px'}},
-      this.renderDsoOverview(),
-      this.renderDsoFailOverview(),
-      h('div',{style:{fontSize:15,fontWeight:700,margin:'24px 0 4px'}},this.t('dsoLines')),
+      h('div',{style:{fontSize:15,fontWeight:700,margin:'0 0 4px'}},this.t('dsoLines')),
       h('div',{style:{fontSize:12,color:C.faint,marginBottom:11}},this.t('dsoLinesSub')),
       cardGrid);
   }
