@@ -1,19 +1,24 @@
-/* Dung hai thu muc module CHAY DOC LAP tu build/legacy/script.js (ban 1 file cu):
+/* Dung cac thu muc module CHAY DOC LAP:
  *
- *     app/sewing/     index.html  script.js  seed.js  style.css  vendor/
- *     app/finishing/  index.html  script.js  seed.js  style.css  vendor/
+ *     app/sewing/        index.html  script.js  seed.js  style.css  vendor/
+ *     app/finishing/     index.html  script.js  seed.js  style.css  vendor/
+ *     app/material-out/  index.html  script.js  seed.js  style.css  vendor/
  *
  * Gui MOT thu muc cho nguoi khac la ho mo duoc ngay, khong can file nao ben ngoai.
  *
  * Chay:  node build/emit.js      (seed.js do build/seeds.js sinh rieng)
  *
- * Cach lam: KHONG go lai code. Doc build/members.json (ban do tung thanh vien cua
- * class Component, sinh boi build/members.js) roi CAT nguyen van tung khoi sang file
+ * MAY va HOAN THIEN duoc CAT ra tu build/legacy/script.js (ban 1 file cu): khong
+ * go lai code, chi doc build/members.json (ban do tung thanh vien cua class
+ * Component, sinh boi build/members.js) roi cat nguyen van tung khoi sang file
  * dich theo bang phan nhom ben duoi. Nhung thanh vien phai viet lai (constructor,
  * restore, cac ham doc du lieu tu PSCHED/KHC...) nam trong build/parts/*.js.
  *
- * Nen dung chung (build/parts/core-*.js) duoc chen vao CA HAI script.js, giua cac
- * moc ---8<---. Hai ban phai giong nhau tung byte — build/check.js kiem dieu do.
+ * XUAT NPL khong co trong ban 1 file cu nen khong cat gi tu do: ca man hinh lan
+ * bang dich cua no deu nam trong build/parts/mat-*.js.
+ *
+ * Nen dung chung (build/parts/core-*.js) duoc chen vao MOI script.js, giua cac
+ * moc ---8<---. Cac ban phai giong nhau tung byte — build/check.js kiem dieu do.
  * index.html cua tung module la file viet tay, khong sinh ra o day.
  */
 'use strict';
@@ -156,7 +161,12 @@ function strings(code) {
   let m; while ((m = re.exec(code))) found.add(m[1] || m[2]);
   return found;
 }
-const glueAll = fs.readdirSync(PARTS).map(f => part(f)).join('\n');
+/* Chi quet part cua NEN DUNG CHUNG + hai module cat ra tu ban goc. Module viet
+   moi (mat-*.js) mang bang dich rieng trong part cua no, khong tham gia vao viec
+   chia bang dich cu — de no o day thi khoa cua ban goc bi keo nham sang 'core'. */
+const glueAll = ['core-head.js', 'core-glue.js', 'core-foot.js',
+                 'sew-head.js', 'sew-glue.js', 'sew-foot.js',
+                 'fin-head.js', 'fin-glue.js', 'fin-foot.js'].map(part).join('\n');
 const sSew = strings(sewBody + '\n' + glueAll);
 const sFin = strings(finBody + '\n' + glueAll);
 const sCore = strings(coreBody + '\n' + glueAll);
@@ -221,12 +231,15 @@ function LFor(tag, name) {
     + '    en:{\n' + dictFor(tag, enE, 'en') + ' },\n  };';
 }
 
-/* ---- NAVVI: nhan sidebar tieng Viet, tach theo module -------------------- */
+/* ---- NAVVI: nhan sidebar tieng Viet, tach theo module --------------------
+   Nhan cua hai module cu lay tu bang NAVVI trong ban goc; module viet moi khong
+   co trong bang do nen tu khai `navvi` trong bang MODULES ben duoi.           */
 const NAVVIsrc = slice(byName['NAVVI']);
-function navviFor(labels) {
-  const out = [];
-  const re = /'([^']+)'\s*:\s*'([^']*)'/g; let m;
-  while ((m = re.exec(NAVVIsrc))) if (labels.indexOf(m[1]) >= 0) out.push("'" + m[1] + "':'" + m[2] + "'");
+function navviFor(m) {
+  const labels = m.nav || [], extra = m.navvi || {}, out = [];
+  const re = /'([^']+)'\s*:\s*'([^']*)'/g; let x;
+  while ((x = re.exec(NAVVIsrc))) if (labels.indexOf(x[1]) >= 0) out.push("'" + x[1] + "':'" + x[2] + "'");
+  Object.keys(extra).forEach(k => out.push("'" + k + "':'" + extra[k] + "'"));
   return '  NAVVI = {' + out.join(',') + '};';
 }
 
@@ -250,6 +263,8 @@ function out(rel, text) {
   console.log(rel.padEnd(26), text.split('\n').length + ' dong');
 }
 
+/* `body` = code cat tu ban goc; `lang` = bang dich viet tay, module nao khong
+   cat gi tu ban goc thi dung no thay cho phan chia bang dich cu (LFor).       */
 const MODULES = [
   { id: 'sewing', head: 'sew-head.js', glue: 'sew-glue.js', foot: 'sew-foot.js',
     tag: 'sew', body: sewBody,
@@ -259,19 +274,24 @@ const MODULES = [
     tag: 'fin', body: finBody,
     nav: ['FINISHING', 'Finishing In', 'Finishing Status', 'F.G Shipment Plan'],
     vendor: ['react.js', 'react-dom.js', 'xlsx.js'] },
+  { id: 'material-out', head: 'mat-head.js', glue: 'mat-glue.js', foot: 'mat-foot.js',
+    tag: 'mat', body: '', lang: 'mat-lang.js',
+    nav: [], navvi: { 'MATERIAL OUT': 'XUẤT NPL', 'Fabric Out': 'Xuất vải',
+                      'Trims Out': 'Xuất phụ liệu' },
+    vendor: ['react.js', 'react-dom.js', 'xlsx.js'] },
 ];
 
 MODULES.forEach(m => {
   out(m.id + '/script.js', [
     CORE_1,
     part(m.head),
-    LFor(m.tag, 'LMOD'),
-    navviFor(m.nav),
+    m.lang ? part(m.lang) : LFor(m.tag, 'LMOD'),
+    navviFor(m),
     part(m.glue),
     m.body,
     CORE_2,
     part(m.foot),
-  ].join('\n\n'));
+  ].filter(s => s !== '').join('\n\n'));
 });
 
 /* ---- tai san tinh: style.css + vendor, moi thu muc mot ban -----------------

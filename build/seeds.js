@@ -195,12 +195,16 @@ orders.forEach(o => {
 
 /* 1 dong / (ma hang | PO) — nguon cua Phu lieu hoan thien va Ke hoach xuat hang. */
 const finOrders = []; const seenSP = {};
+/* Tac nghiep cat + ngay vao chuyen cua don DAU TIEN mang khoa do — seed cua
+   XUAT NPL doc lai o duoi de rai lich cat va tinh so yard cua tung luot. */
+const finPlan = {}; const finStart = {};
 orders.forEach(o => {
   const style = psCode(o.code); if (!style) return;
   const po = orderPo(o), k = style + '|' + po; if (seenSP[k]) return; seenSP[k] = 1;
   const pl = psPlan(o), cs = [];
   ((pl && pl.sections) || []).forEach(sec => { if (sec.grp === 'aux') return;
     const c = String(sec.fab || '').trim(); if (c && cs.indexOf(c) < 0) cs.push(c); });
+  finPlan[k] = pl; finStart[k] = o.start;
   finOrders.push({ brand: o.brand === 'OTHER' ? '' : o.brand, style, po, qty: o.qty, end: o.end, colors: cs });
 });
 
@@ -258,6 +262,249 @@ const finSeed = {
   snapshot: null,
 };
 
+/* ==== seed cua XUAT NPL ===================================================
+   Kho xuat nguyen phu lieu xuong san xuat: VAI sang nha cat, PHU LIEU sang
+   chuyen may. Van la don hang + tac nghiep cat o tren, nen ba module cung noi
+   ve MOT ke hoach san xuat ma khong module nao doc du lieu cua module khac.
+
+     fabric  so cap vai cho nha cat — 1 dong / 1 LUOT CAT trong 1 NGAY
+     rolls   kho vai, tung cuon mot — bang trong hop "chon cuon vai de cap"
+     trims   1 dong / (ma hang | PO | ma phu lieu)
+     packs   kho phu lieu, tung kien mot — bang trong hop "chon kien de xuat"
+
+   Moi thu deu sinh tu ban bam cua khoa dong -> chay lai bao nhieu lan cung ra
+   dung mot file.                                                            */
+const hashOf = s => { let x = 0; for (let i = 0; i < String(s).length; i++) x = (x * 31 + s.charCodeAt(i)) >>> 0; return x; };
+const r1 = n => Math.round(n * 10) / 10;
+
+/* Vai: MOT ma vai cho moi (ma hang | mau) — mot ban cat la mot lop vai, khong
+   tron ma. `cons` la so YARD cho 1 san pham, `yprl` la so yard cua 1 cay vai. */
+const FABPOOL = [
+  { item: 'CHB072', desc: '92% NY 8% SP 218G/M2 ±10G', width: '142CM', cons: 1.37, sup: 'CHORI', yprl: 88 },
+  { item: 'KTF5510', desc: '88% POLY 12% SP TRICOT 195G/M2', width: '150CM', cons: 1.29, sup: 'HYOSUNG', yprl: 92 },
+  { item: 'TXR8840', desc: '100% POLY RIPSTOP 132G/M2 DWR', width: '148CM', cons: 1.55, sup: 'TORAY', yprl: 105 },
+  { item: 'NYS2210', desc: '100% NYLON TASLAN 160G/M2', width: '145CM', cons: 1.47, sup: 'SHINWON', yprl: 96 },
+  { item: 'CVC3300', desc: '60% CO 40% POLY FRENCH TERRY 280G/M2', width: '180CM', cons: 1.77, sup: 'ECLAT', yprl: 70 },
+];
+
+/* Phu lieu: danh muc rut gon tu MATERIALS LIST, bo trung (ma | quy cach | mau).
+   Trong file goc hai cot POSITION va SIZE luon bang nhau ("38MM", "13.5CM") nen
+   o day chi giu MOT cot `pos` = quy cach. Cot NGUON con lan cong thuc cua Excel
+   ("20.5cm=2507+146") -> chi giu nhung gia tri trong nhu ten nha cung cap. */
+const supOk = s => { s = String(s || '').trim();
+  return (s && s.indexOf('=') < 0 && !/^[\d.]+$/.test(s)) ? s : ''; };
+const TRIMCAT = []; const seenTrim = {};
+MLIST.rows.forEach(r => {
+  if (r.kind !== 'TRIMS') return;
+  const k = [r.item, r.pos, r.color].join('|'); if (seenTrim[k]) return; seenTrim[k] = 1;
+  TRIMCAT.push({ item: r.item, desc: r.desc, pos: r.pos, color: r.color,
+    unit: r.unit || 'EA', cons: Number(r.fcon) || 1, loss: Number(r.loss) || 1.02,
+    sup: supOk(r.sup) });
+});
+
+/* Ton kho phu lieu: so da nhap kho, quanh muc can dung -> co dong du, co dong thieu. */
+const stockOf = (key, need) => Math.max(0, r1(need * (0.82 + (hashOf('S' + key) % 45) / 100)));
+
+/* ---- so cap vai cho nha cat ----------------------------------------------
+   1 DONG = 1 LUOT CAT (mot ban cat trong tac nghiep cat) trong 1 NGAY.
+
+   Lich cat: cac luot cua mot don duoc RAI DEU trong khung tu CUT_LEAD ngay truoc
+   khi vao chuyen den truoc ngay ket thuc CUT_TAIL ngay, bo Chu nhat — cat cuon
+   chieu theo tien do chuyen, khong don het vao mot ngay dau.
+
+   So yard can cap cua 1 luot = so san pham cua luot (so la x so co tren 1 la)
+   nhan dinh muc, cong dau ban CUT_END yard moi la.                           */
+const CUT_LEAD = 6, CUT_TAIL = 2, CUT_END = 0.06;
+const MAT_ASOF = '2026-08-31';
+const pdate = s => { const p = String(s).split('-').map(Number); return new Date(p[0], (p[1] || 1) - 1, p[2] || 1); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const nextWorkday = d => (d.getDay() === 0 ? addDays(d, 1) : d);
+
+const fabric = []; const trims = [];
+finOrders.forEach(o => {
+  const pl = finPlan[o.style + '|' + o.po];
+  const secs = ((pl && pl.sections) || []).filter(s => s.grp !== 'aux');
+
+  /* Moi luot cat cua don, dung thu tu trong tac nghiep cat */
+  const lays = [];
+  secs.forEach(sec => {
+    const color = sec.fab || '—';
+    (sec.tables || []).forEach(tb => {
+      const ly = Number(tb.ly) || 0;
+      const perLay = (tb.sz || []).reduce((a, x) => a + (Number(x[1]) || 0), 0);
+      const pcs = ly * perLay; if (pcs <= 0) return;
+      lays.push({ color, turn: tb.tb, ly, pcs });
+    });
+  });
+  if (!lays.length) return;
+
+  /* ngay cat co the co cua don — bo Chu nhat */
+  const d0 = nextWorkday(addDays(pdate(finStart[o.style + '|' + o.po] || o.end), -CUT_LEAD));
+  const d1 = addDays(pdate(o.end), -CUT_TAIL);
+  const days = [];
+  for (let d = d0; d <= d1 && days.length < 120; d = addDays(d, 1)) if (d.getDay() !== 0) days.push(d);
+  if (!days.length) days.push(d0);
+
+  lays.forEach((L, i) => {
+    const day = days[Math.min(days.length - 1, Math.floor(i * days.length / lays.length))];
+    const c = FABPOOL[hashOf(o.style + '|' + L.color) % FABPOOL.length];
+    fabric.push({ id: 'MF' + String(fabric.length + 1).padStart(4, '0'),
+      day: ymd(day), brand: o.brand, style: o.style, po: o.po, color: L.color, turn: L.turn,
+      item: c.item, desc: c.desc, width: c.width, sup: c.sup, yprl: c.yprl,
+      cons: c.cons, ly: L.ly, pcs: L.pcs, need: r1(L.pcs * c.cons + L.ly * CUT_END),
+      // kho ghi so — dien o buoc phan cuon ben duoi; bo trong = chua cap
+      act: 0, lot: '', rolls: 0 });
+  });
+});
+fabric.sort((a, b) => a.day.localeCompare(b.day) || String(a.style).localeCompare(String(b.style))
+  || String(a.color).localeCompare(String(b.color))
+  || String(a.turn).localeCompare(String(b.turn)));
+
+/* ---- kho vai: tung CUON mot -----------------------------------------------
+   Moi (ma hang | item vai | mau) mot ke rieng, du cho tat ca luot cat cua nhom
+   do cong ROLL_SLACK. Cuon dai quanh muc yprl cua ma vai, nam o mot vi tri
+   trong kho, mang mot trong ROLL_LOTS lo cua nhom.
+
+   Day la bang hien trong hop "chon cuon vai de cap": Length / Issued / Balance
+   cua tung cuon, Balance = Length - Issued.                                  */
+const ROLL_SLACK = 1.15, ROLL_LOTS = 3;
+const BAY = 'ABCDEFGH';
+const rollNeed = {};
+fabric.forEach(r => { const k = [r.style, r.item, r.color].join('|');
+  rollNeed[k] = r1((rollNeed[k] || 0) + r.need); });
+
+const rolls = []; const rollPool = {};
+let lotSeq = 0;
+Object.keys(rollNeed).sort().forEach(k => {
+  const [style, item, color] = k.split('|');
+  const spec = FABPOOL.find(f => f.item === item) || FABPOOL[0];
+  /* So lo chay lien tuc tren ca kho -> khong lo nao trung, nen Roll No cung khong. */
+  const lots = [];
+  for (let i = 0; i < ROLL_LOTS; i++) {
+    lotSeq++;
+    lots.push('L26' + p2(7 + hashOf('LOT' + k + i) % 2) + '-' + String(100 + lotSeq));
+  }
+  const list = rollPool[k] = [];
+  const nLot = {};
+  let left = rollNeed[k] * ROLL_SLACK, i = 0;
+  while (left > 0 && list.length < 400) {
+    const h = hashOf('R' + i + '|' + k);
+    const len = r1(spec.yprl - 8 + h % 17);
+    const lot = lots[i % lots.length];
+    const n = (nLot[lot] = (nLot[lot] || 0) + 1);
+    list.push({ id: 'R' + String(rolls.length + list.length + 1).padStart(4, '0'),
+      no: lot.slice(1) + '-' + p2(n), lot, style, item, color, width: spec.width,
+      loc: 'K' + (1 + h % 2) + '-' + BAY[(h >>> 3) % BAY.length] + p2(1 + (h >>> 6) % 12)
+        + '-' + (1 + (h >>> 10) % 4),
+      length: len, issued: 0 });
+    left -= len; i++;
+  }
+  /* Xep theo LO roi den so cuon: cap lien tuc trong mot lo, het lo moi sang lo
+     khac — dung nhu nha cat muon (mot ban cat cang it lo cang tot). */
+  list.sort((a, b) => a.lot.localeCompare(b.lot) || a.no.localeCompare(b.no));
+  list.forEach(x => rolls.push(x));
+});
+
+/* ---- phan cuon cho nhung luot da cap --------------------------------------
+   Luot nao cat truoc MAT_ASOF thi kho da cap (tru mot phan de lai lam viec ton).
+   So o day la so DA CHOT sau khi nha cat tra cuon du ve ke (cot -/+ SAU CAT cua
+   to phieu), nen act ~ need va cuon cuoi con lai mot phan tren ke. Luc CAP thi
+   app cap ca cuon — xem moPickPlan trong build/parts/mat-glue.js.            */
+fabric.forEach(r => {
+  if (!(r.day <= MAT_ASOF && hashOf('A' + r.style + r.turn + r.color) % 100 >= 12)) return;
+  const list = rollPool[[r.style, r.item, r.color].join('|')] || [];
+  let want = r.need, got = 0, n = 0; const lots = [];
+  for (let i = 0; i < list.length && want > 0.05; i++) {
+    const x = list[i], bal = r1(x.length - x.issued); if (bal <= 0) continue;
+    const take = want >= bal * 0.85 ? bal : r1(want);
+    x.issued = r1(x.issued + take);
+    got = r1(got + take); want = r1(want - take); n++;
+    if (lots.indexOf(x.lot) < 0) lots.push(x.lot);
+  }
+  r.act = got; r.lot = lots.join(', '); r.rolls = n;
+});
+
+/* ---- so xuat phu lieu cho chuyen may -------------------------------------- */
+finOrders.forEach(o => {
+  /* 8–11 ma phu lieu / don, rai deu tren danh muc de moi don mot bo khac nhau. */
+  const n = 8 + hashOf('N' + o.style + o.po) % 4, step = Math.max(1, Math.floor(TRIMCAT.length / n));
+  const from = hashOf('T' + o.style + o.po) % TRIMCAT.length;
+  for (let i = 0; i < n; i++) {
+    const c = TRIMCAT[(from + i * step) % TRIMCAT.length];
+    const key = [o.style, o.po, c.item, c.pos].join('|');
+    const need = Math.ceil(c.cons * (o.qty || 0) * c.loss);
+    if (need <= 0) continue;
+    trims.push({ id: 'MT' + String(trims.length + 1).padStart(3, '0'),
+      brand: o.brand, style: o.style, po: o.po,
+      item: c.item, desc: c.desc, pos: c.pos, unit: c.unit, sup: c.sup,
+      color: o.colors.length ? o.colors[hashOf(key) % o.colors.length] : c.color,
+      cons: c.cons, pcs: o.qty || 0, need, stock: Math.round(stockOf(key, need)) });
+  }
+});
+
+/* ---- kho phu lieu: tung KIEN mot -----------------------------------------
+   Moi dong phu lieu duoc chia thanh cac kien theo PACK_SIZE cua don vi tinh;
+   tong so luong cac kien cua mot dong = TON KHO cua dong do, nen bang ngoai va
+   hop "chon kien phu lieu de xuat" luon khop nhau.
+
+   Kien nao duoc chon thi xuat CA KIEN — dung mot luat voi cuon vai ben Xuat vai.
+   Dong nao da xuat truoc MAT_ASOF thi kho da tru san o day (pack.issued) va so
+   da xuat cua dong nam o truong `out`.                                      */
+const PACK_SIZE = { EA: 2500, MT: 100, YD: 200, CONE: 6, SET: 500 };
+const packs = []; let packLot = 0;
+trims.forEach(t => {
+  const size = PACK_SIZE[t.unit] || 500;
+  const n = Math.max(1, Math.ceil((Number(t.stock) || 0) / size));
+  /* So lo chay lien tuc tren ca kho -> khong lo nao trung, Kien # cung khong. */
+  const lot = 'T26' + p2(7 + hashOf('TL' + t.id) % 2) + '-' + String(100 + (++packLot));
+  let left = Number(t.stock) || 0;
+  for (let i = 0; i < n && left > 0; i++) {
+    const qty = i === n - 1 ? r1(left) : size; left = r1(left - qty);
+    if (qty <= 0) break;
+    const h = hashOf('PK' + i + '|' + t.id);
+    packs.push({ id: 'K' + String(packs.length + 1).padStart(4, '0'),
+      no: lot.slice(1) + '-' + p2(i + 1), lot, row: t.id,
+      style: t.style, po: t.po, item: t.item, color: t.color, unit: t.unit,
+      loc: 'P' + (1 + h % 2) + '-' + BAY[(h >>> 3) % BAY.length] + p2(1 + (h >>> 6) % 12)
+        + '-' + (1 + (h >>> 10) % 4),
+      qty, issued: 0 });
+  }
+});
+
+/* ---- xuat san mot phan: kho da giao cho chuyen truoc MAT_ASOF -------------
+   Khoang 1/3 dong da xuat du, 1/4 moi xuat mot phan, con lai chua xuat — de man
+   hinh mo len la co du ba trang thai.
+
+   Phu lieu DEM RA duoc khoi kien nen lay lan luot tung kien va chi lay dung so
+   can: kien cuoi con lai mot phan tren ke. Day dung la luat ma hop "chon kien
+   phu lieu de xuat" trong app dung (co o go so luong tung kien).            */
+const packBy = {};
+packs.forEach(x => { (packBy[x.row] = packBy[x.row] || []).push(x); });
+trims.forEach(t => {
+  const roll = hashOf('I' + t.id) % 100;
+  const part = roll < 33 ? 1 : (roll < 58 ? (0.4 + (roll % 30) / 100) : 0);
+  t.out = 0;
+  if (part <= 0) return;
+  let want = r1((Number(t.need) || 0) * part), got = 0;
+  (packBy[t.id] || []).forEach(x => {
+    if (want <= 0.05) return;
+    const bal = r1(x.qty - x.issued); if (bal <= 0) return;
+    const take = r1(Math.min(bal, want));
+    x.issued = r1(x.issued + take);
+    got = r1(got + take); want = r1(want - take);
+  });
+  t.out = got;
+});
+
+const matSeed = {
+  src: PSCHED.src,
+  fabric,
+  rolls,
+  trims,
+  packs,
+  snapshot: null,
+};
+
 /* ---- ghi file ------------------------------------------------------------- */
 function write(rel, varName, obj, head) {
   const p = path.join(ROOT, 'app', rel);
@@ -304,5 +551,36 @@ write('finishing/seed.js', 'FINISHING_SEED', finSeed,
  * phat hanh. Gio hai module doc lap, nen phieu duoc dong bang o day.
  */
 `);
+
+write('material-out/seed.js', 'MATERIAL_SEED', matSeed,
+`/* YIC MES · XUAT NPL — seed cua module.
+ * ---------------------------------------------------------------------------
+ * Nguon duy nhat cua module XUAT NPL. Sinh boi \`node build/seeds.js\` tu
+ * "${PSCHED.src}" + tac nghiep cat + "${MLIST.src}".
+ *
+ *   fabric    ${fabric.length} luot cat, moi luot mot dong trong so cap vai
+ *             {day, style, color, turn, item, ly, pcs, cons, need, act, lot, rolls}
+ *             -> man Fabric Out: THU · NGAY · ITEM VAI · MA HANG · MAU · LUOT CAT ·
+ *                SO YARD CAN CAP · SO YARD THUC CAP · LOT VAI · SO CAY
+ *   rolls     ${rolls.length} cuon vai trong kho
+ *             {no, lot, style, item, color, width, loc, length, issued}
+ *             -> hop "chon cuon vai de cap": Balance = length - issued.
+ *                So da cap cua tung luot o tren chinh la tong phan lay tu cac
+ *                cuon nay, nen hai bang luon khop nhau.
+ *   trims     ${trims.length} dong phu lieu theo (ma hang | PO | ma phu lieu)
+ *             -> man Trims Out; \`out\` = so da xuat da chot
+ *   packs     ${packs.length} kien phu lieu trong kho
+ *             {no, lot, row, style, po, item, color, unit, loc, qty, issued}
+ *             -> hop "chon kien phu lieu de xuat": Con lai = qty - issued.
+ *                Tong \`out\` cua trims = tong \`issued\` cua packs, hai bang khop.
+ *   snapshot  anh chup du lieu nguoi dung, null = chay bang du lieu goc
+ *
+ * Module nay khong doc state cua MAY hay HOAN THIEN: so lieu tren deu dong bang
+ * o day, dung nhu \`slips\` cua HOAN THIEN.
+ */
+`);
 console.log('\nplans: %d upload + %d sinh them', KHC.plans.length, plans.length - KHC.plans.length);
 console.log('slips: %d to, tong %d pcs', slips.length, slips.reduce((a, s) => a + s.qty, 0));
+console.log('npl: %d luot cat (%s -> %s) + %d cuon vai · %d dong phu lieu + %d kien',
+  fabric.length, fabric[0].day, fabric[fabric.length - 1].day, rolls.length,
+  trims.length, packs.length);

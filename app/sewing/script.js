@@ -959,6 +959,10 @@ class Sewing extends MESCore {
       bqUnlockTip:'Thu hồi để sửa lại lịch tuần này',
       bqOk:'Xác nhận đã nhận',
       bqOpenTip:'Bấm để mở phiếu giao nhận bán thành phẩm',
+      wsTitle:'PHIẾU GIAO NHẬN PHỤ LIỆU',
+      wsPo:'Số PO #:',
+      wsItem:'Mã phụ liệu #:',
+      wsOpenTip:'Bấm để mở phiếu giao nhận phụ liệu',
       bgView:'Xem / in phiếu bàn giao',
       dsoHandOver:'Giao sang hoàn thiện',
       dsoUndoHand:'Hủy phiếu bàn giao gần nhất của dòng này',
@@ -1038,6 +1042,7 @@ class Sewing extends MESCore {
       dsoBtnPass:'ĐẠT',
       dsoBtnDef:'LỖI',
       dsoNoPick:'Chọn màu và size để bắt đầu đếm',
+      dsoFullTip:'Size này đã đếm đủ số lượng — không còn sản phẩm nào để QC',
       dsoStyleL:'Chọn mã hàng · PO',
       dsoGenL:'Giới tính',
       dsoGenNone:'Giới tính',
@@ -1082,11 +1087,22 @@ class Sewing extends MESCore {
       dsotab5:'Sewing Production',
       spPanel:'Sản Xuất May Theo Chuyền',
       spSub:'Sản lượng, bậc M-level và chất lượng của từng chuyền',
+      spTab1:'General',
+      spTab2:'By Hour',
+      spHrTgt:'Target/giờ',
+      spHrTarget:'Target',
+      spHrOut:'Sản lượng',
+      spHrNote:'10 khung giờ làm việc · target mỗi giờ = target hiện tại ÷ 10',
       spMlv:'M level',
-      spOut:'Sản lượng hiện tại / Sản lượng M',
+      spOut:'Daily production',
       spTop3:'Top 3 lỗi',
+      spGenProg:'General progress',
+      spGenProgTip:'Tổng hàng đã pass của chuyền từ trước tới nay ÷ SL yêu cầu của đơn',
+      spProg:'Daily Progress',
+      spProgTip:'Sản lượng hôm nay ÷ (target ngày ÷ 10 khung giờ × số tiếng đã làm) — khung giờ đang chạy tính tròn 1 tiếng',
       lnOrd:'Ordered',
-      lnRecv:'Received',
+      lnRecv:'Fabric received',
+      lnRecvTrim:'Received trims',
       lnOut:'Output',
       lnHand:'Handover',
       lnBalOut:'Balance (Output)',
@@ -1094,6 +1110,12 @@ class Sewing extends MESCore {
       lnBalOutTip:'Output − Ordered — số âm là còn phải may bấy nhiêu nữa, số dương là may vượt',
       lnBalHandTip:'Handover − Ordered — số âm là còn phải giao sang hoàn thiện bấy nhiêu nữa',
       lnRecvTip:'BTP đã nhận vào chuyền — trừ các lượt Hủy nhận',
+      lnWait:'phiếu chờ nhận',
+      lnRecvTrimTip:'Phụ liệu đã nhận vào chuyền — theo các phiếu WS đã xác nhận',
+      lnRecvTrimTap:'Bấm để xem các lượt giao phụ liệu từ kho',
+      lnSzShow:'Bấm để xem chi tiết theo size',
+      lnSzHide:'Ẩn chi tiết theo size',
+      lnRecvTitleW:'Phiếu Giao Phụ Liệu',
       lnPo:'PO',
       lnPerfEmpty:'Chuyền này chưa có tác nghiệp cắt',
       lnRecvTitle:'Phiếu Giao BTP Từ Nhà Cắt',
@@ -1261,11 +1283,8 @@ class Sewing extends MESCore {
       stWaiting:'Chờ nhận',
       stReceived:'Đã nhận',
       stCycleTip:'Bấm để đổi trạng thái: Đã yêu cầu ⇄ Chờ nhận. Đã nhận thì xác nhận ở Line Performance',
-      mReceived:'Đã nhận',
       mTurnPool:'Bảng lượt cắt dùng chung cho mã hàng + màu cắt này — mỗi lượt chỉ cấp được 1 lần trong tuần',
       mTakenTip:'Lượt này đã cấp ở ô khác — bỏ ở đó trước nếu muốn dùng lại',
-      tipReceive:'Lưu ô này và đánh dấu đã nhận BTP',
-      tipUnreceive:'Đã nhận — bấm để trả về Chờ nhận',
       dsoBrand:'\u2014' },
     en:{
       dsoTitle:'Daily Sewing Output',
@@ -1304,6 +1323,10 @@ class Sewing extends MESCore {
       bqUnlockTip:'Recall to edit this week again',
       bqOk:'Confirm received',
       bqOpenTip:'Click to open the semi-finished goods handover slip',
+      wsTitle:'TRIMS HANDOVER SLIP',
+      wsPo:'PO #:',
+      wsItem:'Item #:',
+      wsOpenTip:'Click to open the trims handover slip',
       bgView:'View / print handover slip',
       dsoHandOver:'Hand over to finishing',
       dsoUndoHand:'Void the latest handover slip of this row',
@@ -1383,6 +1406,7 @@ class Sewing extends MESCore {
       dsoBtnPass:'Pass',
       dsoBtnDef:'Defect',
       dsoNoPick:'Pick a colour and a size to start counting',
+      dsoFullTip:'This size is fully counted — no piece left to inspect',
       dsoStyleL:'Pick style · PO',
       dsoGenL:'Gender',
       dsoGenNone:'Gender',
@@ -1427,11 +1451,22 @@ class Sewing extends MESCore {
       dsotab5:'Sewing Production',
       spPanel:'Sewing Production by Line',
       spSub:'Output, M-level tier and quality for every line',
+      spTab1:'General',
+      spTab2:'By Hour',
+      spHrTgt:'Target/hour',
+      spHrTarget:'Target',
+      spHrOut:'Output',
+      spHrNote:'10 working-hour slots · hourly target = current target ÷ 10',
       spMlv:'M level',
-      spOut:'Current output / M output',
+      spOut:'Daily production',
       spTop3:'Top 3 defects',
+      spGenProg:'General progress',
+      spGenProgTip:'Total pieces passed on this line to date ÷ pieces required by the order',
+      spProg:'Daily Progress',
+      spProgTip:'Today output ÷ (daily target ÷ 10 hour slots × hours worked) — the running slot counts as a full hour',
       lnOrd:'Ordered',
-      lnRecv:'Received',
+      lnRecv:'Fabric received',
+      lnRecvTrim:'Received trims',
       lnOut:'Output',
       lnHand:'Handover',
       lnBalOut:'Balance (Output)',
@@ -1439,6 +1474,12 @@ class Sewing extends MESCore {
       lnBalOutTip:'Output − Ordered — negative is how many are still to sew, positive is overproduced',
       lnBalHandTip:'Handover − Ordered — negative is how many are still to hand over to finishing',
       lnRecvTip:'Bundles received on the line — minus the voided receipts',
+      lnWait:'slip waiting',
+      lnRecvTrimTip:'Trims received on the line — from the confirmed WS slips',
+      lnRecvTrimTap:'Tap to see the trims handovers from the store',
+      lnSzShow:'Show the size breakdown',
+      lnSzHide:'Hide the size breakdown',
+      lnRecvTitleW:'Trims Handover Slips',
       lnPo:'PO',
       lnPerfEmpty:'No cutting plan for this line yet',
       lnRecvTitle:'Bundle Slips From Cutting',
@@ -1606,11 +1647,8 @@ class Sewing extends MESCore {
       stWaiting:'Waiting',
       stReceived:'Received',
       stCycleTip:'Click to toggle status: Requested ⇄ Waiting. Received is confirmed from Line Performance',
-      mReceived:'Received',
       mTurnPool:'One cut-turn table shared by this style + cut colour — each turn can be issued once per week',
       mTakenTip:'Already issued in another cell — release it there first to reuse',
-      tipReceive:'Save this cell and mark bundles received',
-      tipUnreceive:'Received — click to set back to Waiting',
       dsoBrand:'\u2014' },
   };
 
@@ -1697,19 +1735,19 @@ class Sewing extends MESCore {
     this.scrollRef = React.createRef(); this.panelRef = React.createRef(); this.dailyRef = React.createRef();
     const weeks = this.seed();
     this.state = { ...this.coreState(),
-      page: 'sewing', cutTab: 'capacity', dsoTab: 'sprod', dsoSub: 'line', dsoLineTab: 'perf', lset: {}, lsEdit: null,
+      page: 'sewing', cutTab: 'capacity', dsoTab: 'sprod', dsoSub: 'line', dsoLineTab: 'perf', spTab: 'gen', lset: {}, lsEdit: null,
       dsoLine: null, mlvLine: null, mlvFs: false, dsoDone: {}, dsoDoneV: 2, dsoHand: {}, dsoHandQ: {},
       dsoSlips: [], dsoSlipSeq: {}, dsoHandWho: {}, dsoHandAsk: null,
       cap: {}, capTurns: {}, capOrder: null, dragRow: null, multPlain: 3, multEmb: 6,
       tab: 'weekly', openMonth: this.CURWK.split(' · ')[0], week: this.CURWK,
       weeks,
-      edit: null, bedit: null, bform: null, bslip: null, bqNo: {}, bqSeq: {}, bqLock: {},
+      edit: null, bedit: null, bform: null, bslip: null, wslip: null, bqNo: {}, bqSeq: {}, bqLock: {},
       dragOver: false, dayOpen: null, daily: {}, freq: {}, wsc: {}, recvLog: [],
       bundle: this.initBundle((weeks[this.CURWK] || { rows: [] }).rows), bundleV: 3, wip: {},
       dsoAlerts: this.initAlerts(), dsoAlEdit: false, dsoAlHit: null,
       dsoMtypeRows: null, dsoMtypeDet: {}, mtSel: null, mtEdit: null, mtMsg: '',
       dsoDefects: this.initDefects(), dsoDefLog: {}, dsoDefTime: {}, dfEdit: null, dfQ: '', dfMsg: '',
-      dsoTap: null, dsoTapQ: '', dsoTapSel: {}, lnRecv: null,
+      dsoTap: null, dsoTapQ: '', dsoTapSel: {}, lnRecv: null, lnOpen: {},
       dsoPassLog: {},
       dsoHistQ: '', dsoDefQ: '', dsoHandBulk: null,
       // Ban tablet cua trang chi tiet chuyen: o dang chon, ngay cua bang Top 3,
@@ -1764,6 +1802,7 @@ class Sewing extends MESCore {
     if (this.state.dsoTap) this.dsoTapClose();
     if (this.state.mlvFs) this.set({ mlvFs: false });
     if (this.state.bslip) this.bSlipClose();
+    if (this.state.wslip) this.wSlipClose();
     if (this.state.dsoHandBulk) this.set({ dsoHandBulk: null });
     if (this.state.dsoHandAsk) this.dsoSlipClose();
   }
@@ -1967,7 +2006,6 @@ class Sewing extends MESCore {
   cellStatus(cell){ const v=cell&&cell.status;
     return this.STORDER.indexOf(v)>=0?v:'waiting'; }
   bcellAt(id,day){ const b=this.bAt(id); return (b&&b.days&&b.days[day])||null; }
-  // Nut Received trong modal: luu luon phan dang sua roi doi trang thai (bam lai -> tra ve Waiting)
   // So sanh theo tap hop -- doi thu tu chon lai cung 1 bo luot cat thi khong tinh la doi
   turnsKey(a){ return [...(a||[])].sort().join(','); }
   // Trang thai se duoc luu neu bam Cap nhat ngay bay gio.
@@ -1980,27 +2018,14 @@ class Sewing extends MESCore {
     const row=this.getWeek().rows.find(r=>r.id===f.id); if(!row) return NEW;
     if(this.turnsKey(this.cellPos(row.style,prev))!==this.turnsKey(f.pos)) return NEW;
     return this.cellStatus(prev); }
-  receiveBForm(){ const f=this.state.bform; if(!f) return;
-    const next=this.bformStatus()==='received'?'waiting':'received';
-    this.logReceive(f,next==='waiting');
-    this.saveBForm(next); }
-  // Moi lan bam Received deu ghi 1 dong. undo=true la lan bam tra ve Waiting.
-  logReceive(f,undo){ const rows=this.getWeek().rows; const idx=rows.findIndex(x=>x.id===f.id);
-    const r=rows[idx]; if(!r) return;
-    const tq=this.posTq(r.style,f.pos);
-    const turns=Object.keys(tq).map(t=>({id:t,
-      qty:Object.keys(tq[t]||{}).reduce((a,s)=>a+(Number((tq[t]||{})[s])||0),0)}));
-    const e={ts:Date.now(),line:this.normName(r.line),style:r.style||'\u2014',
-      color:this.bundleColor(r,idx)||'\u2014',turns,undo:!!undo};
-    this.setState(s=>({recvLog:[...(s.recvLog||[]),e]})); }
   recvTurnText(e){ return (e.turns||[]).map(t=>t.id+' - '+this.fmt(t.qty)).join(', ')||'\u2014'; }
-  saveBForm(status){ const f=this.state.bform; const row=this.getWeek().rows.find(r=>r.id===f.id);
+  saveBForm(){ const f=this.state.bform; const row=this.getWeek().rows.find(r=>r.id===f.id);
     const tq=this.posTq(row.style,f.pos); const tot=this.tqTotals(tq);
     const sizes=this.SORDER.filter(s=>(tot[s]||0)>0);
     const cell=this.cellFrom(row.style,this.posTurns(row.style,f.pos),sizes,tot);
     cell.tq=tq; cell.pos=[...(f.pos||[])];
-    // tao moi / doi luot cat -> Requested; con lai giu nguyen. Nut Received truyen thang status vao day
-    cell.status=status||this.bformStatus();
+    // tao moi / doi luot cat -> Requested; con lai giu nguyen
+    cell.status=this.bformStatus();
     const k=f.bk||this.bKeyOf(f.id); if(!k){ this.set({bform:null}); return; }
     this.setState(s=>{ const bundle={...s.bundle}; const bb={...(bundle[k]||{color:'',days:{}})}; const days={...bb.days}; days[f.day]=cell; bb.days=days; bundle[k]=bb; return {bundle,bform:null}; }); }
   clearBForm(){ const f=this.state.bform; const k=f.bk||this.bKeyOf(f.id); if(!k){ this.set({bform:null}); return; }
@@ -2253,7 +2278,7 @@ class Sewing extends MESCore {
           h('button',{style:this.btn('ghost'),title:this.t('exportTip'),onClick:()=>this.exportExcel()},this.ic('grid'),this.t('exportXls')),
           this.renderBqApprove()),
         h('div',{style:{padding:'16px 16px 8px'}}, this.getWeek().rows.length? this.renderBundleGrid() : h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},this.t('demandEmpty')))),
-      this.renderRecvLog(), this.renderBqSlip());
+      this.renderRecvLog(), this.renderBqSlip(), this.renderWSlip());
   }
 
   // ================= Phieu giao nhan ban thanh pham =====================
@@ -2261,15 +2286,17 @@ class Sewing extends MESCore {
   // (bo Xuat di nuoc / Ngay giao hang -- app khong co du lieu nay), Ghi chu,
   // 2 o ky (bo To truong Bo phan cat).
   BQ_ROWS=10;          // so dong ke san tren to phieu
-  renderBqSlip(){
-    const d=this.bSlipData(); if(!d) return null;
+  // Khuon chung cua HAI to phieu (BTP + phu lieu). Giong nhau: khung giay, bang
+  // 5 cot ke san BQ_ROWS dong, khoi 2 chu ky, lop phu portal ra <body> de
+  // @media print chi con to phieu. Khac nhau: tieu de, ma phieu, cac truong o
+  // dau to, nut o chan -- ben goi truyen vao qua o.
+  slipSheet(o){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     // Mau lay tu theme he thong (this.C), khong con khung do nhu to giay goc:
     //   net ke  -> C.border (cung token voi vien bang cua app)
     //   so lieu -> C.dark   (xanh dam, giong cot so cua cac bang khac)
     //   dau bang-> nen '#f8faf3' + chu C.sub, dung nhu S.th cua app
     const INK=C.ink, LN=C.border, VAL=C.dark, HEAD='#f8faf3';
-    const close=()=>this.bSlipClose();
     // 1 truong: nhan + gia tri tren net gach roi
     const fld=(label,val)=>h('div',{key:label,style:{display:'flex',alignItems:'baseline',gap:7,minWidth:0}},
       h('span',{style:{flex:'none',fontSize:13,fontWeight:700,color:C.sub}},label),
@@ -2281,16 +2308,16 @@ class Sewing extends MESCore {
     const th=h('tr',null,cols.map(([k,w])=>h('th',{key:k,style:{...cbase,width:w,background:HEAD,
       fontSize:10.5,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',
       color:C.sub,textAlign:'center',lineHeight:1.3}},this.t(k))));
-    const cell=(v,o)=>h('td',{key:(o&&o.k)||v,style:{...cbase,textAlign:(o&&o.al)||'center',
-      fontFamily:(o&&o.mono)?mono:'inherit',fontWeight:(o&&o.b)?700:600,
-      color:(o&&o.b)?VAL:INK,height:26}},
+    const cell=(v,q)=>h('td',{key:(q&&q.k)||v,style:{...cbase,textAlign:(q&&q.al)||'center',
+      fontFamily:(q&&q.mono)?mono:'inherit',fontWeight:(q&&q.b)?700:600,
+      color:(q&&q.b)?VAL:INK,height:26}},
       v==null||v===''?'\u00a0':v);
     const body=[];
-    d.lines.forEach((x,i)=>body.push(h('tr',{key:'r'+i},
-      cell(i?'':d.color,{k:'c',al:'left'}), cell(x.tb,{k:'tb',mono:true}),
+    o.lines.forEach((x,i)=>body.push(h('tr',{key:'r'+i},
+      cell(i?'':o.color,{k:'c',al:'left'}), cell(x.tb,{k:'tb',mono:true}),
       cell(x.size,{k:'sz',b:true}), cell(this.fmt(x.qty),{k:'q',mono:true,b:true}),
-      cell(i?'':d.po,{k:'po',mono:true}))));
-    for(let i=d.lines.length;i<this.BQ_ROWS;i++)
+      cell(i?'':o.po,{k:'po',mono:true}))));
+    for(let i=o.lines.length;i<this.BQ_ROWS;i++)
       body.push(h('tr',{key:'e'+i},cols.map(([k])=>cell('',{k:k}))));
     // Khoi ky: dung khuon giong phieu ban giao cua Daily Sewing Output
     const sign=h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:40,
@@ -2306,13 +2333,11 @@ class Sewing extends MESCore {
           letterSpacing:'.5px',padding:'3px 9px',borderRadius:7,lineHeight:1.3}},'YIC'),
         h('div',{style:{flex:1}}),
         h('span',{style:{flex:'none',fontSize:12.5,fontWeight:700,color:C.dark,fontFamily:mono}},
-          d.no||'\u2014')),
+          o.no||'\u2014')),
       h('div',{style:{fontSize:18,fontWeight:800,color:INK,letterSpacing:'.2px',margin:'9px 0 11px'}},
-        this.t('bqTitle')),
+        o.title),
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',columnGap:30,rowGap:8,
-        marginBottom:13}},
-        fld(this.t('bqDay'),d.day), fld(this.t('bqCust'),d.brand),
-        fld(this.t('bqLine'),d.line), fld(this.t('bqStyle'),d.style)),
+        marginBottom:13}}, o.fields.map(f=>fld(f[0],f[1]))),
       h('table',{style:{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}},
         h('thead',null,th), h('tbody',null,body)),
       h('div',{style:{display:'flex',alignItems:'baseline',gap:8,marginTop:12}},
@@ -2321,21 +2346,59 @@ class Sewing extends MESCore {
     const foot=h('div',{'data-noprint':'',style:{display:'flex',alignItems:'center',gap:10,
         marginTop:22,paddingTop:16,borderTop:'1px solid '+C.line,flexWrap:'wrap'}},
       h('div',{style:{flex:1,minWidth:8}}),
-      h('button',{onClick:close,style:this.btn('ghost')},this.t('dsoClose')),
+      h('button',{onClick:o.close,style:this.btn('ghost')},this.t('dsoClose')),
       h('button',{onClick:()=>window.print(),style:this.btn('ghost')},
         h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9},
           h('path',{d:'M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v7H8z'})),this.t('bgPrint')),
-      h('button',{onClick:()=>this.bSlipReceive(),style:this.btn('primary')},
-        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
-          h('path',{d:'M5 12l4 4 10-10'})),this.t('bqOk')));
+      o.ok||null);
     const panel=h('div',{'data-bg-panel':'',className:'yscroll',onClick:ev=>ev.stopPropagation(),
         style:{width:'min(880px,96vw)',maxHeight:'94vh',overflow:'auto',background:C.white,
           borderRadius:14,boxShadow:'0 30px 70px rgba(0,0,0,.32)',padding:'20px 22px 18px'}},
       frame,sign,foot);
-    const over=h('div',{'data-bg-overlay':'',onClick:close,style:{position:'fixed',inset:0,
+    const over=h('div',{'data-bg-overlay':'',onClick:o.close,style:{position:'fixed',inset:0,
         background:'rgba(24,28,22,.5)',backdropFilter:'blur(2px)',display:'flex',
         alignItems:'center',justifyContent:'center',zIndex:88,padding:20}},panel);
     return (RD&&RD.createPortal)?RD.createPortal(over,document.body):over;
+  }
+  renderBqSlip(){
+    const h=React.createElement;
+    const d=this.bSlipData(); if(!d) return null;
+    return this.slipSheet({no:d.no,title:this.t('bqTitle'),lines:d.lines,color:d.color,po:d.po,
+      close:()=>this.bSlipClose(),
+      fields:[[this.t('bqDay'),d.day],[this.t('bqCust'),d.brand],
+              [this.t('bqLine'),d.line],[this.t('bqStyle'),d.style]],
+      ok:h('button',{onClick:()=>this.bSlipReceive(),style:this.btn('primary')},
+        h('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+          h('path',{d:'M5 12l4 4 10-10'})),this.t('bqOk'))});
+  }
+
+  // ================= Phieu giao nhan phu lieu ===========================
+  // Di kem dung MOT lan giao voi phieu BTP (cung o luoi + cung ngay) nen an
+  // theo bSlipData: chi doi tien to ma phieu va nhan doi cot So luong.
+  //
+  // Ma phieu WS-yyyymmdd-nnn: nnn CHINH LA so cua phieu BTP di kem, khong co bo
+  // dem rieng -- moi lan giao BTP keo theo dung mot phieu phu lieu, hai to phai
+  // tra ve nhau duoc bang so.
+  WS_QTY=2;            // 1 don vi BTP di kem 2 don vi phu lieu
+  wSlipNoOf(no){ return String(no||'').replace(/^CS-/,'WS-'); }
+  // Mo to nay thi dong to kia: ca hai cung portal ra <body> voi data-bg-overlay,
+  // de ca hai cung mo thi mot lenh in ra hai to giay.
+  wSlipOpen(r,d){ this.set({wslip:{rid:r.id,day:d},bslip:null});
+    document.body.classList.add('bg-slip-open'); }
+  wSlipClose(){ this.set({wslip:null}); document.body.classList.remove('bg-slip-open'); }
+  renderWSlip(){
+    // Khong co wslip thi thoi -- KHONG duoc de bSlipData lui ve bslip, khong thi
+    // mo to BTP la to phu lieu cung hien theo.
+    const w=this.state.wslip; if(!w) return null;
+    const d=this.bSlipData(w); if(!d) return null;
+    return this.slipSheet({no:this.wSlipNoOf(d.no),title:this.t('wsTitle'),
+      color:d.color,po:d.po,close:()=>this.wSlipClose(),
+      lines:d.lines.map(x=>({...x,qty:x.qty*this.WS_QTY})),
+      // Item # chua co nguon du lieu trong module MAY -- de trong cho viet tay,
+      // giong dong Ghi chu o cuoi to.
+      fields:[[this.t('bqDay'),d.day],[this.t('bqStyle'),d.style],
+              [this.t('wsPo'),d.po],[this.t('wsItem'),''],
+              [this.t('bqLine'),d.line]]});
   }
 
   renderRecvLog(){
@@ -2530,7 +2593,7 @@ class Sewing extends MESCore {
     this.setState(st=>{ const m={...(st.bqNo||{})}; delete m[k]; return {bqNo:m}; }); }
   // Class tren <body> de @media print chi in ra to phieu -- dung chung voi
   // phieu ban giao cua Daily Sewing Output (xem style.css, bg-slip-open)
-  bSlipOpen(r,d){ this.set({bslip:{rid:r.id,day:d}});
+  bSlipOpen(r,d){ this.set({bslip:{rid:r.id,day:d},wslip:null});
     document.body.classList.add('bg-slip-open'); }
   bSlipClose(){ this.set({bslip:null}); document.body.classList.remove('bg-slip-open'); }
   // Xac nhan tren phieu = dao trang thai Cho nhan -> Da nhan roi dong phieu
@@ -2568,7 +2631,7 @@ class Sewing extends MESCore {
   // PO lay tu tac nghiep cat cua ma hang; nhieu PO thi ghep lai
   bSlipPo(style){ const ps=(this.khcPlansFor(style)||[]).map(p=>String(p.qrPo||'').trim()).filter(Boolean);
     return [...new Set(ps)].join(' / '); }
-  bSlipData(){ const s=this.state.bslip; if(!s) return null;
+  bSlipData(s){ s=s||this.state.bslip; if(!s) return null;
     const rows=this.getWeek().rows, ri=rows.findIndex(x=>x.id===s.rid), r=rows[ri];
     if(!r) return null;
     const cell=this.bcellAt(s.rid,s.day); if(!cell) return null;
@@ -2664,7 +2727,7 @@ class Sewing extends MESCore {
     const availTotal=this.SORDER.reduce((a,s)=>a+(avail[s]||0),0);
     const sizeCount=this.SORDER.filter(s=>(grand[s]||0)>0).length;
     const canSave=hasTurns&&needTotal>0; const editing=!!(b.days&&b.days[f.day]);
-    const curSt=this.bformStatus(); const RC=this.STC.received; const WC=this.STC.waiting;
+    const curSt=this.bformStatus(); const WC=this.STC.waiting;
     const used=this.bformUsedPos();
     // Mau cat hieu luc (ke ca mau tu dong) -- no quyet dinh scope cua bang luot cat
     const effColor=this.bundleColor(row,this.getWeek().rows.findIndex(r=>r.id===f.id));
@@ -2811,9 +2874,6 @@ class Sewing extends MESCore {
             hasTurns? h('span',{style:{fontSize:11.5,color:C.faint}}, selIds.length+' '+this.t('mTurns')+' · '+sizeCount+' '+this.t('mSizes')):null),
           h('div',{style:{flex:1}}),
           h('button',{onClick:()=>this.set({bform:null}),style:this.btn('ghost')},this.t('mCancel')),
-          editing? h('button',{onClick:()=>this.receiveBForm(),disabled:!canSave,title:this.t(curSt==='received'?'tipUnreceive':'tipReceive'),
-            style:{...this.btn('ghost'),background:curSt==='received'?RC.bg:C.white,color:RC.fg,borderColor:curSt==='received'?RC.dot:RC.bd,opacity:canSave?1:.5,cursor:canSave?'pointer':'not-allowed'}},
-            h('span',{style:{width:7,height:7,borderRadius:'50%',background:RC.dot,flex:'none'}}), this.t('mReceived')):null,
           h('button',{onClick:()=>this.saveBForm(),disabled:!canSave,style:{...this.btn('primary'),opacity:canSave?1:.5,cursor:canSave?'pointer':'not-allowed'}}, editing?this.t('mUpdate'):this.t('mSave')))));
   }
 
@@ -4487,12 +4547,33 @@ class Sewing extends MESCore {
         out.push({key:bk+'|'+d,bk:bk,day:d,week:p[0],line:line,style:st,color:co,
           rid:wr?wr.id:null,no:nom[bk+'|'+d]||'',
           label:this.dayLabel(d,i),status:this.cellStatus(cell),
-          turns:(cell.turns||[]).join(', '),qty:q}); }); });
+          wstatus:this.wCellStatus(cell),wqty:q*this.WS_QTY,
+          turns:(cell.turns||[]).join(', '),qty:q,qz:this.lnCellSizes(cell)}); }); });
     return out.sort((a,b)=>String(a.week).localeCompare(String(b.week))
       ||this.DAYS.indexOf(a.day)-this.DAYS.indexOf(b.day)); }
+  // SL cua mot o luoi, tach san theo size (lnCellQty la tong cua map nay)
+  lnCellSizes(cell){ const q=(cell&&cell.qty)||{}, out={};
+    ((cell&&cell.sizes)||[]).forEach(z=>{ const v=Number(q[z])||0; if(v) out[z]=v; });
+    return out; }
+  // Cong SL theo TUNG SIZE tu cac to phieu da xac nhan. key = 'status' (BTP)
+  // hoac 'wstatus' (phu lieu); mul = he so nhan (phu lieu di 1 BTP an WS_QTY).
+  lnSizeRecvOf(line,style,color,key,mul){ const out={};
+    this.lnSlips(line,style,color).forEach(x=>{ if(x[key]!=='received') return;
+      Object.keys(x.qz||{}).forEach(z=>{ out[z]=(out[z]||0)+x.qz[z]*mul; }); });
+    return out; }
+  // Xep map size -> hang theo dung thu tu size chuan; size la doc thi day xuong cuoi
+  lnSizeRows(m){ const known=this.SORDER.filter(z=>m[z]);
+    const rest=Object.keys(m).filter(z=>this.SORDER.indexOf(z)<0).sort();
+    return known.concat(rest).map(z=>m[z]); }
   // Received cua Line Performance = tong cac slip DA xac nhan nhan
   lnRecvOf(line,style,color){ let n=0;
     this.lnSlips(line,style,color).forEach(x=>{ if(x.status==='received') n+=x.qty; });
+    return n; }
+  // Dem SO TO PHIEU con o 'Cho nhan' (khong cong so luong): day la viec ton lai
+  // cua chuyen, dem to moi biet con phai bam xac nhan bao nhieu lan.
+  // Dong 'Da yeu cau' khong tinh -- nha cat chua giao thi chua co gi de nhan.
+  lnWaitOf(line,style,color){ let n=0;
+    this.lnSlips(line,style,color).forEach(x=>{ if(x.status==='waiting') n++; });
     return n; }
   lnSlipSet(bk,day,status){
     this.setState(st=>{ const b=(st.bundle||{})[bk]; if(!b||!b.days||!b.days[day]) return null;
@@ -4505,31 +4586,76 @@ class Sewing extends MESCore {
     const e={ts:Date.now(),line:x.line,style:x.style,color:x.color,
       turns:[{id:x.turns||'\u2014',qty:x.qty}],undo:!!undo};
     this.setState(st=>({recvLog:[...(st.recvLog||[]),e]})); }
+
+  // ---- Received trims -----------------------------------------------------
+  // Phu lieu la MOT LAN GIAO KHAC voi BTP (kho phu lieu, khong phai nha cat)
+  // nen trang thai nam rieng o cell.wstatus, khong dung chung cell.status.
+  // Chi hai buoc: chua nhan (waiting) / da nhan (received) -- khong co buoc
+  // 'Da yeu cau', vi to phieu phu lieu sinh ra cung luc voi to BTP.
+  wCellStatus(cell){ return (cell&&cell.wstatus)==='received'?'received':'waiting'; }
+  // Cot Received trims = tong SL phu lieu (SL BTP x WS_QTY) cua cac to da nhan
+  lnTrimRecvOf(line,style,color){ let n=0;
+    this.lnSlips(line,style,color).forEach(x=>{ if(x.wstatus==='received') n+=x.wqty; });
+    return n; }
+  lnTrimWaitOf(line,style,color){ let n=0;
+    this.lnSlips(line,style,color).forEach(x=>{ if(x.wstatus!=='received') n++; });
+    return n; }
+  lnSlipTrimSet(bk,day,status){
+    this.setState(st=>{ const b=(st.bundle||{})[bk]; if(!b||!b.days||!b.days[day]) return null;
+      const days={...b.days}; days[day]={...days[day],wstatus:status};
+      return {bundle:{...st.bundle,[bk]:{...b,days:days}}}; }); }
+  // Khong ghi vao recvLog: bang Lich su nhan BTP chi dem hang cat, tron phu
+  // lieu vao la hai loai so cong chung mot cot.
+  lnTrimConfirm(x,undo){ this.lnSlipTrimSet(x.bk,x.day,undo?'waiting':'received'); }
   lnPerfRows(line){
     const at={}, out=[], kf=(st,co)=>String(st)+'|'+String(co);
     const get=(st,co)=>{ const k=kf(st,co);
-      if(!at[k]){ at[k]={key:k,style:st,color:co,pos:[],ord:0,recv:0,out:0,hand:0,bo:0,bh:0};
+      if(!at[k]){ at[k]={key:k,style:st,color:co,pos:[],ord:0,recv:0,trecv:0,out:0,
+          hand:0,bo:0,bh:0,sz:{}};
         out.push(at[k]); }
       return at[k]; };
+    // Chi tiet theo size chi dung cho BA cot dau (Ordered / Fabric received /
+    // Received trims) -- ba cot do co so theo size that. Output / Handover /
+    // Balance khong tach: chung doc tu Lich su hoan thanh, khong theo size.
+    const sz=(g,z)=>{ const m=g.sz; return m[z]||(m[z]={size:z,ord:0,recv:0,trecv:0}); };
     // Ordered doc tu card (ke hoach), Output/Handover doc tu LICH SU: hang da may
     // cua don da chay xong van phai hien, du don do khong con trong ke hoach.
     this.dsoSizeCards(line).forEach(c=>{ const g=get(c.style,c.color);
-      g.ord+=c.need; if(c.po&&g.pos.indexOf(c.po)<0) g.pos.push(c.po); });
+      g.ord+=c.need; sz(g,c.size).ord+=c.need;
+      if(c.po&&g.pos.indexOf(c.po)<0) g.pos.push(c.po); });
     this.dsoHistory(line).forEach(r=>{ const g=get(r.style,r.color);
       if(r.po&&g.pos.indexOf(r.po)<0) g.pos.push(r.po);
       g.out+=r.qty; g.hand+=this.dsoHandedQty(r); });
     // Chua chay xong thi hai so nay AM -- do la binh thuong, khong kep san 0:
     // kep lai la doc bang khong con doi chieu nguoc ve Ordered duoc nua.
     out.forEach(g=>{ g.recv=this.lnRecvOf(line,g.style,g.color);
+      g.wait=this.lnWaitOf(line,g.style,g.color);
+      g.trecv=this.lnTrimRecvOf(line,g.style,g.color);
+      g.twait=this.lnTrimWaitOf(line,g.style,g.color);
+      const fz=this.lnSizeRecvOf(line,g.style,g.color,'status',1);
+      Object.keys(fz).forEach(z=>{ sz(g,z).recv+=fz[z]; });
+      const tz=this.lnSizeRecvOf(line,g.style,g.color,'wstatus',this.WS_QTY);
+      Object.keys(tz).forEach(z=>{ sz(g,z).trecv+=tz[z]; });
+      g.sizes=this.lnSizeRows(g.sz);
       g.bo=g.out-g.ord; g.bh=g.hand-g.ord;
       g.pos.sort(); });
     return out.sort((a,b)=>String(a.style).localeCompare(String(b.style))
       ||String(a.color).localeCompare(String(b.color))); }
 
+  // Mo/dong phan chi tiet theo size cua mot dong Line Performance. Khoa co ca
+  // ten chuyen: doi chuyen thi khong mo nham dong trung ma hang + mau.
+  lnToggle(k){ this.setState(s=>{ const m={...(s.lnOpen||{})};
+    if(m[k]) delete m[k]; else m[k]=1; return {lnOpen:m}; }); }
   lnRecvClose(){ this.set({lnRecv:null}); }
   renderLnRecv(){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const o=this.state.lnRecv; if(!o) return null;
+    // Mot hop thoai, hai che do: 'trims' doc cot phu lieu (wstatus + SL x2),
+    // con lai doc cot BTP nhu cu. Danh sach to phieu thi chung -- moi lan giao
+    // ra dung mot to CS va mot to WS.
+    const trim=o.kind==='trims';
+    const stOf=r=>trim?r.wstatus:r.status;
+    const qtyOf=r=>trim?r.wqty:r.qty;
     const rows=this.lnSlips(o.line,o.style,o.color);
     const close=()=>this.lnRecvClose();
     const th={padding:'9px 12px',fontSize:10.5,fontWeight:700,letterSpacing:'.4px',
@@ -4538,11 +4664,11 @@ class Sewing extends MESCore {
       whiteSpace:'nowrap',position:'sticky',top:0,zIndex:1};
     const td={padding:'10px 12px',fontSize:12.5,borderTop:'1px solid '+C.line,
       borderRight:'1px solid '+C.line,verticalAlign:'middle'};
-    let tot=0; rows.forEach(r=>{ if(r.status==='received') tot+=r.qty; });
+    let tot=0; rows.forEach(r=>{ if(stOf(r)==='received') tot+=qtyOf(r); });
     const head=h('div',{style:{display:'flex',alignItems:'center',gap:12,flex:'none',
         padding:'15px 20px 13px',borderBottom:'1px solid '+C.line}},
       h('div',{style:{minWidth:0,marginRight:'auto'}},
-        h('div',{style:{fontSize:16,fontWeight:700}},this.t('lnRecvTitle')),
+        h('div',{style:{fontSize:16,fontWeight:700}},this.t(trim?'lnRecvTitleW':'lnRecvTitle')),
         h('div',{style:{fontSize:11.5,color:C.faint,marginTop:3,display:'flex',
             alignItems:'center',gap:7,flexWrap:'wrap'}},
           h('span',{style:{fontFamily:mono,fontWeight:700,color:C.ink}},o.style),
@@ -4555,27 +4681,37 @@ class Sewing extends MESCore {
           width:30,height:30,flex:'none',cursor:'pointer',fontSize:17,lineHeight:1,padding:0,
           fontFamily:'inherit'},'style-hover':{background:C.tint}},'\u00d7'));
     // Nut chi hien o dong CHO NHAN (xac nhan) va dong DA NHAN (hoan tac).
-    // Dong con o 'Da yeu cau' thi nha cat chua giao -- khong co gi de xac nhan.
-    const act=r=>{
-      if(r.status==='waiting') return h('button',{onClick:()=>this.lnSlipConfirm(r,false),
+    // Che do BTP con dong o 'Da yeu cau' -- nha cat chua giao thi chua co gi de
+    // xac nhan. Che do phu lieu chi co hai buoc nen luon co nut.
+    const act=r=>{ const st=stOf(r);
+      const go=undo=>trim?this.lnTrimConfirm(r,undo):this.lnSlipConfirm(r,undo);
+      if(st==='waiting') return h('button',{onClick:()=>go(false),
         style:{...this.btn('primary'),padding:'7px 14px',fontSize:12}},this.t('lnConfirm'));
-      if(r.status==='received') return h('button',{onClick:()=>this.lnSlipConfirm(r,true),
+      if(st==='received') return h('button',{onClick:()=>go(true),
         style:{border:'none',background:'none',padding:'6px 2px',cursor:'pointer',
           fontFamily:'inherit',fontSize:12,fontWeight:600,color:C.sub,
           textDecoration:'underline'}},this.t('lnUndoConfirm'));
       return h('span',{style:{color:C.faint}},'\u2014'); };
+    // O SO PHIEU: dong cua tuan khac khong mo duoc to giay (bSlipData tra dong
+    // qua rid trong getWeek()) nen chi in ma ra, khong phai nut.
+    const slipLink=(r,no,tip,open)=>r.rid
+      ? h('button',{onClick:()=>{ const wr=this.getWeek().rows.find(x=>x.id===r.rid);
+            if(wr) open(wr); },title:this.t(tip),
+          style:{border:'none',background:'none',padding:0,cursor:'pointer',
+            fontFamily:mono,fontWeight:700,fontSize:12.5,color:C.primary,
+            textDecoration:'underline',textDecorationStyle:'dotted',
+            textUnderlineOffset:3}},no||'\u2014')
+      : h('span',{style:{color:C.faint}},no||'\u2014');
+    // Moi hop thoai chi liet ke to phieu CUA CHINH NO: che do BTP ra CS-, che
+    // do phu lieu ra WS-. Mot dong khong mang ca hai ma nua -- hai lan giao
+    // khac nhau thi khong doc chung mot dong.
+    const noCell=r=>h('td',{style:{...td,paddingLeft:20,fontFamily:mono,
+        fontWeight:700,whiteSpace:'nowrap'}},
+      trim? slipLink(r,this.wSlipNoOf(r.no),'wsOpenTip',wr=>this.wSlipOpen(wr,r.day))
+          : slipLink(r,r.no,'bqOpenTip',wr=>this.bSlipOpen(wr,r.day)));
     const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white;
       return h('tr',{key:r.key,style:{background:bg}},
-        h('td',{style:{...td,paddingLeft:20,fontFamily:mono,fontWeight:700,
-          whiteSpace:'nowrap'}}, r.rid
-          // bSlipOpen nhan DONG cua tuan, khong phai id -- doi lai o day
-          ? h('button',{onClick:()=>{ const wr=this.getWeek().rows.find(x=>x.id===r.rid);
-                if(wr) this.bSlipOpen(wr,r.day); },title:this.t('bqOpenTip'),
-              style:{border:'none',background:'none',padding:0,cursor:'pointer',
-                fontFamily:mono,fontWeight:700,fontSize:12.5,color:C.primary,
-                textDecoration:'underline',textDecorationStyle:'dotted',
-                textUnderlineOffset:3}},r.no||'\u2014')
-          : h('span',{style:{color:C.faint}},r.no||'\u2014')),
+        noCell(r),
         h('td',{style:{...td,fontFamily:mono,fontWeight:700,color:C.ink,
           whiteSpace:'nowrap'}},r.label,
           h('div',{style:{fontSize:10.5,fontWeight:600,color:C.faint,marginTop:2,
@@ -4583,8 +4719,8 @@ class Sewing extends MESCore {
         h('td',{style:{...td,fontFamily:mono,fontWeight:700,color:C.dark,
           wordBreak:'break-word'}},r.turns||'\u2014'),
         h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
-          whiteSpace:'nowrap',color:r.status==='received'?C.primary:C.ink}},this.fmt(r.qty)),
-        h('td',{style:td},this.statusTag(r.status,{})),
+          whiteSpace:'nowrap',color:stOf(r)==='received'?C.primary:C.ink}},this.fmt(qtyOf(r))),
+        h('td',{style:td},this.statusTag(stOf(r),{})),
         h('td',{style:{...td,borderRight:'none',paddingRight:20,textAlign:'right'}},act(r)));
     });
     const table=rows.length
@@ -4634,34 +4770,71 @@ class Sewing extends MESCore {
     // Am (con thieu) -> ho phach; ve 0 hoac duong (du / vuot) -> xanh, doc luot
     // la biet dong nao da xong.
     const bal=v=>h('span',{style:{color:v<0?'#946200':'#2f7d32'}},this.fmt(v));
-    const T={ord:0,recv:0,out:0,hand:0,bo:0,bh:0};
-    rows.forEach(r=>{ T.ord+=r.ord; T.recv+=r.recv; T.out+=r.out; T.hand+=r.hand;
-      T.bo+=r.bo; T.bh+=r.bh; });
-    const body=rows.map((r,i)=>{ const bg=i%2?'#f7f9f3':C.white;
-      return h('tr',{key:r.key,style:{background:bg}},
+    const T={ord:0,recv:0,trecv:0,out:0,hand:0,bo:0,bh:0,wait:0,twait:0};
+    rows.forEach(r=>{ T.ord+=r.ord; T.recv+=r.recv; T.trecv+=r.trecv;
+      T.out+=r.out; T.hand+=r.hand;
+      T.bo+=r.bo; T.bh+=r.bh; T.wait+=r.wait; T.twait+=r.twait; });
+    // Hai cot Received dung chung mot khuon o: bam vao so la mo danh sach to
+    // phieu cua dung dong do, che do BTP hay phu lieu tuy 'kind'.
+    const recvCell=(r,val,kind,tip)=>h('td',{style:{...td,padding:0}},
+      h('button',{onClick:()=>this.set({lnRecv:{line:line,style:r.style,color:r.color,kind:kind}}),
+          title:this.t(tip),
+          style:{width:'100%',border:'none',background:'none',padding:'11px 12px',
+            cursor:'pointer',fontFamily:mono,fontWeight:700,fontSize:13,textAlign:'right',
+            color:'inherit',textDecoration:'underline',textDecorationStyle:'dotted',
+            textUnderlineOffset:3,textDecorationColor:C.border},
+          'style-hover':{background:C.tint}},
+        num(val,C.dark)));
+    // So to phieu con cho nhan, mau cam cua trang thai Waiting. De chu thuong
+    // (textTransform none) cho khoi doc nham la mot phan cua ten cot.
+    const wtag=n=>n? h('span',{style:{marginLeft:5,color:this.STC.waiting.fg,
+      textTransform:'none',letterSpacing:0}},'('+n+' '+this.t('lnWait')+')'):null;
+    // Dong con: chi ba cot dau co so theo size, con lai de gach ngang cho khoi
+    // doc nham la 0. Nen nhat hon + thut vao de nhin ra ngay la dong phu.
+    const dash=h('span',{style:{color:C.faint,fontWeight:600}},'\u2014');
+    const subRow=(r,z)=>h('tr',{key:r.key+'|'+z.size,style:{background:'#fbfcf8'}},
+      h('td',{style:{...td,textAlign:'left',fontFamily:mono,fontWeight:700,
+        fontSize:12.5,color:C.sub,paddingLeft:49}},z.size),
+      h('td',{style:{...td,fontSize:12.5}},num(z.ord,C.sub)),
+      h('td',{style:{...td,fontSize:12.5}},num(z.recv,C.dark)),
+      h('td',{style:{...td,fontSize:12.5}},num(z.trecv,C.dark)),
+      h('td',{style:td},dash), h('td',{style:td},dash), h('td',{style:td},dash),
+      h('td',{style:{...td,borderRight:'none',paddingRight:20}},dash));
+    const open=this.state.lnOpen||{};
+    const body=[];
+    rows.forEach((r,i)=>{ const bg=i%2?'#f7f9f3':C.white;
+      const ok=line+'|'+r.key, op=!!open[ok];
+      body.push(h('tr',{key:r.key,style:{background:bg}},
         h('td',{style:{...td,textAlign:'left',fontFamily:'inherit',paddingLeft:20}},
-          h('div',{style:{fontSize:13.5,fontWeight:700,fontFamily:mono,color:C.ink,
-            wordBreak:'break-word'}},r.style),
-          h('div',{style:{display:'flex',alignItems:'center',gap:7,marginTop:4,flexWrap:'wrap'}},
-            h('span',{style:{flex:'none',width:10,height:10,borderRadius:'50%',
-              background:this.colorHex(r.color),border:'1px solid rgba(0,0,0,.18)'}}),
-            h('span',{style:{fontSize:11.5,fontWeight:600,color:C.sub}},r.color),
-            r.pos.length?h('span',{style:{fontSize:11,fontFamily:mono,color:C.faint}},
-              '\u00b7 '+this.t('lnPo')+' '+r.pos.join(' \u00b7 ')):null)),
+          h('div',{style:{display:'flex',alignItems:'flex-start',gap:9}},
+            h('button',{onClick:()=>this.lnToggle(ok),
+                title:this.t(op?'lnSzHide':'lnSzShow'),
+                style:{flex:'none',marginTop:1,width:20,height:20,borderRadius:6,
+                  border:'1px solid '+C.border,background:C.white,color:C.sub,
+                  cursor:'pointer',padding:0,display:'inline-flex',
+                  alignItems:'center',justifyContent:'center'},
+                'style-hover':{background:C.tint}},
+              h('svg',{width:11,height:11,viewBox:'0 0 24 24',fill:'none',
+                stroke:'currentColor',strokeWidth:3,strokeLinecap:'round',
+                strokeLinejoin:'round',style:{transform:op?'rotate(90deg)':'none'}},
+                h('path',{d:'M9 6l6 6-6 6'}))),
+            h('div',{style:{minWidth:0}},
+              h('div',{style:{fontSize:13.5,fontWeight:700,fontFamily:mono,color:C.ink,
+                wordBreak:'break-word'}},r.style),
+              h('div',{style:{display:'flex',alignItems:'center',gap:7,marginTop:4,flexWrap:'wrap'}},
+                h('span',{style:{flex:'none',width:10,height:10,borderRadius:'50%',
+                  background:this.colorHex(r.color),border:'1px solid rgba(0,0,0,.18)'}}),
+                h('span',{style:{fontSize:11.5,fontWeight:600,color:C.sub}},r.color),
+                r.pos.length?h('span',{style:{fontSize:11,fontFamily:mono,color:C.faint}},
+                  '\u00b7 '+this.t('lnPo')+' '+r.pos.join(' \u00b7 ')):null)))),
         h('td',{style:td},num(r.ord,C.sub)),
-        h('td',{style:{...td,padding:0}},
-          h('button',{onClick:()=>this.set({lnRecv:{line:line,style:r.style,color:r.color}}),
-              title:this.t('lnRecvTap'),
-              style:{width:'100%',border:'none',background:'none',padding:'11px 12px',
-                cursor:'pointer',fontFamily:mono,fontWeight:700,fontSize:13,textAlign:'right',
-                color:'inherit',textDecoration:'underline',textDecorationStyle:'dotted',
-                textUnderlineOffset:3,textDecorationColor:C.border},
-              'style-hover':{background:C.tint}},
-            num(r.recv,C.dark))),
+        recvCell(r,r.recv,'fabric','lnRecvTap'),
+        recvCell(r,r.trecv,'trims','lnRecvTrimTap'),
         h('td',{style:{...td,fontSize:14.5,color:C.primary}},num(r.out,C.primary)),
         h('td',{style:td},num(r.hand,C.dark)),
         h('td',{style:td},bal(r.bo)),
-        h('td',{style:{...td,borderRight:'none',paddingRight:20}},bal(r.bh)));
+        h('td',{style:{...td,borderRight:'none',paddingRight:20}},bal(r.bh))));
+      if(op) (r.sizes||[]).forEach(z=>body.push(subRow(r,z)));
     });
     // Dong TONG: mot chuyen thuong chay 1-2 ma hang nen tong nam ngay duoi,
     // khong can ghim sticky.
@@ -4672,20 +4845,23 @@ class Sewing extends MESCore {
         fontSize:11,letterSpacing:'.4px',color:'#cfe0be'}},this.t('colTotal')),
       h('td',{style:ft},this.fmt(T.ord)),
       h('td',{style:ft},this.fmt(T.recv)),
+      h('td',{style:ft},this.fmt(T.trecv)),
       h('td',{style:{...ft,fontSize:14.5,color:'#fff'}},this.fmt(T.out)),
       h('td',{style:ft},this.fmt(T.hand)),
       h('td',{style:ft},this.fmt(T.bo)),
       h('td',{style:{...ft,paddingRight:20}},this.fmt(T.bh)));
     return h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'900px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'1080px',borderCollapse:'collapse'}},
         h('colgroup',null,h('col',null),h('col',{style:{width:'112px'}}),
-          h('col',{style:{width:'112px'}}),h('col',{style:{width:'112px'}}),
+          h('col',{style:{width:'150px'}}),h('col',{style:{width:'150px'}}),
+          h('col',{style:{width:'112px'}}),
           h('col',{style:{width:'118px'}}),h('col',{style:{width:'140px'}}),
           h('col',{style:{width:'152px'}})),
         h('thead',null,h('tr',null,
           h('th',{style:{...th,textAlign:'left',paddingLeft:20}},this.t('lsCol2')),
           h('th',{style:th},this.t('lnOrd')),
-          h('th',{style:th,title:this.t('lnRecvTip')},this.t('lnRecv')),
+          h('th',{style:th,title:this.t('lnRecvTip')},this.t('lnRecv'),wtag(T.wait)),
+          h('th',{style:th,title:this.t('lnRecvTrimTip')},this.t('lnRecvTrim'),wtag(T.twait)),
           h('th',{style:th},this.t('lnOut')),
           h('th',{style:th},this.t('lnHand')),
           h('th',{style:th,title:this.t('lnBalOutTip')},this.t('lnBalOut')),
@@ -4719,7 +4895,7 @@ class Sewing extends MESCore {
         background:C.white,boxShadow:C.shadow}},this.renderLnPerf(line)),
       // Ban DAY DU cua hai bang lich su: giao sang hoan thien, huy phieu, xuat file
       this.renderDsoHistory(line),this.renderDsoDefHistory(line),
-      this.renderLnRecv(),this.renderBqSlip());
+      this.renderLnRecv(),this.renderBqSlip(),this.renderWSlip());
     if(!cards.length) return h('div',{style:{padding:'16px 18px 22px'}},bar,tabs,
       h('div',{style:{padding:'48px 24px',textAlign:'center',color:C.faint,fontSize:13.5}},
         this.t('dsoNoCut')));
@@ -4915,14 +5091,20 @@ class Sewing extends MESCore {
           color:noMinus?'#c8ccc2':C.sub,fontSize:18,lineHeight:1,fontFamily:'inherit',
           cursor:noMinus?'not-allowed':'pointer',padding:0},
         'style-hover':noMinus?{}:{background:C.tint}},'−');
-    const bigBtn=(label,sub,bg,on)=>h('button',{onClick:c?on:undefined,disabled:!c,
-        style:{flex:1,minWidth:0,minHeight:152,border:'none',background:c?bg:'#e7eae2',
-          color:c?'#fff':'#a9afa3',fontFamily:'inherit',cursor:c?'pointer':'not-allowed',
+    // Size dang chon da dem du demand -> tat CA HAI nut lon: khong con san pham
+    // nao de QC nen bam them chi lam san luong vuot tac nghiep cat. Nut '-' van
+    // bat de sua lai neu vua bam nham.
+    const full=!!c&&c.need>0&&dq>=c.need;
+    const bigBtn=(label,sub,bg,on)=>{ const ok=!!c&&!full;
+      return h('button',{onClick:ok?on:undefined,disabled:!ok,
+        title:full?this.t('dsoFullTip'):undefined,
+        style:{flex:1,minWidth:0,minHeight:152,border:'none',background:ok?bg:'#e7eae2',
+          color:ok?'#fff':'#a9afa3',fontFamily:'inherit',cursor:ok?'pointer':'not-allowed',
           display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:7,
           transition:'filter .12s'},
-        'style-hover':c?{filter:'brightness(1.08)'}:{}},
+        'style-hover':ok?{filter:'brightness(1.08)'}:{}},
       h('span',{style:{fontSize:31,fontWeight:700,letterSpacing:'.3px',lineHeight:1}},label),
-      h('span',{style:{fontSize:12.5,fontWeight:600,fontFamily:mono,opacity:.92}},sub));
+      h('span',{style:{fontSize:12.5,fontWeight:600,fontFamily:mono,opacity:.92}},sub)); };
     const tapPanel=h('div',{style:{minWidth:0,display:'flex',flexDirection:'column'}},
       chipRow(this.t('dsoLblColor'),P.colors,P.color,v=>this.dsoPickSet(line,{color:v})),
       chipRow(this.t('dsoLblSize'),P.sizes,P.size,v=>this.dsoPickSet(line,{size:v}),minus),
@@ -5688,15 +5870,147 @@ class Sewing extends MESCore {
   // Gop san luong + bac M-level + chat luong cua tung chuyen vao mot bang.
   // Moi so deu doc tu ham co san (prodLines / mlvSlots / mlvQuality) nen bang
   // nay khong bao gio lech voi trang chuyen hay bang M-level.
+  // ---- Progress: bam nhip trong NGAY --------------------------------------
+  //   nhip mong doi 1 tieng = target cua ngay / SP_HOURS (10 khung gio)
+  //   so tieng da lam       = so khung gio DEF_SLOTS DA BAT DAU; khung dang
+  //                           chay tinh tron 1 tieng ('lam tron len')
+  //   Progress              = san luong HOM NAY / (nhip x so tieng da lam)
+  // VD: target 157, luc 17:02 (khung 17:00-18:00 la khung thu 9 da bat dau),
+  // da lam 16 -> 16 / (157/10*9) = 11.32%.
+  //
+  // Mau so la 10 (so khung gio), KHONG phai WORK HOURS cua Line Setting (9.5):
+  // so tieng da lam dem theo khung gio, nen nhip cung phai chia theo khung gio.
+  // Tron 9.5 voi 10 thi chuyen lam dung 100% target ca ngay chi ra ~95%.
+  // Cung la nhip ma cot target cua so do By Hour dang ve (tgt / SP_HOURS).
+  spHoursDone(){ const d=new Date(), t=d.getHours()*60+d.getMinutes();
+    let n=0; this.DEF_SLOTS.forEach(s=>{ if(t>=s[1]) n++; });
+    return n; }
+  // Chi HOM NAY. Cot San luong ben canh la cong don moi ngay, con Progress do
+  // nhip cua ca hom nay nen phai loc theo ngay -- khoa 6 doan, doan[0] la ngay.
+  spTodayOut(line){ const m=this.state.dsoDone||{}, day=this.dsoToday(); let n=0;
+    Object.keys(m).forEach(k=>{ const p=k.split('|');
+      if(p.length!==6||p[0]!==day||p[1]!==line) return;
+      n+=Number(m[k])||0; });
+    return n; }
+  // Thieu target, hoac chua vao ca (chua khung gio nao bat dau) -> null. De o
+  // TRONG, khong tra 0%: 0% doc nham thanh 'chuyen dung yen'.
+  spProgress(line,tgt){ const n=this.spHoursDone();
+    if(!(tgt>0)||!n) return null;
+    return this.spTodayOut(line)/(tgt/this.SP_HOURS*n)*100; }
+  spPct2(v){ return (Math.round((Number(v)||0)*100)/100).toFixed(2)+'%'; }
   sewProdRows(){ return this.prodLines().map(x=>{
       const S=this.mlvSlots(x.line), Q=this.mlvQuality(x.line), cur=S.cur;
+      // Thieu SMV / cong nhan thi mlvTarget tra null -> de trong, KHONG quy ve 0
+      const tgt=(cur&&cur.target!=null)?cur.target:null;
       return {line:x.line, w:x.cfg.w,
         mlv:(cur&&cur.name&&cur.name!=='\u2014')?cur.name:'',
-        // Thieu SMV / cong nhan thi mlvTarget tra null -> de trong, KHONG quy ve 0
-        tgt:(cur&&cur.target!=null)?cur.target:null,
+        tgt:tgt, prog:this.spProgress(x.line,tgt),
+        // SL yeu cau cua don dang chay tren chuyen -- dung nguon voi so
+        // DONE / REQUIRED o dau man chi tiet chuyen (dsoKpi).
+        need:this.dsoKpi(x.line).need,
         done:Q.done, rate:Q.rate, dhu:Q.dhu, top3:Q.top3}; }); }
 
+  // ---- Sewing Production \u00b7 By Hour ------------------------------------
+  // Moi chuyen mot so do 10 cot = 10 khung gio lam viec cua DEF_SLOTS (dung
+  // chung bang khung gio voi bao cao Endline QC, nen hai cho khong lech nhau).
+  //   cot NGOAI (nhat, rong hon) = target cua khung gio = target hien tai / 10
+  //   cot TRONG (dam, hep hon)   = san luong that cua khung gio
+  // Vuot target thi cot trong cao hon khung ngoai -- de nguyen, do la tin hieu.
+  SP_TABS=[['gen','spTab1'],['hour','spTab2']];
+  SP_HOURS=10;         // DEF_SLOTS co dung 10 khung gio
+  // Nhan cot chi lay moc BAT DAU ('7:30-8:30' -> '7:30'): 10 cot ma in ca doan
+  // thi chu chong len nhau.
+  spHourLabels(){ return this.DEF_SLOTS.map(s=>String(s[0]).split('-')[0]); }
+  // San luong theo tung khung gio. Cung nguon voi mlvHoursMap (dsoPassLog: moi
+  // san pham bam DAT de lai 1 moc HH:MM), chi doi cach chia o -- theo khung gio
+  // thay vi theo gio dong ho. Ban ghi khong doc duoc moc gio thi BO, khong don
+  // vao cot dau (don vao la cot 7:30 phinh ra vo co).
+  spHourOut(line){ const m=this.state.dsoPassLog||{}, at={};
+    Object.keys(m).forEach(k=>{ const p=k.split('|');
+      if(p.length!==6||p[1]!==line) return;
+      (m[k]||[]).forEach(t=>{ const s=this.dsoDefSlot(t); if(!s) return;
+        at[s]=(at[s]||0)+1; }); });
+    return this.DEF_SLOTS.map(s=>at[s[0]]||0); }
+  spHourChart(r){
+    const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
+    const out=this.spHourOut(r.line), lb=this.spHourLabels();
+    // Chua co target (thieu SMV / cong nhan) -> KHONG ve khung ngoai. Ve khung
+    // cao 0 thi doc nham thanh 'target bang 0'.
+    const tph=r.tgt!=null?r.tgt/this.SP_HOURS:null;
+    const top=Math.max(tph||0,...out,1), H=112;
+    const cols=out.map((v,i)=>{ const ok=tph!=null&&v>=tph;
+      return h('div',{key:i,style:{flex:'1 1 0',minWidth:0,display:'flex',
+          flexDirection:'column',alignItems:'center',gap:5}},
+        // Hai so cua cot, xep dung thu tu cua hai cot ben duoi: TARGET o tren
+        // (nhat, nho) vi no la khung bao ngoai, OUTPUT ngay duoi (dam) vi no la
+        // cot nam trong. Doc mot cai la thay gio do hut hay vuot.
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',
+            lineHeight:1.2}},
+          h('span',{style:{fontSize:9.5,fontFamily:mono,fontWeight:600,color:C.faint}},
+            tph==null?'\u2014':this.fmt(Math.round(tph))),
+          h('span',{style:{fontSize:11.5,fontFamily:mono,fontWeight:700,
+            color:v?(ok?'#2f7d32':C.ink):C.faint}},this.fmt(v))),
+        h('div',{style:{position:'relative',width:'100%',height:H,display:'flex',
+            alignItems:'flex-end',justifyContent:'center'}},
+          tph!=null?h('div',{style:{position:'absolute',left:'6%',right:'6%',bottom:0,
+            height:Math.round(tph/top*H),background:'#eef1e7',
+            border:'1px solid '+C.border,borderRadius:5}}):null,
+          h('div',{style:{position:'relative',width:'44%',borderRadius:4,
+            height:Math.round(v/top*H),minHeight:v?2:0,
+            background:ok?'#5a9c3f':C.primary}})),
+        h('div',{style:{fontSize:10,fontFamily:mono,color:C.faint,
+          whiteSpace:'nowrap'}},lb[i]));
+    });
+    return h('div',{key:r.line,style:{border:'1px solid '+C.border,borderRadius:14,
+        background:C.white,padding:'13px 15px 12px',minWidth:0}},
+      h('div',{style:{display:'flex',alignItems:'baseline',gap:9,marginBottom:11,
+          flexWrap:'wrap'}},
+        h('span',{style:{fontSize:14,fontWeight:700,fontFamily:mono,
+          color:C.primary}},r.line),
+        r.mlv?h('span',{style:{fontSize:10.5,fontWeight:700,fontFamily:mono,
+          color:C.dark,background:C.tint,border:'1px solid '+C.border,
+          borderRadius:999,padding:'2px 8px'}},r.mlv):null,
+        h('span',{style:{flex:1,minWidth:6}}),
+        h('span',{style:{fontSize:12,fontFamily:mono,color:C.faint,whiteSpace:'nowrap'}},
+          this.fmt(r.done)+' / '+(r.tgt==null?'\u2014':this.fmt(r.tgt))),
+        h('span',{style:{fontSize:11,color:C.faint,whiteSpace:'nowrap'}},this.t('spHrTgt')),
+        h('span',{style:{fontSize:13,fontWeight:700,fontFamily:mono,color:C.dark}},
+          tph==null?'\u2014':this.fmt(Math.round(tph)))),
+      h('div',{style:{display:'flex',alignItems:'flex-end',gap:4}},cols));
+  }
+  renderSpHour(){
+    const h=React.createElement, C=this.C;
+    const rows=this.sewProdRows();
+    if(!rows.length) return h('div',{style:{padding:'56px 24px',textAlign:'center',
+      color:C.faint,fontSize:13.5}},this.t('demandEmpty'));
+    const sw=(bg,bd,w)=>h('span',{style:{flex:'none',width:w,height:11,background:bg,
+      border:'1px solid '+bd,borderRadius:3}});
+    const chip=(el,txt)=>h('span',{style:{display:'inline-flex',alignItems:'center',
+      gap:6}},el,txt);
+    return h('div',null,
+      h('div',{style:{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap',
+          padding:'0 16px 13px',fontSize:11.5,color:C.faint}},
+        chip(sw('#eef1e7',C.border,18),this.t('spHrTarget')),
+        chip(sw(C.primary,C.primary,9),this.t('spHrOut')),
+        h('span',null,this.t('spHrNote'))),
+      // DUNG 3 chuyen mot dong. Hep hon 3x330 thi cho cuon ngang chu khong ep
+      // card nho lai: duoi khoang do 10 nhan gio bat dau de len nhau.
+      h('div',{className:'yscroll',style:{overflowX:'auto',padding:'0 16px 18px'}},
+        h('div',{style:{display:'grid',gap:14,minWidth:1010,
+          gridTemplateColumns:'repeat(3,minmax(0,1fr))'}},
+          rows.map(r=>this.spHourChart(r)))));
+  }
+  // Tab Sewing Production co hai tab nho; thanh tab nam dau phan than de tieu
+  // de cua card giu nguyen cho ca hai.
   renderDsoSewProd(){
+    const h=React.createElement;
+    const tab=this.state.spTab||'gen';
+    return h('div',null,
+      h('div',{style:{padding:'14px 16px 0'}},
+        this.tabBar(this.SP_TABS,tab,id=>this.set({spTab:id}),true)),
+      tab==='hour'?this.renderSpHour():this.renderSpGeneral());
+  }
+  renderSpGeneral(){
     const h=React.createElement, C=this.C, mono="'IBM Plex Mono',monospace";
     const rows=this.sewProdRows();
     if(!rows.length) return h('div',{style:{padding:'56px 24px',textAlign:'center',color:C.faint,
@@ -5737,7 +6051,15 @@ class Sewing extends MESCore {
               background:C.tint,border:'1px solid '+C.border,borderRadius:999,
               padding:'3px 10px',whiteSpace:'nowrap'}},r.mlv)
           : h('span',{style:{color:C.faint}},'\u2014')),
+        // General progress: TONG da pass tu truoc toi nay / SL yeu cau cua don.
+        // Chua co don nao tren chuyen (need=0) -> null de bar() de RANH, khong
+        // ve thanh 0% (0% doc nham thanh 'chuyen chua lam duoc gi').
+        h('td',{style:td},bar(r.done,r.need||null)),
         h('td',{style:td},bar(r.done,r.tgt)),
+        h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
+          whiteSpace:'nowrap',
+          color:r.prog==null?C.faint:(r.prog>=100?'#2f7d32':C.ink)}},
+          r.prog==null?'\u2014':this.spPct2(r.prog)),
         h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
           color:r.rate?'#946200':C.faint,whiteSpace:'nowrap'}},this.dsoPct1(r.rate)),
         h('td',{style:{...td,textAlign:'right',fontFamily:mono,fontWeight:700,
@@ -5758,17 +6080,23 @@ class Sewing extends MESCore {
     });
     // Header 2 tang: 4 cot dau keo doc (rowSpan), rieng CHAT LUONG gom 3 cot con.
     return h('div',{className:'yscroll',style:{overflowX:'auto'}},
-      h('table',{style:{width:'100%',minWidth:'1000px',borderCollapse:'collapse'}},
+      h('table',{style:{width:'100%',minWidth:'1280px',borderCollapse:'collapse'}},
         h('colgroup',null,h('col',{style:{width:'110px'}}),h('col',{style:{width:'100px'}}),
-          h('col',{style:{width:'108px'}}),h('col',{style:{width:'34%'}}),
+          h('col',{style:{width:'108px'}}),
+          h('col',{style:{width:'24%'}}),h('col',{style:{width:'24%'}}),
+          h('col',{style:{width:'100px'}}),
           h('col',{style:{width:'104px'}}),h('col',{style:{width:'88px'}}),
-          h('col',{style:{width:'26%'}})),
+          h('col',{style:{width:'22%'}})),
         h('thead',null,
           h('tr',null,
             h('th',{rowSpan:2,style:{...thBot,paddingLeft:16}},this.t('lsCol1')),
             h('th',{rowSpan:2,style:{...thBot,textAlign:'right'}},this.t('lsCol3')),
             h('th',{rowSpan:2,style:thBot},this.t('spMlv')),
+            h('th',{rowSpan:2,style:thBot,title:this.t('spGenProgTip')},
+              this.t('spGenProg')),
             h('th',{rowSpan:2,style:thBot},this.t('spOut')),
+            h('th',{rowSpan:2,style:{...thBot,textAlign:'right'},
+              title:this.t('spProgTip')},this.t('spProg')),
             h('th',{colSpan:3,style:{...thTop,borderRight:'none',textAlign:'center'}},
               this.t('mlvQual'))),
           h('tr',null,

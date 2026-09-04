@@ -1,4 +1,4 @@
-/* Kiem tra hai thu muc module sau khi sinh.
+/* Kiem tra cac thu muc module sau khi sinh.
  *
  * Chay:  node build/check.js
  *
@@ -8,7 +8,7 @@
  *   3. `this.X` goi mot ham khong co trong file
  *   4. `state.X` doc mot khoa ma constructor chua khoi tao
  *   5. `t('x')` goi mot khoa dich khong co trong LMOD lan L
- *   6. nen dung chung / style.css cua hai module lech nhau
+ *   6. nen dung chung / style.css cua cac module lech nhau
  *   + loi cu phap
  */
 'use strict';
@@ -21,6 +21,7 @@ const ASSETS = path.join(__dirname, 'assets');
 const MODULES = [
   { id: 'sewing', vendor: ['react.js', 'react-dom.js', 'anime.js', 'xlsx.js', 'xlsx-style.js'] },
   { id: 'finishing', vendor: ['react.js', 'react-dom.js', 'xlsx.js'] },
+  { id: 'material-out', vendor: ['react.js', 'react-dom.js', 'xlsx.js'] },
 ];
 let bad = 0;
 const fail = (m, msg) => { bad++; console.log('\n[' + m + '] ' + msg); };
@@ -138,8 +139,8 @@ MODULES.forEach(m => {
   else console.log('[' + m.id + '] dich ok — ' + used.size + ' khoa goi truc tiep, ' + have.size + ' co san');
 });
 
-/* ---- 6. hai ban copy phai khop ------------------------------------------- */
-/* nen dung chung: 2 doan giua cac moc ---8<--- */
+/* ---- 6. cac ban copy phai khop ------------------------------------------- */
+/* nen dung chung: 2 doan giua cac moc ---8<---, doi chieu moi module voi module dau */
 function coreOf(c, n) {
   const a = c.indexOf('/* ---8<--- NEN DUNG CHUNG ' + n + '/2 ---8<--- */');
   const b = c.indexOf('/* ---8<--- HET NEN DUNG CHUNG ' + n + '/2 ---8<--- */');
@@ -147,16 +148,19 @@ function coreOf(c, n) {
 }
 [1, 2].forEach(n => {
   const parts = MODULES.map(m => coreOf(code[m.id], n));
-  if (parts.some(p => p === null)) return fail('core', 'khong thay moc ---8<--- ' + n + '/2');
-  if (parts[0] !== parts[1]) {
-    const A = parts[0].split('\n'), B = parts[1].split('\n');
+  const gone = MODULES.filter((m, i) => parts[i] === null).map(m => m.id);
+  if (gone.length) return fail('core', 'khong thay moc ---8<--- ' + n + '/2: ' + gone.join(' '));
+  const A = parts[0].split('\n');
+  const odd = MODULES.findIndex((m, i) => parts[i] !== parts[0]);
+  if (odd > 0) {
+    const B = parts[odd].split('\n');
     const i = A.findIndex((l, k) => l !== B[k]);
     return fail('core', 'NEN DUNG CHUNG ' + n + '/2 LECH NHAU o dong ' + (i + 1)
-      + ' cua doan:\n  sewing:    ' + JSON.stringify((A[i] || '').slice(0, 90))
-      + '\n  finishing: ' + JSON.stringify((B[i] || '').slice(0, 90))
+      + ' cua doan:\n  ' + (MODULES[0].id + ':').padEnd(15) + JSON.stringify((A[i] || '').slice(0, 90))
+      + '\n  ' + (MODULES[odd].id + ':').padEnd(15) + JSON.stringify((B[i] || '').slice(0, 90))
       + '\n  -> chay lai: node build/emit.js');
   }
-  console.log('[core] doan ' + n + '/2 khop — ' + parts[0].split('\n').length + ' dong');
+  console.log('[core] doan ' + n + '/2 khop o ' + MODULES.length + ' module — ' + A.length + ' dong');
 });
 /* style.css + vendor phai dung bang ban trong build/assets */
 MODULES.forEach(m => {

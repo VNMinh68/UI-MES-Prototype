@@ -79,19 +79,19 @@
     this.scrollRef = React.createRef(); this.panelRef = React.createRef(); this.dailyRef = React.createRef();
     const weeks = this.seed();
     this.state = { ...this.coreState(),
-      page: 'sewing', cutTab: 'capacity', dsoTab: 'sprod', dsoSub: 'line', dsoLineTab: 'perf', lset: {}, lsEdit: null,
+      page: 'sewing', cutTab: 'capacity', dsoTab: 'sprod', dsoSub: 'line', dsoLineTab: 'perf', spTab: 'gen', lset: {}, lsEdit: null,
       dsoLine: null, mlvLine: null, mlvFs: false, dsoDone: {}, dsoDoneV: 2, dsoHand: {}, dsoHandQ: {},
       dsoSlips: [], dsoSlipSeq: {}, dsoHandWho: {}, dsoHandAsk: null,
       cap: {}, capTurns: {}, capOrder: null, dragRow: null, multPlain: 3, multEmb: 6,
       tab: 'weekly', openMonth: this.CURWK.split(' · ')[0], week: this.CURWK,
       weeks,
-      edit: null, bedit: null, bform: null, bslip: null, bqNo: {}, bqSeq: {}, bqLock: {},
+      edit: null, bedit: null, bform: null, bslip: null, wslip: null, bqNo: {}, bqSeq: {}, bqLock: {},
       dragOver: false, dayOpen: null, daily: {}, freq: {}, wsc: {}, recvLog: [],
       bundle: this.initBundle((weeks[this.CURWK] || { rows: [] }).rows), bundleV: 3, wip: {},
       dsoAlerts: this.initAlerts(), dsoAlEdit: false, dsoAlHit: null,
       dsoMtypeRows: null, dsoMtypeDet: {}, mtSel: null, mtEdit: null, mtMsg: '',
       dsoDefects: this.initDefects(), dsoDefLog: {}, dsoDefTime: {}, dfEdit: null, dfQ: '', dfMsg: '',
-      dsoTap: null, dsoTapQ: '', dsoTapSel: {}, lnRecv: null,
+      dsoTap: null, dsoTapQ: '', dsoTapSel: {}, lnRecv: null, lnOpen: {},
       dsoPassLog: {},
       dsoHistQ: '', dsoDefQ: '', dsoHandBulk: null,
       // Ban tablet cua trang chi tiet chuyen: o dang chon, ngay cua bang Top 3,
@@ -146,6 +146,7 @@
     if (this.state.dsoTap) this.dsoTapClose();
     if (this.state.mlvFs) this.set({ mlvFs: false });
     if (this.state.bslip) this.bSlipClose();
+    if (this.state.wslip) this.wSlipClose();
     if (this.state.dsoHandBulk) this.set({ dsoHandBulk: null });
     if (this.state.dsoHandAsk) this.dsoSlipClose();
   }

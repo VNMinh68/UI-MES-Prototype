@@ -2,7 +2,7 @@
 
 Bản prototype chạy hoàn toàn **offline, không cần cài gì**.
 
-App gồm **2 module, mỗi module là một thư mục chạy độc lập**. Gửi *một* thư mục
+App gồm **3 module, mỗi module là một thư mục chạy độc lập**. Gửi *một* thư mục
 cho ai đó là họ mở được ngay — không cần file nào bên ngoài, không cần server,
 không cần internet:
 
@@ -10,6 +10,7 @@ không cần internet:
 |---|---|---|
 | **MAY** | Kế hoạch may · Sản lượng may hàng ngày | `app/sewing/` |
 | **HOÀN THIỆN** | Nhận hàng hoàn thiện · Tình trạng hoàn thiện · Kế hoạch xuất hàng | `app/finishing/` |
+| **XUẤT NPL** | Xuất vải · Xuất phụ liệu | `app/material-out/` |
 
 ## Chạy thử
 
@@ -18,6 +19,7 @@ Double-click `index.html` trong thư mục module muốn mở:
 ```
 app/sewing/index.html
 app/finishing/index.html
+app/material-out/index.html
 ```
 
 > Nếu trình duyệt chặn `file://`, chạy tạm một server tĩnh **trong chính thư mục
@@ -41,6 +43,13 @@ app/finishing/
   seed.js         dữ liệu của HOÀN THIỆN
   style.css
   vendor/         react, react-dom, xlsx
+
+app/material-out/
+  index.html
+  script.js       nền dùng chung + logic của XUẤT NPL
+  seed.js         dữ liệu của XUẤT NPL
+  style.css
+  vendor/         react, react-dom, xlsx
 ```
 
 Không có thư mục `shared/`, không có trang chọn module. Mỗi `script.js` tự chứa cả
@@ -48,8 +57,8 @@ phần nền (shell, sidebar, dịch VI/EN, lưu localStorage, ảnh chụp dữ
 bàn giao) lẫn logic riêng của module — đổi lấy việc thư mục gửi đi là chạy được.
 
 Phần nền nằm giữa các mốc `---8<---` trong `script.js` là **bản copy giống nhau
-từng byte** ở cả hai module. Nó do `build/emit.js` sinh ra từ
-`build/parts/core-*.js`; sửa tay trong `app/` thì hai bản lệch nhau và
+từng byte** ở cả ba module. Nó do `build/emit.js` sinh ra từ
+`build/parts/core-*.js`; sửa tay trong `app/` thì các bản lệch nhau và
 `build/check.js` báo lỗi ngay.
 
 ## Module không đọc dữ liệu của nhau
@@ -57,10 +66,10 @@ từng byte** ở cả hai module. Nó do `build/emit.js` sinh ra từ
 Trước đây mọi màn hình dùng chung một `state`, nên Hoàn thiện đọc thẳng phiếu bàn
 giao mà Sản lượng may vừa phát hành. Giờ **liên kết đó bị cắt**:
 
-| | MAY | HOÀN THIỆN |
-|---|---|---|
-| localStorage | `yic.mes.sewing` | `yic.mes.finishing` |
-| Seed | `app/sewing/seed.js` | `app/finishing/seed.js` |
+| | MAY | HOÀN THIỆN | XUẤT NPL |
+|---|---|---|---|
+| localStorage | `yic.mes.sewing` | `yic.mes.finishing` | `yic.mes.material` |
+| Seed | `app/sewing/seed.js` | `app/finishing/seed.js` | `app/material-out/seed.js` |
 
 Phiếu bàn giao phát hành ở MAY **nằm lại trong MAY**. Hoàn thiện có sẵn 132 phiếu
 đóng băng trong seed của nó (`slips`) làm đầu vào.
@@ -77,6 +86,15 @@ HOÀN THIỆN
   seed.slips ─ Nhận hàng hoàn thiện     ← xác nhận đã nhận từng phiếu
                     └─ Tình trạng hoàn thiện ← Ủi → Kiểm cuối → Đóng gói → Nhập kho TP
                          └─ Kế hoạch xuất hàng ← cột SẴN SÀNG = số đã nhập kho TP
+
+XUẤT NPL
+  seed.fabric ─ Xuất vải   ← 1 dòng = 1 lượt cắt trong 1 ngày
+       │  SỐ YARD CẦN CẤP = SL sản phẩm của lượt × định mức + đầu bàn
+       ├─ kho gõ thẳng vào dòng: SỐ YARD THỰC CẤP · LOT VẢI · SỐ CÂY
+       └─ bấm Cấp vải → chọn cuộn trong seed.rolls → phiếu WC-yyyymmdd-index
+             Balance = Length − Issued; cấp xong 3 cột trên tự điền
+  seed.trims  ─ Xuất phụ liệu   ← cùng khuôn: SL CẦN = định mức × SL × hao
+       └─ bấm Xuất kho → chọn kiện trong seed.packs → phiếu WS-yyyymmdd-index
 ```
 
 Mỗi công đoạn không vượt được số của công đoạn liền trước; sửa công đoạn trước
@@ -105,12 +123,23 @@ Mỗi module có **đúng 1 file seed** — nguồn dữ liệu duy nhất của
 | `mlist` | danh mục phụ liệu (MATERIALS LIST) |
 | `snapshot` | ảnh chụp dữ liệu người dùng |
 
+`app/material-out/seed.js` → `window.MATERIAL_SEED`
+
+| Khóa | Nội dung |
+|---|---|
+| `fabric` | 99 lượt cắt (01/08 → 24/09/2026), rải từ tác nghiệp cắt theo tiến độ chuyền — màn Xuất vải |
+| `rolls` | 903 cuộn vải trong kho (`length` / `issued`, Balance = hiệu hai số) — hộp chọn cuộn để cấp |
+| `trims` | 141 dòng phụ liệu theo (mã hàng \| PO \| mã phụ liệu) — màn Xuất phụ liệu |
+| `packs` | 562 kiện phụ liệu trong kho (`qty` / `issued`) — hộp chọn kiện để xuất |
+| `snapshot` | ảnh chụp dữ liệu người dùng |
+
 ## Dữ liệu người dùng lưu ở đâu
 
 | Chỗ | Nội dung |
 |---|---|
 | `localStorage['yic.mes.sewing']` | mọi thay đổi trong module MAY (1 chuỗi JSON) |
 | `localStorage['yic.mes.finishing']` | mọi thay đổi trong module HOÀN THIỆN |
+| `localStorage['yic.mes.material']` | mọi thay đổi trong module XUẤT NPL |
 | IndexedDB `yic.mes` | store `alertSound` (âm thanh cảnh báo) + `mlvFile` (file M-level) |
 
 Ngoài ra `localStorage['yic.mes.<module>.noseed']` là cờ nội bộ — xem bên dưới.
@@ -130,7 +159,8 @@ Trong sidebar (bấm ☰) có mục **DỮ LIỆU LOCAL** với 4 nút:
 - **Xóa sạch** — xoá dữ liệu đã lưu và đặt cờ `noseed` để lần mở sau *không* nạp
   lại ảnh chụp nữa. Bấm **Về ảnh chụp gốc** để bỏ cờ này.
 
-Hai module xuất / nhập độc lập — ảnh chụp của MAY không ảnh hưởng HOÀN THIỆN.
+Ba module xuất / nhập độc lập — ảnh chụp của MAY không ảnh hưởng HOÀN THIỆN hay
+XUẤT NPL.
 
 ## Bộ sinh (`build/`) — không cần khi chạy app
 
@@ -138,11 +168,12 @@ Hai module xuất / nhập độc lập — ảnh chụp của MAY không ảnh 
 build/
   assets/           NGUỒN của style.css + vendor; emit.js copy vào từng module
   data/             3 bảng sinh từ file Excel gốc — nguồn của seed
-  parts/core-*.js   phần nền dùng chung, chèn vào cả hai script.js
+  parts/core-*.js   phần nền dùng chung, chèn vào cả ba script.js
   parts/sew-*.js    phần viết tay của MAY (MOD, constructor, hàm đọc seed…)
   parts/fin-*.js    phần viết tay của HOÀN THIỆN
-  emit.js           dựng 2 thư mục module (script.js + style.css + vendor)
-  seeds.js          sinh 2 file seed.js
+  parts/mat-*.js    TOÀN BỘ module XUẤT NPL (kể cả bảng dịch mat-lang.js)
+  emit.js           dựng 3 thư mục module (script.js + style.css + vendor)
+  seeds.js          sinh 3 file seed.js
   members.js        bản đồ thành viên của bản 1 file cũ
   legacy/script.js  bản 1 file trước khi tách, giữ lại để đối chiếu
   check.js          kiểm tra sau khi sinh
@@ -150,9 +181,13 @@ build/
 
 Sửa app:
 
+MAY và HOÀN THIỆN được **cắt ra** từ `build/legacy/script.js`; XUẤT NPL không có
+trong bản 1 file cũ nên nằm trọn trong `build/parts/mat-*.js`.
+
 | Muốn sửa | Sửa ở | Rồi chạy |
 |---|---|---|
-| logic riêng 1 module | `app/<module>/script.js` (ngoài mốc `---8<---`) | — |
+| logic MAY / HOÀN THIỆN | `app/<module>/script.js` (ngoài mốc `---8<---`) | — |
+| logic XUẤT NPL | `build/parts/mat-glue.js` · `mat-lang.js` | `node build/emit.js` |
 | phần nền dùng chung | `build/parts/core-*.js` | `node build/emit.js` |
 | `style.css` / `vendor/` | `build/assets/` | `node build/emit.js` |
 | dữ liệu | bảng Excel → `build/data/` | `node build/seeds.js` |
@@ -171,6 +206,6 @@ Bắt 6 lớp lỗi mà mắt thường dễ bỏ qua:
 - `this.X` gọi một hàm không có trong file
 - `state.X` đọc một khóa mà constructor chưa khởi tạo
 - `t('x')` gọi một khóa dịch không có trong `LMOD` lẫn `L`
-- phần nền dùng chung / `style.css` / `vendor/` của hai module lệch nhau
+- phần nền dùng chung / `style.css` / `vendor/` của các module lệch nhau
 
-cộng lỗi cú pháp của cả hai `script.js`.
+cộng lỗi cú pháp của cả ba `script.js`.
